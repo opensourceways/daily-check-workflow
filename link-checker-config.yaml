@@ -1,0 +1,118 @@
+# Link Checker Configuration
+#
+# Each community defines:
+#
+#   repo_url            — Git repository to clone and scan
+#   domain              — Base domain for resolving relative URLs (e.g. https://www.openeuler.org)
+#   branch              — Git branch to clone (default: main)
+#
+#   exclude_files       — File/directory patterns to skip during scanning (e.g. node_modules/)
+#   exclude_domains     — Domains to skip during HTTP checking (e.g. localhost, 127.0.0.1)
+#   exclude_urls        — Specific URLs to skip during HTTP checking (exact match or substring match).
+#                         Useful for dynamic URLs that are constructed at runtime and return 404 when accessed directly.
+#                         Example: ["/api/docs/", "example.com/dynamic-path"]
+#   url_prefix          — URL prefix for relative paths (e.g. "/zh" for openEuler).
+#                         When a relative path like "/docs/guide" is found, it will be prefixed to "/zh/docs/guide".
+#                         Leave empty to disable prefixing. Default: ""
+#   deduplicate_level   — Link deduplication: file (per-file, default) | global | none
+#
+#   issue_repo_owner    — Issue target repo owner (e.g. openeuler). Leave empty to skip Issue creation.
+#   issue_repo_name     — Issue target repo name (e.g. openEuler-portal)
+#   issue_repo_platform — Issue platform: github | gitcode
+#
+#   issue_group_by      — How to group broken links into Issues:
+#                           all    — All broken links merged into a single Issue (default)
+#                           status — One Issue per HTTP status code (use with issue_status_codes)
+#                           file   — One Issue per source file containing broken links
+#                           domain — One Issue per target domain with broken links
+#
+#   issue_status_codes  — Only create Issues for these HTTP status codes (comma-separated).
+#                         Only effective when issue_group_by is "status".
+#                         Example: "404,503" means only 404 and 503 links will be reported.
+#                         Leave empty to include all broken status codes.
+
+communities:
+  openEuler:
+    repo_url: "https://gitcode.com/openeuler/openEuler-portal.git"
+    domain: "https://www.openeuler.org"
+    branch: "master"
+    exclude_files:
+      - "app/vite.config.js"
+      - "node_modules/"
+      - ".git/"
+    exclude_domains:
+      - "localhost"
+      - "127.0.0.1"
+      - "0.0.0.0"
+    exclude_urls: []
+    url_prefix: "/zh"
+    deduplicate_level: "file"
+    issue_repo_owner: "openeuler"
+    issue_repo_name: "openEuler-portal"
+    issue_repo_platform: "gitcode"
+    issue_group_by: "all"
+    issue_status_codes: ""
+
+  openGauss:
+    repo_url: "https://gitcode.com/opengauss/website.git"
+    domain: "https://opengauss.org"
+    branch: "v2"
+    exclude_files:
+      - "app/vite.config.js"
+      - "node_modules/"
+      - ".git/"
+    exclude_domains:
+      - "localhost"
+      - "127.0.0.1"
+      - "0.0.0.0"
+    exclude_urls: []
+    url_prefix: "/zh"
+    deduplicate_level: "file"
+    issue_repo_owner: "opengauss"
+    issue_repo_name: "website"
+    issue_repo_platform: "gitcode"
+    issue_group_by: "status"
+    issue_status_codes: "404"
+
+  MindSpore:
+    repo_url: "https://gitcode.com/mindspore/mindspore-portal.git"
+    domain: "https://www.mindspore.cn"
+    branch: "master"
+    exclude_files:
+      - "app/vite.config.js"
+      - "node_modules/"
+      - ".git/"
+    exclude_domains:
+      - "localhost"
+      - "127.0.0.1"
+      - "0.0.0.0"
+    exclude_urls: []
+    url_prefix: ""
+    deduplicate_level: "file"
+    issue_repo_owner: "mindspore"
+    issue_repo_name: "mindspore-portal"
+    issue_repo_platform: "gitcode"
+    issue_group_by: "status"
+    issue_status_codes: "404"
+
+  openUBMC:
+    repo_url: "https://gitcode.com/openUBMC/website.git"
+    domain: "https://www.openubmc.cn"
+    branch: "main"
+    exclude_files:
+      - "node_modules/"
+      - ".git/"
+      - "packages/website/nuxt.config.ts"
+    exclude_domains:
+      - "localhost"
+      - "127.0.0.1"
+      - "0.0.0.0"
+    exclude_urls:
+      - "https://nvd.nist.gov/vuln/detail/"
+    url_prefix: "/zh"
+    deduplicate_level: "file"
+    issue_repo_owner: "openUBMC"
+    issue_repo_name: "website"
+    issue_repo_platform: "gitcode"
+    issue_group_by: "status"
+    issue_status_codes: "404"

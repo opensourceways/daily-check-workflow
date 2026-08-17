@@ -27,6 +27,63 @@ importers:
         specifier: ^2.9.0
         version: 2.9.0
 
+  packages/checks-shared:
+    dependencies:
+      '@geo-workflow/core':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/core:
+    dependencies:
+      axios:
+        specifier: ^1.13.6
+        version: 1.13.6
+
+  packages/geo-daily-check:
+    dependencies:
+      '@geo-workflow/checks-shared':
+        specifier: workspace:*
+        version: link:../checks-shared
+      '@geo-workflow/core':
+        specifier: workspace:*
+        version: link:../core
+      cheerio:
+        specifier: ^1.2.0
+        version: 1.2.0
+      jsdom:
+        specifier: ^28.1.0
+        version: 28.1.0
+      playwright-core:
+        specifier: ^1.58.2
+        version: 1.58.2
+      xlsx:
+        specifier: ^0.18.5
+        version: 0.18.5
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+
+  packages/geo-issue-analyze:
+    dependencies:
+      '@geo-workflow/checks-shared':
+        specifier: workspace:*
+        version: link:../checks-shared
+      '@geo-workflow/core':
+        specifier: workspace:*
+        version: link:../core
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+
+  packages/link-checker:
+    dependencies:
+      '@geo-workflow/core':
+        specifier: workspace:*
+        version: link:../core
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
+
 packages:
 
   '@acemir/cssom@0.9.31':

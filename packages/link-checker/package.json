@@ -1,0 +1,9 @@
+{
+  "name": "@geo-workflow/link-checker",
+  "version": "2.0.0",
+  "type": "module",
+  "dependencies": {
+    "@geo-workflow/core": "workspace:*",
+    "yaml": "^2.9.0"
+  }
+}
