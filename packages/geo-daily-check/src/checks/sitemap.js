@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
-import { getSitemapUrls } from '../../checks/sitemap-inclusion.js';
-import { fetchHttp } from '../../lib/html-fetch.js';
+import { getSitemapUrls } from '@geo-workflow/checks-shared';
+import { fetchHttp } from '@geo-workflow/core';
 import { log, shouldIgnore, pickRandom } from '../utils.js';
 
 export async function checkSitemapAccessible(project, robotsContent, { skip }) {

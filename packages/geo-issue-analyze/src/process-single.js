@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-import { parseArgs, log, readInput } from '../lib/utils.js';
-import { 
-  listIssueComments, 
+import { parseArgs, log, readInput } from '@geo-workflow/core';
+import {
+  listIssueComments,
   addIssueComment,
   findIssueByTitlePrefix,
   createIssue,
   updateIssue
-} from '../lib/atomgit-api.js';
+} from '@geo-workflow/core';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';

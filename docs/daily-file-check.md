@@ -358,7 +358,7 @@ link-anchor-check 的 issue 正文额外标注功能模块：
 
 **运行命令**（runner: `portal-x86`）:
 ```bash
-node scripts/geo-daily-check/check-single.js [--dryRun] [--project=<name>]
+node packages/geo-daily-check/src/check-single.js [--dryRun] [--project=<name>]
 ```
 
 ## 缓存与构建
@@ -377,13 +377,13 @@ node scripts/geo-daily-check/check-single.js [--dryRun] [--project=<name>]
 
 ```bash
 # 全部项目, 仅检查不提 issue
-node scripts/geo-daily-check/check-single.js --dryRun
+node packages/geo-daily-check/src/check-single.js --dryRun
 
 # 只跑单个项目
-node scripts/geo-daily-check/check-single.js --project=openEuler --dryRun
+node packages/geo-daily-check/src/check-single.js --project=openEuler --dryRun
 
 # 用自定义配置
-node scripts/geo-daily-check/check-single.js --config=/path/to/cfg.yaml --dryRun
+node packages/geo-daily-check/src/check-single.js --config=/path/to/cfg.yaml --dryRun
 ```
 
 > Windows 本地完整 checkout openEuler-portal 可能因 260 字符路径限制失败，属系统限制；Linux runner 不受影响。

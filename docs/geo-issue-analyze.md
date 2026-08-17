@@ -321,12 +321,12 @@ projects:
 
 ```bash
 # 本地调试 (dryRun)
-node scripts/geo-issue-analyze/process-single.js --dryRun --input=issue.json
+node packages/geo-issue-analyze/src/process-single.js --dryRun --input=issue.json
 
 # Workflow 调用
-node scripts/geo-issue-analyze/scan-issues.js --project=openEuler > issues.json
+node packages/geo-issue-analyze/src/scan-issues.js --project=openEuler > issues.json
 jq -c '.issues[]' issues.json | while read ISSUE; do
-  node scripts/geo-issue-analyze/process-single.js --input="$ISSUE"
+  node packages/geo-issue-analyze/src/process-single.js --input="$ISSUE"
 done
 ```
 

@@ -4,10 +4,11 @@
 
 | Workflow | 用途 | 入口脚本 | 详细文档 |
 |---|---|---|---|
-| GEO Issue Analyze | 程序化检查 + LLM 语义分析 `[GEO]` issue，评论或创建分析 issue | `scripts/geo-issue-analyze/scan-issues.js` | [docs/geo-issue-analyze.md](docs/geo-issue-analyze.md) |
-| Daily File Check | 逐项目 clone→构建→可插拔检查项，按维度提 issue | `scripts/geo-daily-check/check-single.js` | [docs/daily-file-check.md](docs/daily-file-check.md) |
+| GEO Issue Analyze | 程序化检查 + LLM 语义分析 `[GEO]` issue，评论或创建分析 issue | `packages/geo-issue-analyze/src/scan-issues.js` | [docs/geo-issue-analyze.md](docs/geo-issue-analyze.md) |
+| Daily File Check | 逐项目 clone→构建→可插拔检查项，按维度提 issue | `packages/geo-daily-check/src/check-single.js` | [docs/daily-file-check.md](docs/daily-file-check.md) |
+| Link Check | 逐项目 clone→扫描源码 URL→HTTP HEAD 检测→按项目提 issue | `packages/link-checker/src/check-links.js` | — |
 
-两个 workflow 共享 `scripts/lib/` 公共库与 `scripts/checks/sitemap-inclusion.js`。
+三个 workflow 共享 `packages/core/` 公共库与 `packages/checks-shared/` 跨 workflow 检查项。
 
 ## GEO Issue Analyze Workflow
 
@@ -30,9 +31,9 @@
 
 | 文件 | 用途 |
 |---|---|
-| `scripts/geo-issue-analyze/scan-issues.js` | 扫描各项目 `[GEO]` issues，跳过已标记 |
-| `scripts/geo-issue-analyze/process-single.js` | 两阶段分析 + 结果路由 |
-| `scripts/geo-issue-analyze/url-checks.js` | URL 程序化检查（sitemap / llms 覆盖） |
+| `packages/geo-issue-analyze/src/scan-issues.js` | 扫描各项目 `[GEO]` issues，跳过已标记 |
+| `packages/geo-issue-analyze/src/process-single.js` | 两阶段分析 + 结果路由 |
+| `packages/geo-issue-analyze/src/url-checks.js` | URL 程序化检查（sitemap / llms 覆盖） |
 | `projects-config.yaml` | 待分析项目列表 |
 
 ## Daily File Check Workflow
@@ -63,27 +64,27 @@
 
 | 文件 | 用途 |
 |---|---|
-| `scripts/geo-daily-check/check-single.js` | 入口（配置驱动逐项目） |
-| `scripts/geo-daily-check/utils.js` | 共享工具（log / shouldIgnore / pathnameToKey / ...） |
-| `scripts/geo-daily-check/history-export.js` | 历史记录导出 |
-| `scripts/geo-daily-check/checks/*.js` | 各检查项模块 |
+| `packages/geo-daily-check/src/check-single.js` | 入口（配置驱动逐项目） |
+| `packages/geo-daily-check/src/utils.js` | 检查项常量（DIMENSION_DESCRIPTIONS 等），re-export core 通用函数 |
+| `packages/geo-daily-check/src/history-export.js` | 历史记录导出 |
+| `packages/geo-daily-check/src/checks/*.js` | 各检查项模块 |
 | `projects-config.yaml` | 待检项目配置（与 geo-issue-analyze 共享） |
 
 ## 共享库
 
-### scripts/lib/
+### packages/core/
 
 | 文件 | 用途 |
 |---|---|
-| `atomgit-api.js` | AtomGit REST 客户端（自动重试 + issue / PR API） |
-| `html-fetch.js` | HTTP 抓取 / `parseHtml` / `fetchBrowser` |
-| `utils.js` | 公共工具（`parseArgs` / `log` / `readInput`） |
+| `packages/core/src/atomgit-api.js` | AtomGit REST 客户端（自动重试 + issue / PR API） |
+| `packages/core/src/html-fetch.js` | HTTP 抓取 / `parseHtml` / `fetchBrowser` |
+| `packages/core/src/utils.js` | 公共工具（`parseArgs` / `log` / `readInput` / `shouldIgnore` / `pickRandom` / `normalizePathname` / `matchGlob` / `iterateFiles` / `HTML_IGNORE`） |
 
-### scripts/checks/
+### packages/checks-shared/
 
 | 文件 | 用途 |
 |---|---|
-| `sitemap-inclusion.js` | sitemap 收录检查（`getSitemapUrls`），被两个 workflow 共享 |
+| `packages/checks-shared/src/sitemap-inclusion.js` | sitemap 收录检查（`getSitemapUrls`），被两个 workflow 共享 |
 
 ### .opencode/skills/
 
@@ -99,12 +100,16 @@ pnpm install
 export ATOMGIT_TOKEN=xxx
 
 # GEO Issue Analyze
-node scripts/geo-issue-analyze/scan-issues.js --project=openEuler
-node scripts/geo-issue-analyze/process-single.js --dryRun --input=issue.json
+node packages/geo-issue-analyze/src/scan-issues.js --project=openEuler
+node packages/geo-issue-analyze/src/process-single.js --dryRun --input=issue.json
 
 # Daily File Check
-node scripts/geo-daily-check/check-single.js --dryRun
-node scripts/geo-daily-check/check-single.js --project=openEuler --dryRun
+node packages/geo-daily-check/src/check-single.js --dryRun
+node packages/geo-daily-check/src/check-single.js --project=openEuler --dryRun
+
+# Link Check
+node packages/link-checker/src/check-links.js --dryRun --all-communities
+node packages/link-checker/src/check-links.js --community=openEuler --dryRun
 ```
 
 > Windows 本地完整 checkout 大型 portal 仓库可能因 260 字符路径限制失败，属系统限制；Linux runner 不受影响。

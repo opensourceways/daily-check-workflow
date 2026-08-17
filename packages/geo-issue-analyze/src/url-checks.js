@@ -1,7 +1,5 @@
-import { fetchHttp } from '../lib/html-fetch.js';
-import { getSitemapUrls } from '../checks/sitemap-inclusion.js';
-import { shouldIgnore } from '../geo-daily-check/utils.js';
-import { log } from '../lib/utils.js';
+import { fetchHttp, log, shouldIgnore } from '@geo-workflow/core';
+import { getSitemapUrls } from '@geo-workflow/checks-shared';
 
 const ROBOTS_CACHE = new Map();
 const LLMS_CACHE = new Map();

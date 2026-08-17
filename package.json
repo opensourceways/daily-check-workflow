@@ -1,12 +1,12 @@
 {
   "name": "geo-develop",
-  "version": "2.0.0",
-  "description": "GEO/SEO automation workflows for AtomGit portal repositories (issue-analyze + daily-file-check)",
+  "version": "2.1.0",
+  "description": "GEO/SEO automation workflows for AtomGit portal repositories",
   "type": "module",
   "scripts": {
-    "daily-check": "node scripts/geo-daily-check/check-single.js",
-    "analyze-scan": "node scripts/geo-issue-analyze/scan-issues.js",
-    "analyze-single": "node scripts/geo-issue-analyze/process-single.js"
+    "daily-check": "node packages/geo-daily-check/src/check-single.js",
+    "analyze-scan": "node packages/geo-issue-analyze/src/scan-issues.js",
+    "analyze-single": "node packages/geo-issue-analyze/src/process-single.js"
   },
   "keywords": [
     "geo",

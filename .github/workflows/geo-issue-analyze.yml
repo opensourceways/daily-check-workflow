@@ -47,7 +47,7 @@ jobs:
             ARGS="$ARGS --project=$PROJECT"
           fi
           
-          node scripts/geo-issue-analyze/scan-issues.js $ARGS \
+          node packages/geo-issue-analyze/src/scan-issues.js $ARGS \
             > "$CACHE_DIR/issues-to-process.json"
           
           ISSUE_COUNT=$(jq '.issues | length' "$CACHE_DIR/issues-to-process.json")
@@ -83,7 +83,7 @@ jobs:
             
             echo "$ISSUE" > "$CACHE_DIR/current-issue.json"
             
-            node scripts/geo-issue-analyze/process-single.js \
+            node packages/geo-issue-analyze/src/process-single.js \
               --input="$CACHE_DIR/current-issue.json" \
               $DRY_RUN_FLAG
             

@@ -1,0 +1,10 @@
+{
+  "name": "@geo-workflow/geo-issue-analyze",
+  "version": "2.0.0",
+  "type": "module",
+  "dependencies": {
+    "@geo-workflow/core": "workspace:*",
+    "@geo-workflow/checks-shared": "workspace:*",
+    "yaml": "^2.9.0"
+  }
+}

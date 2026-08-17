@@ -1,32 +1,55 @@
 import fs from 'fs';
 import { join } from 'path';
 
-export const HTML_IGNORE = [
-  /(200|404|error)\.html$/,
-  /baidu_verify/,
-  /\b(blog|blogs|news|showcase|showcases)\b/,
-];
-
-export const CHECK_DIMENSIONS = ['robots-txt', 'sitemap-access', 'sitemap-tdk', 'sitemap-schema', 'sitemap-priority', 'url-access', 'llms-txt', 'sitemap-coverage', 'ssr-rendering', 'tdk-schema-semantic', 'link-anchor-check'];
-
-export const DIMENSION_DESCRIPTIONS = {
-  'robots-txt': 'robots.txt 不存在、全站封禁爬虫或未声明 Sitemap',
-  'sitemap-access': 'sitemap 无法访问或无有效内容',
-  'sitemap-tdk': '页面TDK为空或与同语言首页一致，未配置页面专属TDK',
-  'sitemap-schema': '页面HTML缺少JSON-LD结构化数据script',
-  'sitemap-priority': 'sitemap条目缺少priority属性',
-  'url-access': 'URL无法访问',
-  'llms-txt': 'llms.txt/llms-full.txt缺失或为空',
-  'sitemap-coverage': '构建页面未被sitemap收录',
-  'ssr-rendering': '页面疑似客户端渲染(CSR)，不利于SEO/GEO',
-  'tdk-schema-semantic': 'TDK/Schema 语义不一致，内容与页面实际内容不符',
-  'link-anchor-check': '导航链接使用 JS 跳转而非 <a href>，影响 SEO/GEO 可发现性',
-};
+export function parseArgs(argv) {
+  const out = { _: [] };
+  for (const a of argv) {
+    if (a.startsWith('--')) {
+      const [k, v] = a.replace(/^--/, '').split('=');
+      out[k] = v ?? true;
+    } else {
+      out._.push(a);
+    }
+  }
+  return out;
+}
 
 export function log(msg) {
   const ts = new Date().toISOString().slice(11, 19);
   console.error(`[${ts}] ${msg}`);
 }
+
+export async function readInput(args) {
+  if (args.input) {
+    const fs = await import('fs');
+    return JSON.parse(fs.readFileSync(args.input, 'utf-8'));
+  }
+
+  const chunks = [];
+  const stdin = process.stdin;
+
+  if (stdin.readable) {
+    stdin.resume();
+    stdin.setEncoding('utf8');
+
+    for await (const chunk of stdin) {
+      chunks.push(chunk);
+    }
+
+    const input = chunks.join('').trim();
+    if (input) {
+      return JSON.parse(input);
+    }
+  }
+
+  throw new Error('需要通过stdin或--input提供输入');
+}
+
+export const HTML_IGNORE = [
+  /(200|404|error)\.html$/,
+  /baidu_verify/,
+  /\b(blog|blogs|news|showcase|showcases)\b/,
+];
 
 export function shouldIgnore(pathname, ignorePatterns) {
   if (!ignorePatterns?.length) return false;

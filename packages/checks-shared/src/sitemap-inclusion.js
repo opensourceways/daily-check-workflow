@@ -1,4 +1,4 @@
-import { fetchHttp } from '../lib/html-fetch.js';
+import { fetchHttp } from '@geo-workflow/core';
 
 const SITEMAP_CACHE = new Map();
 

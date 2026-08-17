@@ -1,4 +1,4 @@
-import { fetchHttp } from '../../lib/html-fetch.js';
+import { fetchHttp } from '@geo-workflow/core';
 import { log } from '../utils.js';
 
 export async function checkLlmsTxt(project, { skip }) {

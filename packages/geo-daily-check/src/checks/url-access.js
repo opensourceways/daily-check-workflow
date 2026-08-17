@@ -1,4 +1,4 @@
-import { fetchHead } from '../../lib/html-fetch.js';
+import { fetchHead } from '@geo-workflow/core';
 import { shouldIgnore, log } from '../utils.js';
 
 const CONCURRENCY_LIMIT = 10;

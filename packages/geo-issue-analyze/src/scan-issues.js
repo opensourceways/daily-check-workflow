@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { parseArgs, log } from '../lib/utils.js';
-import { listIssues, listIssueComments } from '../lib/atomgit-api.js';
+import { parseArgs, log } from '@geo-workflow/core';
+import { listIssues, listIssueComments } from '@geo-workflow/core';
 import fs from 'fs';
 import yaml from 'yaml';
 import path from 'path';

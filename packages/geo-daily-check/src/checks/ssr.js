@@ -1,4 +1,4 @@
-import { fetchHttp } from '../../lib/html-fetch.js';
+import { fetchHttp } from '@geo-workflow/core';
 import { shouldIgnore, pickRandom, log } from '../utils.js';
 
 export function detectSsr(html, framework) {

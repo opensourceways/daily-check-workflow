@@ -45,4 +45,4 @@ jobs:
             ARGS="$ARGS --project=$PROJECT"
           fi
 
-          node scripts/geo-daily-check/check-single.js $ARGS 2>&1 | tee /tmp/.cache/geo-bot/projects/daily-check-output/output.log
+          node packages/geo-daily-check/src/check-single.js $ARGS 2>&1 | tee /tmp/.cache/geo-bot/projects/daily-check-output/output.log

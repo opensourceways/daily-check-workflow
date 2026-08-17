@@ -1,0 +1,14 @@
+{
+  "name": "@geo-workflow/geo-daily-check",
+  "version": "2.0.0",
+  "type": "module",
+  "dependencies": {
+    "@geo-workflow/core": "workspace:*",
+    "@geo-workflow/checks-shared": "workspace:*",
+    "cheerio": "^1.2.0",
+    "jsdom": "^28.1.0",
+    "playwright-core": "^1.58.2",
+    "xlsx": "^0.18.5",
+    "yaml": "^2.9.0"
+  }
+}
