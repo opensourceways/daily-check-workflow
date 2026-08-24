@@ -62,7 +62,6 @@ scripts/
 .opencode/
   skills/
     render-change-analyzer/    tdk-schema-semantic 检查项用
-    link-anchor-analyzer/      link-anchor 检查项用
 
 docs/
   geo-issue-analyze.md         GEO Issue Analyze 设计文档

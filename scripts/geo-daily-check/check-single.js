@@ -37,8 +37,8 @@ import { checkLlmsTxt } from './checks/llms-txt.js';
 import { checkBuildSitemapCoverage } from './checks/coverage.js';
 import { checkSsrRendering } from './checks/ssr.js';
 import { checkTdkSchemaSemantic } from './checks/tdk-schema-semantic.js';
-import { checkLinkAnchor } from './checks/link-anchor.js';
 import { exportToExcel, pushHistoryFile } from './history-export.js';
+import { needBuild } from '../lib/build-skip.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
@@ -169,13 +169,9 @@ const MAX_ISSUE_FINDINGS = 300;
 
 /**
  * 计算单个 finding 所属的 issue 分组 key。
- * - link-anchor-check 维度: 按 functional module 分组 → `link-anchor-check::{module}`
- * - 其他维度: 按 check 字段分组 → check 值本身
+ * - 按 check 字段分组 → check 值本身
  */
 function getFindingGroupKey(f) {
-  if (f.check === 'link-anchor-check' && f.module) {
-    return `link-anchor-check::${f.module}`;
-  }
   return f.check;
 }
 
@@ -183,10 +179,6 @@ function getFindingGroupKey(f) {
  * 将分组 key 转换为可读信息 { label, dimension, module }
  */
 function getGroupInfo(groupKey) {
-  if (groupKey.startsWith('link-anchor-check::')) {
-    const module = groupKey.slice('link-anchor-check::'.length);
-    return { key: groupKey, label: `link-anchor-check / ${module}`, dimension: 'link-anchor-check', module };
-  }
   return { key: groupKey, label: groupKey, dimension: groupKey, module: null };
 }
 
@@ -278,7 +270,7 @@ async function createOrUpdateIssue(project, findings, { dryRun = false, buildFai
   const { owner, repo } = project;
   const titlePrefix = '[GEO Daily Check]';
 
-  // 1. 按维度/模块分组 (相同维度的问题提一个 issue; link-anchor 按功能模块再细分)
+  // 1. 按维度分组 (相同维度的问题提一个 issue)
   const groupMap = new Map();
   for (const f of findings) {
     const key = getFindingGroupKey(f);
@@ -422,11 +414,8 @@ async function runProject(project, { dryRun }) {
     return { name, ok: false, error: err.message };
   }
 
-  // 1.5. codegraph init/sync + link-anchor-check（构建前，docs 项目跳过）
-  const needsCodegraph = project.enable_tdk_schema_semantic || project.enable_link_anchor_check;
-  let linkAnchorFindings = [];
-
-  if (needsCodegraph && !isDocsProject) {
+  // 1.5. codegraph init/sync（构建前，docs 项目跳过）
+  if (project.enable_tdk_schema_semantic && !isDocsProject) {
     const codegraphDir = path.join(workDir, '.codegraph');
 
     if (fs.existsSync(codegraphDir)) {
@@ -448,15 +437,12 @@ async function runProject(project, { dryRun }) {
     }
   }
 
-  // link-anchor-check（构建前检查）
-  if (!isDocsProject && project.enable_link_anchor_check && !skip.includes('link-anchor-check')) {
-    const linkAnchorRes = await checkLinkAnchor(project, workDir, { skip });
-    linkAnchorFindings = linkAnchorRes.findings;
-  }
+  // 2. 判断是否需要构建 + 启动构建子进程（非阻塞） - docs 类型跳过构建
+  const expectedBuildDir = project.build_dir ? path.join(workDir, project.build_dir) : null;
+  const shouldBuild = !isDocsProject && needBuild(workDir, expectedBuildDir);
 
-  // 2. 启动构建子进程（非阻塞） - docs 类型跳过构建
   let buildPromise = null;
-  if (!isDocsProject) {
+  if (shouldBuild) {
     buildPromise = spawnBuild(workDir, project.build_cmd, project.build_dir);
   }
 
@@ -494,7 +480,7 @@ async function runProject(project, { dryRun }) {
   // docs 类型项目：跳过构建，直接汇总线上检查结果
   if (isDocsProject) {
     log(`📖 docs 项目，跳过构建和构建产物检查`);
-    const allFindings = [...onlineFindings, ...linkAnchorFindings];
+    const allFindings = [...onlineFindings];
 
     // 统计
     const byDim = {};
@@ -516,14 +502,28 @@ async function runProject(project, { dryRun }) {
     return { name, ok: true, findings: allFindings.length, byDim, issueUrl };
   }
 
-  // 4. 等待构建完成
-  log(`等待构建完成...`);
-  const buildResult = await buildPromise;
+  // 4. 等待构建完成 / 使用已有产物
+  let buildDir = null;
+  let buildFailed = false;
 
-  const allFindings = [...onlineFindings, ...linkAnchorFindings];
+  if (shouldBuild) {
+    log(`等待构建完成...`);
+    const buildResult = await buildPromise;
+    if (!buildResult.ok) {
+      log(`⚠️ ${name} 构建失败: ${buildResult.error}，跳过构建产物检查（sitemap-coverage / tdk-schema-semantic），仅提交当前已收集到的问题`);
+      buildFailed = true;
+    } else {
+      buildDir = buildResult.buildDir;
+      log(`✅ 构建完成: ${buildDir}`);
+    }
+  } else {
+    buildDir = expectedBuildDir;
+    log(`⏭️ ${name} 跳过构建，使用已有构建产物: ${buildDir}`);
+  }
 
-  if (!buildResult.ok) {
-    log(`⚠️ ${name} 构建失败: ${buildResult.error}，跳过构建产物检查（sitemap-coverage / tdk-schema-semantic），仅提交当前已收集到的问题`);
+  const allFindings = [...onlineFindings];
+
+  if (buildFailed) {
     // 构建失败仍提 issue（仅当前已收集到的问题），跳过构建产物检查
     let issueUrl = '';
     if (allFindings.length > 0) {
@@ -540,9 +540,6 @@ async function runProject(project, { dryRun }) {
     log(`=== ${name} 线上检查完成, 问题统计: ${dimStr} ===`);
     return { name, ok: true, findings: allFindings.length, byDim, issueUrl, buildFailed: true };
   }
-
-  const buildDir = buildResult.buildDir;
-  log(`✅ 构建完成: ${buildDir}`);
 
   // 5. 构建产物sitemap覆盖检查
   if (project.accessible_routes?.length && sitemapUrls.length > 0) {

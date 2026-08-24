@@ -30,13 +30,12 @@ flowchart TB
         subgraph perproj["2. runProject (逐项目)"]
             direction TB
             R0["prepareProjectDir: clone / git pull --rebase"]
-            R0A["codegraph init/sync<br/>(若 enable_tdk_schema_semantic 或 enable_link_anchor_check)"]
-            R0B["checkLinkAnchor<br/>(若 enable_link_anchor_check, 构建前)"]
+            R0A["codegraph init/sync<br/>(若 enable_tdk_schema_semantic)"]
             R1["spawnBuild<br/>(非 docs 项目, 非阻塞)"]
             R2["并行线上检查:<br/>robots → sitemap-access → sitemap-config<br/>→ url-access → llms-txt → ssr"]
             R3["docs? → 汇总提issue<br/>否则: 等待构建 → coverage → tdk-schema-semantic"]
             R4["汇总 findings → createOrUpdateIssue"]
-            R0 --> R0A --> R0B --> R1 --> R2 --> R3 --> R4
+            R0 --> R0A --> R1 --> R2 --> R3 --> R4
         end
 
         SUM["3. 总汇总 + 导出 history"]
@@ -78,7 +77,6 @@ flowchart TB
 | `home_pages` | sitemap-tdk 必填 | 各语言首页 URL 列表（`[{lang, url}]`），作为 sitemap-tdk 检查的 TDK 比对基线；按路径段匹配 `lang`（覆盖 `/zh/foo` 前缀与 `/foo/en` 后缀两种结构）+ origin 作用域 + 根路径(`/`)catch-all |
 | `enable_tdk_schema_semantic` | 可选 | 启用 TDK/Schema 语义检查（含 render-change 分析），默认 `false` |
 | `semantic_analysis_commits_count` | 可选 | 语义检查分析最近 N 个 commits，默认 `5` |
-| `enable_link_anchor_check` | 可选 | 启用 link-anchor 检查，默认 `false`；检测 JS 跳转而非 `<a href>` 的导航链接 |
 
 示例（摘自实际配置）：
 
@@ -94,7 +92,6 @@ projects:
     framework: VitePress
     build_dir: app/.vitepress/dist
     build_cmd: build:geo
-    enable_link_anchor_check: true
     enable_tdk_schema_semantic: true
     semantic_analysis_commits_count: 10
     accessible_routes:
@@ -157,7 +154,6 @@ scripts/geo-daily-check/
     coverage.js                # 构建产物 sitemap 覆盖检查（checkBuildSitemapCoverage）
     ssr.js                     # SSR/SSG 渲染检查（checkSsrRendering）
     tdk-schema-semantic.js     # TDK/Schema 语义检查（checkTdkSchemaSemantic，含 render-change 分析）
-    link-anchor.js             # 导航链接 JS 跳转检查（checkLinkAnchor）
     render-change.js           # render-change 分析辅助模块（checkRenderChange）
 ```
 
@@ -230,22 +226,20 @@ scripts/geo-daily-check/
 | `ssr-rendering` | `checkSsrRendering` | 否 | 默认 |
 | `sitemap-coverage` | `checkBuildSitemapCoverage` | 是 | 需 `accessible_routes` + sitemap 条目 |
 | `tdk-schema-semantic` | `checkTdkSchemaSemantic` | 是 | 需 `enable_tdk_schema_semantic: true` + 有新提交 |
-| `link-anchor-check` | `checkLinkAnchor` | 否（需源码） | 需 `enable_link_anchor_check: true`（构建前执行） |
 
-> `skip_check` 取值：`all` / 上述任一 key。低成本检查项默认启用，高成本检查项（`tdk-schema-semantic` / `link-anchor-check`）需显式 `enable_*` 开启。
+> `skip_check` 取值：`all` / 上述任一 key。低成本检查项默认启用，高成本检查项（`tdk-schema-semantic`）需显式 `enable_*` 开启。
 
 ### runProject 执行顺序
 
 1. `prepareProjectDir` — clone 或 `git pull --rebase`
-2. codegraph init/sync — 若 `enable_tdk_schema_semantic` 或 `enable_link_anchor_check`
-3. `checkLinkAnchor` — 若 `enable_link_anchor_check`（构建前，需源码）
-4. `spawnBuild` — 非 docs 项目（非阻塞，与线上检查并行）
-5. 线上检查（并行于构建）：`checkRobotsTxt` → `checkSitemapAccessible` → `checkSitemapConfig` → `checkUrlAccessibility` → `checkLlmsTxt` → `checkSsrRendering`
-6. docs 项目：跳过构建，直接汇总 → 提 issue
-7. 等待构建完成
-8. `checkBuildSitemapCoverage` — 需 `accessible_routes` + sitemap 条目
-9. `checkTdkSchemaSemantic` — 需 `hasNewCommits` + `enable_tdk_schema_semantic`
-10. 汇总 findings → `createOrUpdateIssue`
+2. codegraph init/sync — 若 `enable_tdk_schema_semantic`
+3. `spawnBuild` — 非 docs 项目（非阻塞，与线上检查并行）
+4. 线上检查（并行于构建）：`checkRobotsTxt` → `checkSitemapAccessible` → `checkSitemapConfig` → `checkUrlAccessibility` → `checkLlmsTxt` → `checkSsrRendering`
+5. docs 项目：跳过构建，直接汇总 → 提 issue
+6. 等待构建完成
+7. `checkBuildSitemapCoverage` — 需 `accessible_routes` + sitemap 条目
+8. `checkTdkSchemaSemantic` — 需 `hasNewCommits` + `enable_tdk_schema_semantic`
+9. 汇总 findings → `createOrUpdateIssue`
 
 ### 检查项详解
 
@@ -291,27 +285,16 @@ scripts/geo-daily-check/
 3. 对受影响页面执行语义检查：转换 pathname 为构建产物 HTML 文件路径 → 调用 `opencode` 对每个 HTML 文件进行语义检查 → 验证 TDK/Schema 内容与页面实际内容的一致性
 4. 发现语义问题 → 记一条 `tdk-schema-semantic` finding
 
-**checkLinkAnchor**（`checks/link-anchor.js`，需 `enable_link_anchor_check: true`）：
-
-1. 在构建前执行，使用 codegraph 分析源码
-2. 检查 JS 跳转模式：`onClick + router.push/navigate`、`window.location.href/window.open`、自定义点击事件处理跳转
-3. 跳过需确认对话框 / 需携带 state/query / 非导航元素（表单提交、modal 触发）
-4. 调用 `opencode` + `link-anchor-analyzer` skill 分析
-5. agent 根据组件文件路径、组件名判断每个问题所属的**功能模块**（导航栏、页脚、侧边栏、面包屑、卡片列表等），填写 `module` 字段
-6. 输出问题列表 JSON（文件路径、行号、问题描述、功能模块分类）
-7. 转换为 findings；提 issue 时按功能模块分组，每个模块各提一个 issue
-
 > 新增检查项：在 `checks/` 目录新增模块导出 `checkXxx(ctx)` 函数 → 在 `check-single.js` 顶部 import → 在 `runProject()` 中按顺序调用。若依赖线上站点则在构建前/并行阶段调用，若依赖构建产物则在构建完成后调用。
 
 ## Issue 上报
 
-复用 [`scripts/lib/atomgit-api.js`](../scripts/lib/atomgit-api.js)。所有 findings **按维度/模块分组**，每组提一个 issue：
+复用 [`scripts/lib/atomgit-api.js`](../scripts/lib/atomgit-api.js)。所有 findings **按维度分组**，每组提一个 issue：
 
-- **普通维度**（robots-txt / sitemap-tdk / ...）：按 `check` 字段分组，相同维度的问题汇总到一个 issue
-- **link-anchor-check 维度**：按 agent 输出的 `module`（功能模块）再细分，每个功能模块各提一个 issue
+- 按 `check` 字段分组，相同维度的问题汇总到一个 issue
 
 - **标题**: `[GEO Daily Check] {owner}/{repo}: [{label}] {N}项检查未通过`
-  - `label` 为维度名（如 `tdk`）或 `link-anchor-check / {module}`（如 `link-anchor-check / 导航栏`）
+  - `label` 为维度名（如 `tdk`）
   - 超过 300 个问题时追加 `(batchIndex/totalBatches)` 批次后缀
 - **去重**: 按 `[GEO Daily Check]` 前缀拉取已有 open issue，解析标题中的 `[label]` 匹配同组 issue，存在则 `updateIssue` 否则 `createIssue`；旧格式（无 label）或已无问题的维度/模块的 issue 自动关闭
 - **正文**: 仅包含该组的问题表格 + 对应维度说明
@@ -325,16 +308,6 @@ scripts/geo-daily-check/
 | Dimension | 页面路径 | 问题描述 |
 | --- | --- | --- |
 | tdk | /about | 缺少 TDK (title, description, keywords) 配置 |
-```
-
-link-anchor-check 的 issue 正文额外标注功能模块：
-
-```markdown
-**项目**: openeuler/openEuler-portal
-**检查维度**: link-anchor-check
-**功能模块**: 导航栏
-
-> 本 issue 汇总了 **导航栏** 功能模块下的问题组件，便于统一修复。
 ```
 
 无 finding 或未设 `ATOMGIT_TOKEN`（或 `--dryRun`）时不提 issue。
@@ -406,7 +379,7 @@ node scripts/geo-daily-check/check-single.js --config=/path/to/cfg.yaml --dryRun
 | C | 问题总数 | findings 数量 |
 | D | 错误信息 | error（失败时） |
 | E | Issue链接 | 提交 issue 时记录 URL |
-| F-P | 各维度 | robots-txt/sitemap-access/sitemap-tdk/sitemap-schema/sitemap-priority/url-access/llms-txt/sitemap-coverage/ssr-rendering/tdk-schema-semantic/link-anchor-check |
+| F-O | 各维度 | robots-txt/sitemap-access/sitemap-tdk/sitemap-schema/sitemap-priority/url-access/llms-txt/sitemap-coverage/ssr-rendering/tdk-schema-semantic |
 
 **实现文件**：`scripts/geo-daily-check/history-export.js`（`exportToExcel` + `pushHistoryFile`）
 
@@ -414,7 +387,8 @@ node scripts/geo-daily-check/check-single.js --config=/path/to/cfg.yaml --dryRun
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| 2.10.0 | 2026-07-03 | Issue 按维度/模块分组：相同维度的问题提一个 issue；link-anchor-check 按 agent 判断的功能模块再细分，每模块各提一个 issue；标题格式改为 `[GEO Daily Check] owner/repo: [label] N项检查未通过`；history-export 新增 link-anchor-check 列 |
+| 2.11.0 | 2026-08-26 | 移除 `link-anchor-check` 检查项（已迁移至 html-semantic-check）；删除 `checks/link-anchor.js`、`link-anchor-analyzer` skill、`enable_link_anchor_check` 配置 |
+| 2.10.0 | 2026-07-03 | Issue 按维度分组：相同维度的问题提一个 issue；标题格式改为 `[GEO Daily Check] owner/repo: [label] N项检查未通过` |
 | 2.9.2 | 2026-06-22 | 修复已有 Excel sheet 无表头问题：检测首行是否为表头，若无则插入表头行 |
 | 2.9.1 | 2026-06-22 | 修复 Excel sheet 表头丢失问题；新增 Issue链接 列记录提交的 issue URL |
 | 2.9.0 | 2026-06-22 | 新增检查历史导出：每次运行后导出到 `daily-check-history.xlsx`（按项目分 sheet），推送到仓库；依赖新增 `xlsx` |
