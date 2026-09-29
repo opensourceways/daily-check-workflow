@@ -1,0 +1,104 @@
+{
+  "projects": [
+    {
+      "id": "openEuler-portal",
+      "name": "openEuler 官网",
+      "repo": "https://gitee.com/openeuler/portal",
+      "domain": "https://www.openeuler.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.openeuler.org/robots.txt",
+      "sitemapUrl": "https://www.openeuler.org/sitemap.xml",
+      "llmsUrl": "https://www.openeuler.org/llms.txt"
+    },
+    {
+      "id": "openEuler-docs",
+      "name": "openEuler 文档",
+      "repo": "https://gitee.com/openeuler/docs",
+      "domain": "https://docs.openeuler.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://docs.openeuler.org/robots.txt",
+      "sitemapUrl": "https://docs.openeuler.org/sitemap.xml",
+      "llmsUrl": "https://docs.openeuler.org/llms.txt"
+    },
+    {
+      "id": "openGauss-portal",
+      "name": "openGauss 官网",
+      "repo": "https://gitee.com/opengauss/portal",
+      "domain": "https://www.opengauss.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.opengauss.org/robots.txt",
+      "sitemapUrl": "https://www.opengauss.org/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "openGauss-docs",
+      "name": "openGauss 文档",
+      "repo": "https://gitee.com/opengauss/docs",
+      "domain": "https://docs.opengauss.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://docs.opengauss.org/robots.txt",
+      "sitemapUrl": "https://docs.opengauss.org/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "MindSpore-portal",
+      "name": "MindSpore 官网",
+      "repo": "https://gitee.com/mindspore/portal",
+      "domain": "https://www.mindspore.cn",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.mindspore.cn/robots.txt",
+      "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "MindSpore-docs",
+      "name": "MindSpore 文档",
+      "repo": "https://gitee.com/mindspore/docs",
+      "domain": "https://www.mindspore.cn/docs",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.mindspore.cn/robots.txt",
+      "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "openUBMC-portal",
+      "name": "openUBMC 官网",
+      "repo": "https://gitee.com/openubmc/portal",
+      "domain": "https://www.openubmc.org",
+      "stack": "vue",
+      "robotsUrl": "https://www.openubmc.org/robots.txt",
+      "sitemapUrl": "https://www.openubmc.org/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "openUBMC-docs",
+      "name": "openUBMC 文档",
+      "repo": "https://gitee.com/openubmc/docs",
+      "domain": "https://docs.openubmc.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://docs.openubmc.org/robots.txt",
+      "sitemapUrl": "https://docs.openubmc.org/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "UnifiedBus",
+      "name": "UnifiedBus",
+      "repo": "https://gitee.com/openeuler/unified-bus",
+      "domain": "https://www.unifiedbus.org",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.unifiedbus.org/robots.txt",
+      "sitemapUrl": "https://www.unifiedbus.org/sitemap.xml",
+      "llmsUrl": ""
+    },
+    {
+      "id": "HiFloat",
+      "name": "HiFloat",
+      "repo": "https://gitee.com/openeuler/hifloat",
+      "domain": "https://www.hifloat.com",
+      "stack": "vitepress",
+      "robotsUrl": "https://www.hifloat.com/robots.txt",
+      "sitemapUrl": "https://www.hifloat.com/sitemap.xml",
+      "llmsUrl": ""
+    }
+  ]
+}
