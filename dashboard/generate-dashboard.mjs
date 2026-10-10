@@ -82,11 +82,19 @@ function assessMeasure(measureId, result) {
     case '01-robots-txt':
       return c.accessible && c.userAgentPresent && c.contentSignalPresent && c.llmPolicyPresent ? '✅' : c.accessible ? '🟡' : '❌';
     case '02-llms-txt':
-      return c.accessible && c.titlePresent && c.summaryPresent && c.linksPresent ? '✅' : c.accessible ? '🟡' : '❌';
+      return c.accessible && c.titlePresent && c.h1Unique && c.summaryPresent && c.linksPresent && c.linkUrlResolvable && c.contentTypeOk && c.sizeWithinLimit && c.robotsLlmPolicyPresent
+        ? '✅'
+        : c.accessible
+          ? '🟡'
+          : '❌';
     case '03-sitemap':
       return c.accessible && (c.locNonAbsolute || 0) === 0 && (c.lastmodMissing || 0) === 0 ? '✅' : c.accessible ? '🟡' : '❌';
     case '04-json-ld':
-      return c.jsonLdCount > 0 && c.p0Missing.length === 0 ? '✅' : c.jsonLdCount > 0 ? '🟡' : '❌';
+      return c.jsonLdCount > 0 && c.p0Missing.length === 0 && (c.requiredMissingCount || 0) === 0
+        ? '✅'
+        : c.jsonLdCount > 0
+          ? '🟡'
+          : '❌';
     case '05-tdk':
       return c.titlePresent && c.descriptionPresent ? '✅' : c.titlePresent ? '🟡' : '❌';
     case '06-a-tag-semantics':

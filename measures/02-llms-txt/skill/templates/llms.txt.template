@@ -1,0 +1,21 @@
+# {站点/项目正式名称，与 <title> 一致}
+
+> {一句话摘要：项目是什么、面向谁、核心价值，含技术栈/语言/受众关键词，1–3 句、≤200 字符}
+
+{Info 段落：任意非标题 Markdown，说明如何使用本文件。建议列表化：}
+- 文档语言：中文
+- 全量内容：[llms-full.txt](https://example.com/llms-full.txt)：全部页面合并为单文件
+- 内容约定：仅收录公开可索引页面，链接均为绝对 URL
+
+## {分节名，按重要性组织，如 Docs / Downloads / Community}
+
+- [{页面标题}](https://example.com/docs/getting-started.md): {来自 frontmatter description 的一句话描述，300 字符截断}
+- [{页面标题}](https://example.com/docs/api-reference.md): {描述}
+
+## {第二分节，如 Guides}
+
+- [{页面标题}](https://example.com/guides/migration.html.md): {描述}
+
+## Optional
+
+- [{外部/低频链接}](https://github.com/example): {agent 压缩上下文时可跳过的次要信息放本节}

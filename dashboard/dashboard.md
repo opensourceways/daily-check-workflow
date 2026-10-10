@@ -1,7 +1,7 @@
 # GEO 整改看板
 
 > 由 `generate-dashboard.mjs` 自动生成，请勿手动编辑。
-> 生成时间：2026-10-10T04:00:02.195Z
+> 生成时间：2026-10-10T09:01:45.085Z
 >
 > 矩阵状态优先取自各措施的 `进展.md`（人工维护），自动化检测结果作为补充标注。
 
@@ -9,16 +9,16 @@
 
 | 项目 | robots.txt | llms.txt | sitemap | JSON-LD | TDK | a标签语义 | 标签结构 | 图片alt | 综合 |
 |------|------|------|------|------|------|------|------|------|------|
-| openEuler 官网 | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | 🟡 (5/8) |
-| openEuler 文档 | ✅ | ✅ | ⚠️ | ✅ | 🟡 | ❌ | ❌ | ❌ | ⚠️ (3/8) |
-| openGauss 官网 | 🟡 | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
-| openGauss 文档 | 🟡 | ❌ | ⚠️ | ✅ | 🟡 | ❌ | ❌ | ❌ | ⚠️ (1/8) |
-| MindSpore 官网 | ✅ | ❌ | ⚠️ | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
+| openEuler 官网 | ✅ | 🟡 | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
+| openEuler 文档 | ✅ | ⚠️⚡🟡 | ⚠️ | 🟡 | 🟡 | ❌ | ❌ | ❌ | ⚠️ (1/8) |
+| openGauss 官网 | 🟡 | ✅ | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
+| openGauss 文档 | 🟡 | ⚠️⚡🟡 | ⚠️ | 🟡 | 🟡 | ❌ | ❌ | ❌ | ❌ (0/8) |
+| MindSpore 官网 | ✅ | 🟡⚡✅ | ⚠️ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
 | MindSpore 文档 | ❌ | ❌ | ⚠️ | ❌ | 🟡 | ❌ | ❌ | ❌ | ❌ (0/8) |
-| openUBMC 官网 | ✅ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
-| openUBMC 文档 | ❌ | ❌ | ✅ | ✅ | 🟡 | ❌ | ❌ | ❌ | ⚠️ (2/8) |
-| UnifiedBus | ⚠️ | ❌ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
-| HiFloat | ✅ | ❌ | ✅ | ✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
+| openUBMC 官网 | ✅ | ✅ | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | 🟡 (4/8) |
+| openUBMC 文档 | ❌ | ⚠️⚡🟡 | ✅ | 🟡⚡✅ | 🟡 | ❌ | ❌ | ❌ | ⚠️ (1/8) |
+| UnifiedBus | ⚠️ | 🟡 | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
+| HiFloat | ✅ | ⚠️⚡🟡 | ✅ | 🟡⚡✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
 
 ## 状态说明
 
@@ -43,9 +43,9 @@
 | 措施 | 检测脚本 | stats 文件 | 上次运行 |
 |------|----------|------------|----------|
 | robots.txt | `check-robots.mjs` | robots-stats.json | ✅ 2026-09-28T12:55:34.470Z |
-| llms.txt | `check-llms.mjs` | llms-txt-stats.json | ⏳ 未运行 |
+| llms.txt | `check-llms.mjs` | llms-txt-stats.json | ✅ 2026-10-10T08:24:17.932Z |
 | sitemap | `check-sitemap.mjs` | sitemap-stats.json | ⏳ 未运行 |
-| JSON-LD | `check-json.mjs` | jsonld-stats.json | ⏳ 未运行 |
+| JSON-LD | `check-json.mjs` | jsonld-stats.json | ✅ 2026-10-10T09:00:00.147Z |
 | TDK | `check-tdk.mjs` | tdk-stats.json | ⏳ 未运行 |
 | a标签语义 | `check-a-tag.mjs` | a-tag-stats.json | ⏳ 未运行 |
 | 标签结构 | `check-tag-structure.mjs` | tag-structure-stats.json | ⏳ 未运行 |

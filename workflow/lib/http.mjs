@@ -10,7 +10,8 @@ export async function fetchText(url, { timeout = 15000 } = {}) {
     const ok = res.ok;
     const status = res.status;
     const text = await res.text();
-    return { ok, status, text, url: res.url };
+    const contentType = res.headers.get('content-type') || '';
+    return { ok, status, text, url: res.url, contentType };
   } finally {
     clearTimeout(timer);
   }

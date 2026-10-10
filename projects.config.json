@@ -28,7 +28,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://www.opengauss.org/robots.txt",
       "sitemapUrl": "https://www.opengauss.org/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.opengauss.org/llms.txt"
     },
     {
       "id": "openGauss-docs",
@@ -38,7 +38,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://docs.opengauss.org/robots.txt",
       "sitemapUrl": "https://docs.opengauss.org/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://docs.opengauss.org/llms.txt"
     },
     {
       "id": "MindSpore-portal",
@@ -48,7 +48,7 @@
       "stack": "nuxt",
       "robotsUrl": "https://www.mindspore.cn/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.mindspore.cn/llms.txt"
     },
     {
       "id": "MindSpore-docs",
@@ -58,7 +58,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://www.mindspore.cn/docs/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/docs/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.mindspore.cn/docs/llms.txt"
     },
     {
       "id": "openUBMC-portal",
@@ -68,7 +68,7 @@
       "stack": "nuxt",
       "robotsUrl": "https://www.openubmc.cn/robots.txt",
       "sitemapUrl": "https://www.openubmc.cn/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.openubmc.cn/llms.txt"
     },
     {
       "id": "openUBMC-docs",
@@ -78,7 +78,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://www.openubmc.cn/docs/robots.txt",
       "sitemapUrl": "https://www.openubmc.cn/docs/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.openubmc.cn/docs/llms.txt"
     },
     {
       "id": "UnifiedBus",
@@ -88,7 +88,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://www.unifiedbus.com/robots.txt",
       "sitemapUrl": "https://www.unifiedbus.com/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://www.unifiedbus.com/llms.txt"
     },
     {
       "id": "HiFloat",
@@ -98,7 +98,7 @@
       "stack": "vitepress",
       "robotsUrl": "https://hifloat.gccorg.com/robots.txt",
       "sitemapUrl": "https://hifloat.gccorg.com/sitemap.xml",
-      "llmsUrl": ""
+      "llmsUrl": "https://hifloat.gccorg.com/llms.txt"
     }
   ]
 }
