@@ -3,7 +3,7 @@
     {
       "id": "openEuler-portal",
       "name": "openEuler 官网",
-      "repo": "https://gitee.com/openeuler/portal",
+      "repo": "https://gitcode.com/openeuler/openEuler-portal",
       "domain": "https://www.openeuler.org",
       "stack": "vitepress",
       "robotsUrl": "https://www.openeuler.org/robots.txt",
@@ -13,7 +13,7 @@
     {
       "id": "openEuler-docs",
       "name": "openEuler 文档",
-      "repo": "https://gitee.com/openeuler/docs",
+      "repo": "https://gitcode.com/openeuler/docs-website",
       "domain": "https://docs.openeuler.org",
       "stack": "vitepress",
       "robotsUrl": "https://docs.openeuler.org/robots.txt",
@@ -23,7 +23,7 @@
     {
       "id": "openGauss-portal",
       "name": "openGauss 官网",
-      "repo": "https://gitee.com/opengauss/portal",
+      "repo": "https://gitcode.com/opengauss/website",
       "domain": "https://www.opengauss.org",
       "stack": "vitepress",
       "robotsUrl": "https://www.opengauss.org/robots.txt",
@@ -33,7 +33,7 @@
     {
       "id": "openGauss-docs",
       "name": "openGauss 文档",
-      "repo": "https://gitee.com/opengauss/docs",
+      "repo": "https://gitcode.com/opengauss/docs-website",
       "domain": "https://docs.opengauss.org",
       "stack": "vitepress",
       "robotsUrl": "https://docs.opengauss.org/robots.txt",
@@ -43,9 +43,9 @@
     {
       "id": "MindSpore-portal",
       "name": "MindSpore 官网",
-      "repo": "https://gitee.com/mindspore/portal",
+      "repo": "https://gitcode.com/mindspore/mindspore-portal",
       "domain": "https://www.mindspore.cn",
-      "stack": "vitepress",
+      "stack": "nuxt",
       "robotsUrl": "https://www.mindspore.cn/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
       "llmsUrl": ""
@@ -53,51 +53,51 @@
     {
       "id": "MindSpore-docs",
       "name": "MindSpore 文档",
-      "repo": "https://gitee.com/mindspore/docs",
+      "repo": "https://gitcode.com/mindspore/website-docs",
       "domain": "https://www.mindspore.cn/docs",
       "stack": "vitepress",
-      "robotsUrl": "https://www.mindspore.cn/robots.txt",
-      "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
+      "robotsUrl": "https://www.mindspore.cn/docs/robots.txt",
+      "sitemapUrl": "https://www.mindspore.cn/docs/sitemap.xml",
       "llmsUrl": ""
     },
     {
       "id": "openUBMC-portal",
       "name": "openUBMC 官网",
-      "repo": "https://gitee.com/openubmc/portal",
-      "domain": "https://www.openubmc.org",
-      "stack": "vue",
-      "robotsUrl": "https://www.openubmc.org/robots.txt",
-      "sitemapUrl": "https://www.openubmc.org/sitemap.xml",
+      "repo": "https://gitcode.com/openUBMC/website",
+      "domain": "https://www.openubmc.cn",
+      "stack": "nuxt",
+      "robotsUrl": "https://www.openubmc.cn/robots.txt",
+      "sitemapUrl": "https://www.openubmc.cn/sitemap.xml",
       "llmsUrl": ""
     },
     {
       "id": "openUBMC-docs",
       "name": "openUBMC 文档",
-      "repo": "https://gitee.com/openubmc/docs",
-      "domain": "https://docs.openubmc.org",
+      "repo": "https://gitcode.com/openUBMC/docs-website",
+      "domain": "https://www.openubmc.cn/docs",
       "stack": "vitepress",
-      "robotsUrl": "https://docs.openubmc.org/robots.txt",
-      "sitemapUrl": "https://docs.openubmc.org/sitemap.xml",
+      "robotsUrl": "https://www.openubmc.cn/docs/robots.txt",
+      "sitemapUrl": "https://www.openubmc.cn/docs/sitemap.xml",
       "llmsUrl": ""
     },
     {
       "id": "UnifiedBus",
       "name": "UnifiedBus",
-      "repo": "https://gitee.com/openeuler/unified-bus",
-      "domain": "https://www.unifiedbus.org",
+      "repo": "https://gitcode.com/unifiedbus/UnifiedBus-portal",
+      "domain": "https://www.unifiedbus.com",
       "stack": "vitepress",
-      "robotsUrl": "https://www.unifiedbus.org/robots.txt",
-      "sitemapUrl": "https://www.unifiedbus.org/sitemap.xml",
+      "robotsUrl": "https://www.unifiedbus.com/robots.txt",
+      "sitemapUrl": "https://www.unifiedbus.com/sitemap.xml",
       "llmsUrl": ""
     },
     {
       "id": "HiFloat",
       "name": "HiFloat",
-      "repo": "https://gitee.com/openeuler/hifloat",
-      "domain": "https://www.hifloat.com",
+      "repo": "https://gitcode.com/hifloat/hifloat-portal",
+      "domain": "https://hifloat.gccorg.com",
       "stack": "vitepress",
-      "robotsUrl": "https://www.hifloat.com/robots.txt",
-      "sitemapUrl": "https://www.hifloat.com/sitemap.xml",
+      "robotsUrl": "https://hifloat.gccorg.com/robots.txt",
+      "sitemapUrl": "https://hifloat.gccorg.com/sitemap.xml",
       "llmsUrl": ""
     }
   ]

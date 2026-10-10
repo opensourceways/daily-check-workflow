@@ -1,5 +1,5 @@
 import { loadProjects } from '../lib/config.mjs';
-import { fetchRepoIssues, fetchRepoPRs } from '../lib/gitee.mjs';
+import { fetchRepoIssues, fetchRepoPRs } from '../lib/gitcode.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 
 const projects = await loadProjects();
