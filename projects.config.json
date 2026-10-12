@@ -5,9 +5,12 @@
       "name": "openEuler 官网",
       "repo": "https://gitcode.com/openeuler/openEuler-portal",
       "domain": "https://www.openeuler.org",
+      "domainAlias": "https://www.openeuler.openatom.cn",
       "stack": "vitepress",
       "robotsUrl": "https://www.openeuler.org/robots.txt",
+      "robotsAliasUrl": "https://www.openeuler.openatom.cn/robots.txt",
       "sitemapUrl": "https://www.openeuler.org/sitemap.xml",
+      "sitemapAliasUrl": "https://www.openeuler.openatom.cn/sitemap.xml",
       "llmsUrl": "https://www.openeuler.org/llms.txt"
     },
     {
@@ -15,20 +18,34 @@
       "name": "openEuler 文档",
       "repo": "https://gitcode.com/openeuler/docs-website",
       "domain": "https://docs.openeuler.org",
+      "domainAlias": "https://docs.openeuler.openatom.cn",
       "stack": "vitepress",
       "robotsUrl": "https://docs.openeuler.org/robots.txt",
-      "sitemapUrl": "https://docs.openeuler.org/sitemap.xml",
+      "robotsAliasUrl": "https://docs.openeuler.openatom.cn/robots.txt",
+      "sitemapUrl": "https://docs.openeuler.org/sitemap_index.xml",
+      "sitemapAliasUrl": "https://docs.openeuler.openatom.cn/sitemap_index.xml",
+      "newVersions": [
+        "/",
+        "/docs/26.09",
+        "/docs/24.03_LTS_SP4",
+        "/docs/24.03_LTS_SP3",
+        "/docs/25.09",
+        "/docs/24.03_LTS_SP2",
+        "/docs/25.03",
+        "/docs/24.03_LTS_SP1",
+        "/docs/22.03_LTS_SP4"
+      ],
       "llmsUrl": "https://docs.openeuler.org/llms.txt"
     },
     {
       "id": "openGauss-portal",
       "name": "openGauss 官网",
       "repo": "https://gitcode.com/opengauss/website",
-      "domain": "https://www.opengauss.org",
+      "domain": "https://opengauss.org",
       "stack": "vitepress",
-      "robotsUrl": "https://www.opengauss.org/robots.txt",
-      "sitemapUrl": "https://www.opengauss.org/sitemap.xml",
-      "llmsUrl": "https://www.opengauss.org/llms.txt"
+      "robotsUrl": "https://opengauss.org/robots.txt",
+      "sitemapUrl": "https://opengauss.org/sitemap.xml",
+      "llmsUrl": "https://opengauss.org/llms.txt"
     },
     {
       "id": "openGauss-docs",
@@ -37,7 +54,13 @@
       "domain": "https://docs.opengauss.org",
       "stack": "vitepress",
       "robotsUrl": "https://docs.opengauss.org/robots.txt",
-      "sitemapUrl": "https://docs.opengauss.org/sitemap.xml",
+      "sitemapUrl": "https://docs.opengauss.org/sitemap_index.xml",
+      "newVersions": [
+        "/",
+        "/docs/latest",
+        "/docs/7.0.0",
+        "/docs/7.0.0-RC3"
+      ],
       "llmsUrl": "https://docs.opengauss.org/llms.txt"
     },
     {
@@ -56,7 +79,6 @@
       "repo": "https://gitcode.com/mindspore/website-docs",
       "domain": "https://www.mindspore.cn/docs",
       "stack": "vitepress",
-      "robotsUrl": "https://www.mindspore.cn/docs/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/docs/sitemap.xml",
       "llmsUrl": "https://www.mindspore.cn/docs/llms.txt"
     },
@@ -76,7 +98,6 @@
       "repo": "https://gitcode.com/openUBMC/docs-website",
       "domain": "https://www.openubmc.cn/docs",
       "stack": "vitepress",
-      "robotsUrl": "https://www.openubmc.cn/docs/robots.txt",
       "sitemapUrl": "https://www.openubmc.cn/docs/sitemap.xml",
       "llmsUrl": "https://www.openubmc.cn/docs/llms.txt"
     },

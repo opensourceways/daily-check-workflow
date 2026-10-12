@@ -4,5 +4,9 @@
   "samplePages": ["/", "/docs", "/zh/docs"],
   "badLinkTextBlacklist": ["点击这里", "点击这儿", "更多", "这里", "这儿", "learn more", "click here", "read more", "more", "here"],
   "badAltBlacklist": ["图片", "image", "photo", "img", "截图", "screenshot", "未命名", "untitled"],
-  "p0SchemaTypes": ["Organization", "BreadcrumbList", "WebSite"]
+  "p0SchemaTypes": ["Organization", "BreadcrumbList", "WebSite"],
+  "robots": {
+    "contentSignalExpected": { "ai-train": "yes", "search": "yes", "ai-input": "yes" },
+    "llmPolicyFilePrefix": "llms"
+  }
 }

@@ -80,6 +80,8 @@ function assessMeasure(measureId, result) {
   if (!c) return null;
   switch (measureId) {
     case '01-robots-txt':
+      // 新版脚本输出 verdict（含跨域/一致性告警与硬性错误）时以其为准
+      if (result.verdict) return result.verdict;
       return c.accessible && c.userAgentPresent && c.contentSignalPresent && c.llmPolicyPresent ? '✅' : c.accessible ? '🟡' : '❌';
     case '02-llms-txt':
       // ✅ 需同时满足:P0 基线(可访问/结构/体积/robots 联动)+ P1 基线(描述覆盖率 ≥80%、llms-full 可访问且有文件头)

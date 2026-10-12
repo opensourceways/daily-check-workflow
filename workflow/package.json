@@ -6,7 +6,9 @@
   "scripts": {
     "check": "node scripts/run-all.mjs",
     "check:sitemap": "node scripts/check-sitemap.mjs",
+    "check:sitemap-spec": "node scripts/sitemap-spec-check.mjs",
     "check:tdk": "node scripts/check-tdk.mjs",
+    "check:tdk-dup": "node scripts/check-tdk-duplicate.mjs",
     "check:jsonld": "node scripts/check-jsonld.mjs",
     "check:robots": "node scripts/check-robots.mjs",
     "check:llms": "node scripts/check-llms-txt.mjs",
