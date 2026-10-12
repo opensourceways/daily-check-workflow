@@ -9,14 +9,14 @@ const STATS_DIR = resolve(ROOT, 'workflow', 'stats');
 const OUTPUT = resolve(__dirname, 'dashboard.md');
 
 const MEASURES = [
-  { id: '01-robots-txt', name: 'robots.txt', statsFile: 'robots-stats.json' },
-  { id: '02-llms-txt', name: 'llms.txt', statsFile: 'llms-txt-stats.json' },
-  { id: '03-sitemap', name: 'sitemap', statsFile: 'sitemap-stats.json' },
-  { id: '04-json-ld', name: 'JSON-LD', statsFile: 'jsonld-stats.json' },
-  { id: '05-tdk', name: 'TDK', statsFile: 'tdk-stats.json' },
-  { id: '06-a-tag-semantics', name: 'a标签语义', statsFile: 'a-tag-stats.json' },
-  { id: '07-tag-structure-semantics', name: '标签结构', statsFile: 'tag-structure-stats.json' },
-  { id: '08-image-alt', name: '图片alt', statsFile: 'image-alt-stats.json' },
+  { id: '01-robots-txt', name: 'robots.txt', statsFile: 'robots-stats.json', script: 'check-robots.mjs' },
+  { id: '02-llms-txt', name: 'llms.txt', statsFile: 'llms-txt-stats.json', script: 'check-llms-txt.mjs' },
+  { id: '03-sitemap', name: 'sitemap', statsFile: 'sitemap-stats.json', script: 'check-sitemap.mjs' },
+  { id: '04-json-ld', name: 'JSON-LD', statsFile: 'jsonld-stats.json', script: 'check-jsonld.mjs' },
+  { id: '05-tdk', name: 'TDK', statsFile: 'tdk-stats.json', script: 'check-tdk.mjs' },
+  { id: '06-a-tag-semantics', name: 'a标签语义', statsFile: 'a-tag-stats.json', script: 'check-a-tag.mjs' },
+  { id: '07-tag-structure-semantics', name: '标签结构', statsFile: 'tag-structure-stats.json', script: 'check-tag-structure.mjs' },
+  { id: '08-image-alt', name: '图片alt', statsFile: 'image-alt-stats.json', script: 'check-image-alt.mjs' },
 ];
 
 const EMOJI_MAP = {
@@ -82,7 +82,8 @@ function assessMeasure(measureId, result) {
     case '01-robots-txt':
       return c.accessible && c.userAgentPresent && c.contentSignalPresent && c.llmPolicyPresent ? '✅' : c.accessible ? '🟡' : '❌';
     case '02-llms-txt':
-      return c.accessible && c.titlePresent && c.h1Unique && c.summaryPresent && c.linksPresent && c.linkUrlResolvable && c.contentTypeOk && c.sizeWithinLimit && c.robotsLlmPolicyPresent
+      // ✅ 需同时满足:P0 基线(可访问/结构/体积/robots 联动)+ P1 基线(描述覆盖率 ≥80%、llms-full 可访问且有文件头)
+      return c.accessible && c.titlePresent && c.h1Unique && c.summaryPresent && c.linksPresent && c.linkUrlResolvable && c.contentTypeOk && c.sizeWithinLimit && c.robotsLlmPolicyPresent && c.descCoverageOk && c.llmsFullAccessible && c.llmsFull?.headOk
         ? '✅'
         : c.accessible
           ? '🟡'
@@ -90,7 +91,8 @@ function assessMeasure(measureId, result) {
     case '03-sitemap':
       return c.accessible && (c.locNonAbsolute || 0) === 0 && (c.lastmodMissing || 0) === 0 ? '✅' : c.accessible ? '🟡' : '❌';
     case '04-json-ld':
-      return c.jsonLdCount > 0 && c.p0Missing.length === 0 && (c.requiredMissingCount || 0) === 0
+      // ✅ 需同时满足:有块、P0 三件套齐全、必填属性完整、@context 合法、无重复注入
+      return c.jsonLdCount > 0 && c.p0Missing.length === 0 && (c.requiredMissingCount || 0) === 0 && (c.contextErrorCount || 0) === 0 && (c.duplicateBlockCount || 0) === 0
         ? '✅'
         : c.jsonLdCount > 0
           ? '🟡'
@@ -190,7 +192,7 @@ md += `
 `;
 for (const m of MEASURES) {
   const stats = measureStats[m.id];
-  md += `| ${m.name} | \`check-${m.id.replace(/^\d+-/, '').replace(/-\w+$/, '')}.mjs\` | ${m.statsFile} | ${stats?.timestamp ? '✅ ' + stats.timestamp : '⏳ 未运行'} |\n`;
+  md += `| ${m.name} | \`${m.script}\` | ${m.statsFile} | ${stats?.timestamp ? '✅ ' + stats.timestamp : '⏳ 未运行'} |\n`;
 }
 
 md += `

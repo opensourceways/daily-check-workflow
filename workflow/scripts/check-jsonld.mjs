@@ -27,7 +27,9 @@ const REQUIRED_PROPS = {
 };
 
 const ARTICLE_TYPES = new Set(['Article', 'TechArticle', 'BlogPosting']);
+const PAGE_LEVEL_TYPES = new Set(['WebPage', 'WebSite', 'Article', 'TechArticle', 'BlogPosting']);
 const PLACEHOLDER_RE = /(^|\b)(todo|fixme|tbd|placeholder|待填|占位)\b/i;
+const CANONICAL_CONTEXT = 'https://schema.org';
 
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
@@ -43,8 +45,15 @@ for (const project of targets) {
   const requiredMissing = [];
   const placeholderHits = [];
   const nestedIssues = [];
+  const contextErrors = [];
+  const pagesWithDuplicates = [];
   let jsonLdCount = 0;
   let invalidCount = 0;
+  let duplicateBlockCount = 0;
+  let nodeTotal = 0;
+  let nodesWithId = 0;
+  let usesGraph = false;
+  let inLanguageMissing = 0;
   const pagesSampled = [];
   const perPage = [];
 
@@ -61,7 +70,7 @@ for (const project of targets) {
   let firstStatus = 0;
 
   for (const [label, url] of sampleUrls) {
-    const { ok, status, text } = await fetchText(url);
+    const { ok, status, text } = await fetchText(url, { timeout: 30000, maxBytes: 4 * 1024 * 1024 });
     if (label === '/') {
       firstOk = ok;
       firstStatus = status;
@@ -70,15 +79,40 @@ for (const project of targets) {
     const blocks = extractJsonLd(text);
     const pageTypes = new Set();
     if (blocks.length > 0) pagesSampled.push(label);
+
+    // 重复块检测:同页内语义完全相同的 ld+json 块(常见于模板+插件双重注入)
+    const seen = new Map();
+    for (const b of blocks) {
+      if (!b.valid) continue;
+      const raw = JSON.stringify(b.data);
+      const hits = seen.get(raw) || 0;
+      if (hits > 0) {
+        duplicateBlockCount++;
+        if (!pagesWithDuplicates.includes(label)) pagesWithDuplicates.push(label);
+      }
+      seen.set(raw, hits + 1);
+    }
+
     for (const b of blocks) {
       if (!b.valid) {
         invalidCount++;
         continue;
       }
       jsonLdCount++;
+
+      // @context 校验:支持顶层对象与数组两种块形式
+      if (!contextOk(b.data)) {
+        contextErrors.push({ page: label, detail: contextDetail(b.data) });
+      }
+
       const nodes = [];
       collectNodes(b.data, nodes);
+      if (Array.isArray(b.data?.['@graph']) || (Array.isArray(b.data) && b.data.some((d) => Array.isArray(d?.['@graph'])))) {
+        usesGraph = true;
+      }
       for (const node of nodes) {
+        nodeTotal++;
+        if (node['@id']) nodesWithId++;
         validateNode(node, label, types, requiredMissing, nestedIssues);
         scanPlaceholders(node, node['@type'], placeholderHits);
         pageTypes.add(Array.isArray(node['@type']) ? node['@type'].join('/') : node['@type']);
@@ -107,24 +141,46 @@ for (const project of targets) {
   entry.checks.nestedIssues = nestedIssues;
   entry.checks.placeholderHits = placeholderHits;
   entry.checks.placeholderCount = placeholderHits.length;
+  entry.checks.contextErrorCount = contextErrors.length;
+  entry.checks.contextErrors = contextErrors;
+  entry.checks.duplicateBlockCount = duplicateBlockCount;
+  entry.checks.pagesWithDuplicates = pagesWithDuplicates;
+  entry.checks.idCoverage = nodeTotal === 0 ? null : +(nodesWithId / nodeTotal).toFixed(4);
+  entry.checks.usesGraph = usesGraph;
+  entry.checks.inLanguageMissing = inLanguageMissing || nestedIssues.filter((i) => i.issue?.includes('inLanguage')).length;
 
   results.push(entry);
 }
 
 async function llmsEntryPages(project, domainRoot) {
   if (!project.llmsUrl) return [];
-  try {
-    const { ok, text } = await fetchText(project.llmsUrl);
-    if (!ok) return [];
-    const links = [...text.matchAll(/^\s*-\s*\[[^\]]*\]\(([^)]+)\)/gm)].map((m) => m[1]);
-    return links
-      .filter((u) => !/llms-full\.txt|sitemap/i.test(u))
-      .map((u) => (/^https?:\/\//i.test(u) ? u : domainRoot + u))
-      .map((u) => u.replace(/\.md$/i, '.html'))
-      .slice(0, 2);
-  } catch {
-    return [];
-  }
+  const { ok, text } = await fetchText(project.llmsUrl, { timeout: 30000, maxBytes: 12 * 1024 * 1024 });
+  if (!ok) return [];
+  const links = [...text.matchAll(/^\s*-\s*\[[^\]]*\]\(([^)]+)\)/gm)].map((m) => m[1]);
+  return links
+    .filter((u) => !/llms-full\.txt|sitemap/i.test(u))
+    .map((u) => (/^https?:\/\//i.test(u) ? u : domainRoot + u))
+    .map((u) => u.replace(/\.md$/i, '.html'))
+    .slice(0, 2);
+}
+
+/** @context 允许:顶层字符串、数组块内逐元素、以及值为数组时包含规范值 */
+function contextOk(data) {
+  const check = (d) => {
+    if (!d || typeof d !== 'object') return false;
+    const ctx = d['@context'];
+    if (ctx === CANONICAL_CONTEXT) return true;
+    if (Array.isArray(ctx) && ctx.includes(CANONICAL_CONTEXT)) return true;
+    return false;
+  };
+  if (Array.isArray(data)) return data.every((d) => d === null || check(d));
+  return check(data);
+}
+
+function contextDetail(data) {
+  const first = Array.isArray(data) ? data[0] : data;
+  const ctx = first?.['@context'];
+  return `@context 异常: ${ctx === undefined ? '缺失' : JSON.stringify(ctx)?.slice(0, 60)}`;
 }
 
 function collectNodes(data, out) {
@@ -163,6 +219,10 @@ function validateNode(node, page, types, requiredMissing, nestedIssues) {
     if (typeof headline === 'string' && headline.length > 110) {
       nestedIssues.push({ page, type: 'TechArticle', issue: `headline ${headline.length} 字符超上限 110` });
     }
+    const publisher = node.publisher;
+    if (publisher && typeof publisher === 'object' && !publisher['@id'] && !publisher.logo) {
+      nestedIssues.push({ page, type: 'TechArticle', issue: 'publisher 缺少 logo' });
+    }
   }
   if (typeList.includes('FAQPage')) {
     const qs = node.mainEntity;
@@ -173,6 +233,19 @@ function validateNode(node, page, types, requiredMissing, nestedIssues) {
         }
       });
     }
+  }
+  if (typeList.includes('Organization')) {
+    const logo = node.logo;
+    if (!logo) {
+      nestedIssues.push({ page, type: 'Organization', issue: '缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)' });
+    } else if (typeof logo === 'string') {
+      nestedIssues.push({ page, type: 'Organization', issue: 'logo 为裸字符串,推荐 {"@type":"ImageObject","url":...} 形式' });
+    } else if (logo['@type'] === 'ImageObject' && typeof logo.url === 'string' && !/^https?:\/\//i.test(logo.url)) {
+      nestedIssues.push({ page, type: 'Organization', issue: 'logo.url 非绝对 URL' });
+    }
+  }
+  if (typeList.some((x) => PAGE_LEVEL_TYPES.has(x)) && !node.inLanguage) {
+    nestedIssues.push({ page, type: typeList[0], issue: '缺少 inLanguage(中文站应为 zh-CN)' });
   }
 }
 
@@ -196,9 +269,14 @@ console.log(
       id: r.projectId,
       blocks: r.checks?.jsonLdCount,
       invalid: r.checks?.invalidCount,
+      ctxErr: r.checks?.contextErrorCount,
+      dup: r.checks?.duplicateBlockCount,
       p0Missing: r.checks?.p0Missing,
       reqMissing: r.checks?.requiredMissingCount,
       nested: r.checks?.nestedIssues?.length,
+      idCov: r.checks?.idCoverage,
+      graph: r.checks?.usesGraph,
+      inLangMiss: r.checks?.inLanguageMissing,
       placeholder: r.checks?.placeholderCount,
       types: r.checks?.schemaTypes,
     })),

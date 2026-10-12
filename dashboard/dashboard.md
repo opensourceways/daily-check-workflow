@@ -1,7 +1,7 @@
 # GEO 整改看板
 
 > 由 `generate-dashboard.mjs` 自动生成，请勿手动编辑。
-> 生成时间：2026-10-10T09:01:45.085Z
+> 生成时间：2026-10-12T08:37:25.089Z
 >
 > 矩阵状态优先取自各措施的 `进展.md`（人工维护），自动化检测结果作为补充标注。
 
@@ -13,9 +13,9 @@
 | openEuler 文档 | ✅ | ⚠️⚡🟡 | ⚠️ | 🟡 | 🟡 | ❌ | ❌ | ❌ | ⚠️ (1/8) |
 | openGauss 官网 | 🟡 | ✅ | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (3/8) |
 | openGauss 文档 | 🟡 | ⚠️⚡🟡 | ⚠️ | 🟡 | 🟡 | ❌ | ❌ | ❌ | ❌ (0/8) |
-| MindSpore 官网 | ✅ | 🟡⚡✅ | ⚠️ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
+| MindSpore 官网 | ✅ | 🟡 | ⚠️ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
 | MindSpore 文档 | ❌ | ❌ | ⚠️ | ❌ | 🟡 | ❌ | ❌ | ❌ | ❌ (0/8) |
-| openUBMC 官网 | ✅ | ✅ | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | 🟡 (4/8) |
+| openUBMC 官网 | ✅ | ✅⚡🟡 | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | 🟡 (4/8) |
 | openUBMC 文档 | ❌ | ⚠️⚡🟡 | ✅ | 🟡⚡✅ | 🟡 | ❌ | ❌ | ❌ | ⚠️ (1/8) |
 | UnifiedBus | ⚠️ | 🟡 | ✅ | 🟡 | ✅ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
 | HiFloat | ✅ | ⚠️⚡🟡 | ✅ | 🟡⚡✅ | ⚠️ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
@@ -43,13 +43,13 @@
 | 措施 | 检测脚本 | stats 文件 | 上次运行 |
 |------|----------|------------|----------|
 | robots.txt | `check-robots.mjs` | robots-stats.json | ✅ 2026-09-28T12:55:34.470Z |
-| llms.txt | `check-llms.mjs` | llms-txt-stats.json | ✅ 2026-10-10T08:24:17.932Z |
+| llms.txt | `check-llms-txt.mjs` | llms-txt-stats.json | ✅ 2026-10-12T08:30:53.329Z |
 | sitemap | `check-sitemap.mjs` | sitemap-stats.json | ⏳ 未运行 |
-| JSON-LD | `check-json.mjs` | jsonld-stats.json | ✅ 2026-10-10T09:00:00.147Z |
+| JSON-LD | `check-jsonld.mjs` | jsonld-stats.json | ✅ 2026-10-12T08:32:09.040Z |
 | TDK | `check-tdk.mjs` | tdk-stats.json | ⏳ 未运行 |
 | a标签语义 | `check-a-tag.mjs` | a-tag-stats.json | ⏳ 未运行 |
 | 标签结构 | `check-tag-structure.mjs` | tag-structure-stats.json | ⏳ 未运行 |
-| 图片alt | `check-image.mjs` | image-alt-stats.json | ⏳ 未运行 |
+| 图片alt | `check-image-alt.mjs` | image-alt-stats.json | ⏳ 未运行 |
 
 ## 各措施详情
 
