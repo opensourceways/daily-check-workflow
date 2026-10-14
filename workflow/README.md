@@ -23,6 +23,7 @@ node scripts/check-sitemap.mjs --site=openEuler-portal  # 检查单个项目
 | check-a-tag.mjs | a 标签语义 | stats/a-tag-stats.json |
 | check-tag-structure.mjs | 标签结构语义化 | stats/tag-structure-stats.json |
 | check-image-alt.mjs | 图片 alt 语义 | stats/image-alt-stats.json |
+| semantic-spec-check.mjs | 06/07/08 语义化规范抽查（抽样页面，生成 manual-review/issues/semantic 报告） | stats/semantic-spec-stats.json |
 | fetch-prs.mjs | 各仓库 issue/PR 汇总 | stats/pr-summary.json |
 | run-all.mjs | 一键执行全部检查 | stats/run-all-summary.json |
 
