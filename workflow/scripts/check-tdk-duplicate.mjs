@@ -129,23 +129,13 @@ const projects = await loadProjects();
 const targets = filterProjects(projects, siteId);
 const results = [];
 
-for (const project of targets) {
-  if (SKIPS.includes(project.id.toLowerCase())) {
-    console.log(`[tdk-dup] 跳过 ${project.id}`);
-    results.push({
-      projectId: project.id,
-      projectName: project.name,
-      sitemapUrl: project.sitemapUrl,
-      skipped: true,
-      urlCount: 0,
-      fetched: 0,
-      failed: [],
-      notes: ['默认跳过（docs 大站页面量级大，且历史版本/多语言同页 TDK 同值属预期；用 --skip= 传空可强制检查）'],
-      duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
-    });
-    continue;
-  }
-  console.log(`\n[tdk-dup] ===== ${project.id} =====`);
+const startedAt = now();
+const dateStr = dateStrOf(startedAt);
+const dir = resolve(ROOT, 'manual-review', 'issues', 'tdk');
+await mkdir(dir, { recursive: true });
+const reportPath = resolve(dir, `tdk-duplicate-report-${dateStr}.md`);
+
+async function checkProject(project) {
   const entry = {
     projectId: project.id,
     projectName: project.name,
@@ -156,7 +146,6 @@ for (const project of targets) {
     notes: [],
     duplicates: {},
   };
-  results.push(entry);
 
   const { urls, notes } = await collectUrls(project);
   entry.notes = notes;
@@ -164,7 +153,7 @@ for (const project of targets) {
   entry.urlCount = urls.length;
   if (!urls.length) {
     console.log(`[tdk-dup] ${project.id}: 未收集到页面 URL，跳过`);
-    continue;
+    return entry;
   }
   console.log(`[tdk-dup] ${project.id}: 共 ${urls.length} 个页面，开始抓取（并发 ${CONCURRENCY}）...`);
 
@@ -212,46 +201,18 @@ for (const project of targets) {
   if (entry.failed.length) {
     console.log(`\n[tdk-dup] ${project.id}: ${entry.failed.length} 个页面抓取失败，未计入重复统计`);
   }
+  return entry;
 }
 
-const report = { timestamp: now(), measure: 'tdk-duplicate', results };
-const statsPath = await writeStats('tdk-duplicate-stats', report);
-
-// ---- Markdown 报告 ----
-const dateStr = dateStrOf(report.timestamp);
-const lines = [];
-lines.push('# TDK 重复性检查报告');
-lines.push('');
-lines.push(`- 检查时间：${report.timestamp}`);
-lines.push(`- 检查方式：参照 seo-check/scripts/description-check.js 的分组判重逻辑，数据源改为各项目 sitemap 全量页面 URL 逐页请求 HTML（非本地构建产物遍历）`);
-lines.push(`- 判重字段：title（<title> 文本）、description（<meta name="description">）、keywords（<meta name="keywords">），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值归入"(缺失)"组`);
-lines.push(`- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（页面量级大，且多语言/历史版本同页 TDK 同值属预期）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面`);
-lines.push(`- 完整重复组数据见：workflow/stats/tdk-duplicate-stats.json`);
-lines.push('');
-lines.push('## 总览');
-lines.push('');
-lines.push('| 项目 | sitemap 页面数 | 成功抓取 | 抓取失败 | title 重复组/页 | description 重复组/页 | keywords 重复组/页 | 结论 |');
-lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
-for (const r of results) {
-  if (r.skipped) {
-    lines.push(`| ${r.projectName}（${r.projectId}） | - | - | - | - | - | - | ⏭️ 跳过 |`);
-    continue;
-  }
-  const d = r.duplicates;
-  const fmt = (f) => (d && d[f] ? `${d[f].groups}/${d[f].pages}` : '-');
-  const hasDup = d && FIELDS.some((f) => d[f] && d[f].groups > 0);
-  const verdict = r.urlCount === 0 ? '❌ 无法检查' : hasDup ? '⚠️ 存在重复' : '✅ 无重复';
-  lines.push(`| ${r.projectName}（${r.projectId}） | ${r.urlCount} | ${r.fetched} | ${r.failed.length} | ${fmt('title')} | ${fmt('description')} | ${fmt('keywords')} | ${verdict} |`);
-}
-lines.push('');
-lines.push('## 各项目明细');
-for (const r of results) {
+// 单个项目的明细 Markdown 段落
+function detailLines(r) {
+  const lines = [];
   lines.push('');
   lines.push(`### ${r.projectName}（${r.projectId}）`);
   lines.push('');
   if (r.skipped) {
     for (const n of r.notes) lines.push(`- ⏭️ ${n}`);
-    continue;
+    return lines;
   }
   lines.push(`- sitemap：${r.sitemapUrl || '未配置'}，收集页面 ${r.urlCount} 个，成功抓取 ${r.fetched} 个，失败 ${r.failed.length} 个`);
   for (const n of r.notes) lines.push(`- ℹ️ ${n}`);
@@ -276,11 +237,61 @@ for (const r of results) {
       for (const u of g.urls) lines.push(`- ${u}`);
     }
   }
+  return lines;
 }
 
-const dir = resolve(ROOT, 'reports');
-await mkdir(dir, { recursive: true });
-const reportPath = resolve(dir, `tdk-duplicate-report-${dateStr}.md`);
+for (const project of targets) {
+  let entry;
+  if (SKIPS.includes(project.id.toLowerCase())) {
+    console.log(`[tdk-dup] 跳过 ${project.id}`);
+    entry = {
+      projectId: project.id,
+      projectName: project.name,
+      sitemapUrl: project.sitemapUrl,
+      skipped: true,
+      urlCount: 0,
+      fetched: 0,
+      failed: [],
+      notes: ['默认跳过（docs 大站页面量级大，且历史版本/多语言同页 TDK 同值属预期；用 --skip= 传空可强制检查）'],
+      duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
+    };
+  } else {
+    console.log(`\n[tdk-dup] ===== ${project.id} =====`);
+    entry = await checkProject(project);
+  }
+  results.push(entry);
+}
+
+// ---- Markdown 报告：全部项目检查完成后一次性写入 ----
+const statsPath = await writeStats('tdk-duplicate-stats', { timestamp: startedAt, measure: 'tdk-duplicate', results });
+const lines = [];
+lines.push('# TDK 重复性检查报告');
+lines.push('');
+lines.push(`- 检查时间：${startedAt}`);
+lines.push(`- 检查方式：参照 seo-check/scripts/description-check.js 的分组判重逻辑，数据源改为各项目 sitemap 全量页面 URL 逐页请求 HTML（非本地构建产物遍历）`);
+lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值归入"(缺失)"组');
+lines.push(`- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（页面量级大，且多语言/历史版本同页 TDK 同值属预期）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面`);
+lines.push(`- 完整重复组数据见：workflow/stats/tdk-duplicate-stats.json`);
+lines.push('');
+lines.push('## 总览');
+lines.push('');
+lines.push('| 项目 | sitemap 页面数 | 成功抓取 | 抓取失败 | title 重复组/页 | description 重复组/页 | keywords 重复组/页 | 结论 |');
+lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
+for (const r of results) {
+  if (r.skipped) {
+    lines.push(`| ${r.projectName}（${r.projectId}） | - | - | - | - | - | - | ⏭️ 跳过 |`);
+    continue;
+  }
+  const d = r.duplicates;
+  const fmt = (f) => (d && d[f] ? `${d[f].groups}/${d[f].pages}` : '-');
+  const hasDup = d && FIELDS.some((f) => d[f] && d[f].groups > 0);
+  const verdict = r.urlCount === 0 ? '❌ 无法检查' : hasDup ? '⚠️ 存在重复' : '✅ 无重复';
+  lines.push(`| ${r.projectName}（${r.projectId}） | ${r.urlCount} | ${r.fetched} | ${r.failed.length} | ${fmt('title')} | ${fmt('description')} | ${fmt('keywords')} | ${verdict} |`);
+}
+lines.push('');
+lines.push('## 各项目明细');
+for (const r of results) lines.push(...detailLines(r));
+
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
 console.log(`\n[tdk-dup] 检查完成：stats -> ${statsPath}`);
 console.log(`[tdk-dup] 报告 -> ${reportPath}`);

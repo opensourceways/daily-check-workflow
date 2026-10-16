@@ -4,18 +4,17 @@ export function extractTitle(html) {
 }
 
 export function extractMeta(html, name) {
-  const re = new RegExp(
-    `<meta[^>]+name=["']${name}["'][^>]*content=["']([^"']*)["']`,
-    'i'
-  );
-  const m = re.exec(html);
-  if (m) return m[1].trim();
-  const re2 = new RegExp(
-    `<meta[^>]+content=["']([^"']*)["'][^>]*name=["']${name}["']`,
-    'i'
-  );
-  const m2 = re2.exec(html);
-  return m2 ? m2[1].trim() : null;
+  const key = String(name).toLowerCase();
+  const tagRe = /<meta\b[^>]*>/gi;
+  let m;
+  while ((m = tagRe.exec(html)) !== null) {
+    const tag = m[0];
+    const metaKey = extractAttr(tag, 'name') || extractAttr(tag, 'property');
+    if (!metaKey || metaKey.toLowerCase() !== key) continue;
+    const content = extractAttr(tag, 'content');
+    if (content !== null) return content;
+  }
+  return null;
 }
 
 export function extractJsonLd(html) {
@@ -82,9 +81,10 @@ export function extractSemanticTags(html) {
 }
 
 function extractAttr(attrString, attrName) {
-  const re = new RegExp(`${attrName}\\s*=\\s*["']([^"']*)["']`, 'i');
+  const re = new RegExp(`(?<![\\w:-])${attrName}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i');
   const m = re.exec(attrString);
-  return m ? m[1].trim() : null;
+  if (!m) return null;
+  return (m[1] ?? m[2]).trim();
 }
 
 function stripTags(html) {
