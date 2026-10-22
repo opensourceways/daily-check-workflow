@@ -18,14 +18,14 @@ node scripts/check-sitemap.mjs --site=openEuler-portal  # 检查单个项目
 | check-robots.mjs | robots.txt | stats/robots-stats.json |
 | check-llms-txt.mjs | llms.txt | stats/llms-txt-stats.json |
 | check-sitemap.mjs | sitemap 快速统计（旧版轻量） | stats/sitemap-stats.json |
-| sitemap-spec-check.mjs | sitemap 属性规范检查（index 递归、newVersions/domainAlias 约定、xhtml:link 全集核实；`--submit-issues` 支持提单，前缀 `[GEO Sitemap]`） | manual-review/issues/sitemap/ + stats/sitemap-spec-stats.json |
+| sitemap-spec-check.mjs | sitemap 属性规范检查（index 递归、newVersions/domainAlias 约定、xhtml:link 全集核实；`--submit-issues` 支持提单，前缀 `[GEO Sitemap]`） | manual-review/issues/sitemap/`<date>`/ + stats/sitemap-spec-stats.json |
 | check-jsonld.mjs | JSON-LD | stats/jsonld-stats.json |
 | check-tdk.mjs | TDK | stats/tdk-stats.json |
-| check-tdk-duplicate.mjs | TDK 重复判重（sitemap 全量逐页抓取分组判重；`--submit-issues` 支持提单，是"检查+提 issue"流程的模板实现） | manual-review/issues/tdk/ + stats/tdk-duplicate-stats.json |
+| check-tdk-duplicate.mjs | TDK 重复判重（sitemap 全量逐页抓取分组判重；`--submit-issues` 支持提单，是"检查+提 issue"流程的模板实现） | manual-review/issues/tdk/`<date>`/ + stats/tdk-duplicate-stats.json |
 | check-a-tag.mjs | a 标签语义 | stats/a-tag-stats.json |
 | check-tag-structure.mjs | 标签结构语义化 | stats/tag-structure-stats.json |
 | check-image-alt.mjs | 图片 alt 语义 | stats/image-alt-stats.json |
-| semantic-spec-check.mjs | HTML 语义化规范抽查（以 measures/10「检查细节」为核心 + 06/07/08 附加项；`--submit-issues` 支持提单，前缀 `[GEO HTML Semantic]`，brief/full 双报告） | manual-review/issues/semantic/ + stats/semantic-spec-stats.json |
+| semantic-spec-check.mjs | HTML 语义化规范抽查（以 measures/10「检查细节」为核心 + 06/07/08 附加项；`--submit-issues` 支持提单，前缀 `[GEO HTML Semantic]`，brief/full 双报告） | manual-review/issues/semantic/`<date>`/ + stats/semantic-spec-stats.json |
 | fetch-prs.mjs | 各仓库 issue/PR 汇总 | stats/pr-summary.json |
 | run-all.mjs | 一键执行全部检查 | stats/run-all-summary.json |
 

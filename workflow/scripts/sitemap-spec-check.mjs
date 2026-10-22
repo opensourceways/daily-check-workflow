@@ -524,7 +524,7 @@ function issueTitleFor(r) {
 function issueBodyFor(r, fullFileName, startedAt) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/sitemap/${fullFileName}`;
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/sitemap/${startedAt.slice(0, 10)}/${fullFileName}`;
   const lines = [];
   lines.push(`本 issue 由 GEO 例行检查（sitemap 属性规范维度）自动生成。以下为对项目 sitemap（含 index 递归子 sitemap）按 sitemaps.org 规范核查 loc / lastmod / changefreq / xhtml:link 得出的问题（${startedAt.slice(0, 10)}）。`);
   lines.push('');
@@ -606,9 +606,9 @@ async function main() {
   const targets = filterProjects(projects, siteId);
   const startedAt = now();
   const dateStr = startedAt.slice(0, 10);
-  const reportName = `${dateStr}-sitemap-规范检查报告.md`;
-  const detailName = `${dateStr}-sitemap-问题条目明细.md`;
-  const dir = resolve(ROOT, 'manual-review', 'issues', 'sitemap');
+  const reportName = 'report.md';
+  const detailName = 'detail.md';
+  const dir = resolve(ROOT, 'manual-review', 'issues', 'sitemap', dateStr);
   await mkdir(dir, { recursive: true });
 
   const results = [];
@@ -631,14 +631,14 @@ async function main() {
     console.log(`\n[sitemap-spec] ===== ${project.id} =====`);
     const entry = await checkProjectSafe(project);
     if (hasAnyIssue(entry)) {
-      const fullFileName = `sitemap-${entry.id}-${dateStr}-full.md`;
-      const briefFileName = `sitemap-${entry.id}-${dateStr}-brief.md`;
+      const fullFileName = `${entry.id}-full.md`;
+      const briefFileName = `${entry.id}-brief.md`;
       if (!dryRun) {
         const header = [`# Sitemap 属性规范完全版报告 · ${entry.name}（${entry.id}）`, '', `- 检查时间：${startedAt}`, `- 检查项：loc / lastmod / changefreq / xhtml:link（规范来源：sitemaps.org，见 measures/03-sitemap/规范.md）`, ''];
         await writeFile(resolve(dir, fullFileName), header.concat(projectDetailLines(entry)).join('\n') + '\n', 'utf8');
         const bheader = [`# Sitemap 属性规范简短报告 · ${entry.name}（${entry.id}）`, '', `- 检查时间：${startedAt}`, ''];
         await writeFile(resolve(dir, briefFileName), bheader.concat(briefLines(entry)).join('\n') + '\n', 'utf8');
-        entry.reports = { full: `manual-review/issues/sitemap/${fullFileName}`, brief: `manual-review/issues/sitemap/${briefFileName}` };
+        entry.reports = { full: `manual-review/issues/sitemap/${dateStr}/${fullFileName}`, brief: `manual-review/issues/sitemap/${dateStr}/${briefFileName}` };
       }
       const body = issueBodyFor(entry, fullFileName, startedAt);
       const title = issueTitleFor(entry);
@@ -695,9 +695,9 @@ async function main() {
   lines.push('## 各项目明细');
   if (submitIssues) {
     lines.push('');
-    lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 \`sitemap-<项目ID>-${dateStr}-full.md\`）`);
+    lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 \`<项目ID>-full.md\`）`);
     for (const r of results.filter((x) => hasAnyIssue(x))) {
-      lines.push(`- ${r.name}（${r.id}）：\`sitemap-${r.id}-${dateStr}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : ''}`);
+      lines.push(`- ${r.name}（${r.id}）：\`${r.id}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : ''}`);
     }
   } else {
     for (const r of results) {

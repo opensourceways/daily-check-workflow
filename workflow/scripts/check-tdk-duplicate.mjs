@@ -143,9 +143,9 @@ const results = [];
 
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
-const dir = resolve(ROOT, 'manual-review', 'issues', 'tdk');
+const dir = resolve(ROOT, 'manual-review', 'issues', 'tdk', dateStr);
 await mkdir(dir, { recursive: true });
-const reportPath = resolve(dir, `tdk-duplicate-report-${dateStr}.md`);
+const reportPath = resolve(dir, 'report.md');
 
 async function checkProject(project) {
   const entry = {
@@ -368,7 +368,7 @@ function briefReportFor(r) {
 function issueBodyFor(r, fullFileName) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/tdk/${fullFileName}`;
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/tdk/${dateStr}/${fullFileName}`;
   const lines = [];
   lines.push(`本 issue 由 GEO 例行检查（TDK 重复性维度）自动生成。以下为 TDK（title/description/keywords）重复与缺失问题，按 sitemap 全量页面逐页抓取后判重/查缺得出（${startedAt.slice(0, 10)}）。`);
   lines.push('');
@@ -456,12 +456,12 @@ for (const project of targets) {
     console.log(`\n[tdk-dup] ===== ${project.id} =====`);
     entry = await checkProject(project);
     if (hasAnyIssue(entry)) {
-      const fullFileName = `tdk-duplicate-${entry.projectId}-${dateStr}-full.md`;
-      const briefFileName = `tdk-duplicate-${entry.projectId}-${dateStr}-brief.md`;
+      const fullFileName = `${entry.projectId}-full.md`;
+      const briefFileName = `${entry.projectId}-brief.md`;
       if (!dryRun) {
         await writeFile(resolve(dir, fullFileName), fullReportFor(entry), 'utf8');
         await writeFile(resolve(dir, briefFileName), briefReportFor(entry), 'utf8');
-        entry.reports = { full: `manual-review/issues/tdk/${fullFileName}`, brief: `manual-review/issues/tdk/${briefFileName}` };
+        entry.reports = { full: `manual-review/issues/tdk/${dateStr}/${fullFileName}`, brief: `manual-review/issues/tdk/${dateStr}/${briefFileName}` };
       }
       const body = issueBodyFor(entry, fullFileName);
       const title = `${ISSUE_TITLE_PREFIX} ${entry.projectName}（${entry.projectId}）：TDK title/description/keywords 存在重复或缺失`;
@@ -519,9 +519,9 @@ lines.push('');
 lines.push('## 各项目明细');
 if (submitIssues) {
   lines.push('');
-  lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 `tdk-duplicate-<项目ID>-' + dateStr + '-full.md`）');
+  lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 `<项目ID>-full.md`）');
   const withIssue = results.filter((r) => !r.skipped && r.urlCount > 0 && hasAnyIssue(r));
-  for (const r of withIssue) lines.push(`- ${r.projectName}（${r.projectId}）：\`tdk-duplicate-${r.projectId}-${dateStr}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : ''}`);
+  for (const r of withIssue) lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.projectId}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : ''}`);
 } else {
   for (const r of results) lines.push(...detailLines(r));
 }

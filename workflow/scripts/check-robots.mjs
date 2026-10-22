@@ -34,9 +34,9 @@ const dryRun = process.argv.includes('--dry-run');
 const projects = await loadProjects();
 const targets = filterProjects(projects, siteId);
 
-const dir = resolve(ROOT, '..', 'manual-review', 'issues', 'robotstxt');
+const dir = resolve(ROOT, '..', 'manual-review', 'issues', 'robotstxt', dateStr);
 await mkdir(dir, { recursive: true });
-const reportName = `${dateStr}-robots-规范检查报告.md`;
+const reportName = 'report.md';
 
 async function checkLink(url, robotsHost) {
   const link = { url, absolute: isAbsoluteUrl(url) };
@@ -218,7 +218,7 @@ async function precheckExistingIssue(project) {
 function summaryUrl() {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  return `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/robotstxt/${reportName}`;
+  return `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/robotstxt/${dateStr}/${reportName}`;
 }
 
 function issueTitleFor(r) {

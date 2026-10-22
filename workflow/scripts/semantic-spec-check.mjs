@@ -524,7 +524,7 @@ function briefReportFor(p, s, startedAt) {
 function issueBodyFor(p, s, fullFileName, startedAt) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/semantic/${fullFileName}`;
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/semantic/${dateStr}/${fullFileName}`;
   const lines = [];
   lines.push(`本 issue 由 GEO 例行检查（HTML 元素语义化维度）自动生成。按 measures/10-HTML-semantic-check/规范.md「检查细节」对项目抽样页面（${p.pages.length} 个）的静态/SSR HTML 检查，发现以下问题（${startedAt.slice(0, 10)}）：`);
   lines.push('');
@@ -592,7 +592,7 @@ async function precheckExistingIssue(project) {
 
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
-const OUT_DIR = resolve(ROOT, 'manual-review/issues/semantic');
+const OUT_DIR = resolve(ROOT, 'manual-review/issues/semantic', dateStr);
 await mkdir(OUT_DIR, { recursive: true });
 
 const projects = await loadProjects();
@@ -676,12 +676,12 @@ for (const project of targets) {
     const s = summarize(pEntry);
     const errorTotal = s.coreErr + s.extraErr;
     if (errorTotal > 0) {
-      const fullFileName = `semantic-${project.id}-${dateStr}-full.md`;
-      const briefFileName = `semantic-${project.id}-${dateStr}-brief.md`;
+      const fullFileName = `${project.id}-full.md`;
+      const briefFileName = `${project.id}-brief.md`;
       if (!dryRun) {
         await writeFile(resolve(OUT_DIR, fullFileName), fullReportFor(pEntry, s, startedAt), 'utf8');
         await writeFile(resolve(OUT_DIR, briefFileName), briefReportFor(pEntry, s, startedAt), 'utf8');
-        pEntry.reports = { full: `manual-review/issues/semantic/${fullFileName}`, brief: `manual-review/issues/semantic/${briefFileName}` };
+        pEntry.reports = { full: `manual-review/issues/semantic/${dateStr}/${fullFileName}`, brief: `manual-review/issues/semantic/${dateStr}/${briefFileName}` };
       }
       const title = `${ISSUE_TITLE_PREFIX} ${project.name}（${project.id}）：抽样页面 HTML 语义化检查发现 ${errorTotal} 处规范问题`;
       const bodyText = issueBodyFor(pEntry, s, fullFileName, startedAt);
@@ -761,7 +761,7 @@ lines.push('');
 lines.push('## 各项目明细');
 if (submitIssues) {
   lines.push('');
-  lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 \`semantic-<项目ID>-${dateStr}-full.md\`）`);
+  lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录下 \`<项目ID>-full.md\`）`);
   for (const o of overviews) {
     if (!o.p.reports && !o.p.issueAction) continue;
     lines.push(`- ${o.p.name}（${o.p.id}）：\`${o.p.reports ? o.p.reports.full : '（dry-run 未写文件）'}\`${o.p.issueUrl ? `，issue：${o.p.issueUrl}` : o.p.issueAction === 'dry-run' ? '，（dry-run 未提交）' : o.p.issueAction === 'print-only' ? '，（未提单：无 token 或查重降级）' : ''}`);
@@ -792,6 +792,6 @@ for (const p of skipLike) {
 }
 lines.push('');
 
-const outPath = resolve(OUT_DIR, `${dateStr}-html语义化-抽查报告.md`);
+const outPath = resolve(OUT_DIR, 'report.md');
 await writeFile(outPath, lines.join('\n'), 'utf8');
 console.log('DONE ->', outPath);
