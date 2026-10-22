@@ -143,7 +143,7 @@ const results = [];
 
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
-const dir = resolve(ROOT, 'manual-review', 'issues', 'tdk', dateStr);
+const dir = resolve(ROOT, 'scheduled-reports', 'tdk', dateStr);
 await mkdir(dir, { recursive: true });
 const reportPath = resolve(dir, 'report.md');
 
@@ -368,7 +368,7 @@ function briefReportFor(r) {
 function issueBodyFor(r, fullFileName) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/tdk/${dateStr}/${fullFileName}`;
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/scheduled-reports/tdk/${dateStr}/${fullFileName}`;
   const lines = [];
   lines.push(`本 issue 由 GEO 例行检查（TDK 重复性维度）自动生成。以下为 TDK（title/description/keywords）重复与缺失问题，按 sitemap 全量页面逐页抓取后判重/查缺得出（${startedAt.slice(0, 10)}）。`);
   lines.push('');
@@ -461,7 +461,7 @@ for (const project of targets) {
       if (!dryRun) {
         await writeFile(resolve(dir, fullFileName), fullReportFor(entry), 'utf8');
         await writeFile(resolve(dir, briefFileName), briefReportFor(entry), 'utf8');
-        entry.reports = { full: `manual-review/issues/tdk/${dateStr}/${fullFileName}`, brief: `manual-review/issues/tdk/${dateStr}/${briefFileName}` };
+        entry.reports = { full: `scheduled-reports/tdk/${dateStr}/${fullFileName}`, brief: `scheduled-reports/tdk/${dateStr}/${briefFileName}` };
       }
       const body = issueBodyFor(entry, fullFileName);
       const title = `${ISSUE_TITLE_PREFIX} ${entry.projectName}（${entry.projectId}）：TDK title/description/keywords 存在重复或缺失`;

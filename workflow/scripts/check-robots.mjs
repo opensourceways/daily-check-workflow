@@ -34,7 +34,7 @@ const dryRun = process.argv.includes('--dry-run');
 const projects = await loadProjects();
 const targets = filterProjects(projects, siteId);
 
-const dir = resolve(ROOT, '..', 'manual-review', 'issues', 'robotstxt', dateStr);
+const dir = resolve(ROOT, '..', 'scheduled-reports', 'robotstxt', dateStr);
 await mkdir(dir, { recursive: true });
 const reportName = 'report.md';
 
@@ -218,7 +218,7 @@ async function precheckExistingIssue(project) {
 function summaryUrl() {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  return `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/robotstxt/${dateStr}/${reportName}`;
+  return `https://github.com/${ghRepo}/blob/${refName}/scheduled-reports/robotstxt/${dateStr}/${reportName}`;
 }
 
 function issueTitleFor(r) {

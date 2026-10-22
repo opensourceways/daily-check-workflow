@@ -524,7 +524,7 @@ function issueTitleFor(r) {
 function issueBodyFor(r, fullFileName, startedAt) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
-  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/sitemap/${startedAt.slice(0, 10)}/${fullFileName}`;
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/scheduled-reports/sitemap/${startedAt.slice(0, 10)}/${fullFileName}`;
   const lines = [];
   lines.push(`本 issue 由 GEO 例行检查（sitemap 属性规范维度）自动生成。以下为对项目 sitemap（含 index 递归子 sitemap）按 sitemaps.org 规范核查 loc / lastmod / changefreq / xhtml:link 得出的问题（${startedAt.slice(0, 10)}）。`);
   lines.push('');
@@ -608,7 +608,7 @@ async function main() {
   const dateStr = startedAt.slice(0, 10);
   const reportName = 'report.md';
   const detailName = 'detail.md';
-  const dir = resolve(ROOT, 'manual-review', 'issues', 'sitemap', dateStr);
+  const dir = resolve(ROOT, 'scheduled-reports', 'sitemap', dateStr);
   await mkdir(dir, { recursive: true });
 
   const results = [];
@@ -638,7 +638,7 @@ async function main() {
         await writeFile(resolve(dir, fullFileName), header.concat(projectDetailLines(entry)).join('\n') + '\n', 'utf8');
         const bheader = [`# Sitemap 属性规范简短报告 · ${entry.name}（${entry.id}）`, '', `- 检查时间：${startedAt}`, ''];
         await writeFile(resolve(dir, briefFileName), bheader.concat(briefLines(entry)).join('\n') + '\n', 'utf8');
-        entry.reports = { full: `manual-review/issues/sitemap/${dateStr}/${fullFileName}`, brief: `manual-review/issues/sitemap/${dateStr}/${briefFileName}` };
+        entry.reports = { full: `scheduled-reports/sitemap/${dateStr}/${fullFileName}`, brief: `scheduled-reports/sitemap/${dateStr}/${briefFileName}` };
       }
       const body = issueBodyFor(entry, fullFileName, startedAt);
       const title = issueTitleFor(entry);

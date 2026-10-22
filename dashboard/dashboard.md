@@ -121,6 +121,7 @@
 
 - [总索引](../index.md)
 - [项目配置](../projects.config.json)
+- [定时检查自动报告](../scheduled-reports/)
 - [人工检查问题](../manual-review/issues/)
 - [复盘记录](../manual-review/retrospectives/)
 - [归档文档](../archive/)
