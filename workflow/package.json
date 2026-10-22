@@ -1,0 +1,26 @@
+{
+  "name": "geo-workflow",
+  "version": "1.0.0",
+  "description": "GEO 优化专项自动化检查与统计",
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/run-all.mjs",
+    "check:sitemap": "node scripts/check-sitemap.mjs",
+    "check:sitemap-spec": "node scripts/sitemap-spec-check.mjs",
+    "check:tdk": "node scripts/check-tdk.mjs",
+    "check:tdk-dup": "node scripts/check-tdk-duplicate.mjs",
+    "check:jsonld": "node scripts/check-jsonld.mjs",
+    "check:robots": "node scripts/check-robots.mjs",
+    "check:llms": "node scripts/check-llms-txt.mjs",
+    "check:a-tag": "node scripts/check-a-tag.mjs",
+    "check:tag-structure": "node scripts/check-tag-structure.mjs",
+    "check:image-alt": "node scripts/check-image-alt.mjs",
+    "check:semantic": "node scripts/semantic-spec-check.mjs",
+    "dashboard": "node ../dashboard/generate-dashboard.mjs",
+    "pr-summary": "node scripts/fetch-prs.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}

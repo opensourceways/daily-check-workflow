@@ -2,15 +2,16 @@ name: HTML Semantic Check
 
 on:
   schedule:
-    - cron: '0 4 * * 0'
+    # 每周三 05:30 UTC（北京时间 13:30），错开 robots(04:00)/sitemap(04:30)/TDK(周一 03:30)
+    - cron: "30 5 * * 3"
   workflow_dispatch:
     inputs:
-      project:
-        description: '只检查指定项目 (projects-config.yaml 里的 name, 留空则全部)'
+      site:
+        description: "只检查指定项目 (projects.config.json 里的 id，留空则按默认跳过规则全量)"
         required: false
-        default: ''
+        default: ""
       dry_run:
-        description: 'Dry run (仅检查，不提 issue)'
+        description: "Dry run（仅扫描与打印 issue 正文，不写 brief/full、不提 issue；汇总报告仍会生成并 commit）"
         required: false
         type: boolean
         default: false
@@ -18,31 +19,46 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: html-semantic-check
+  cancel-in-progress: false
+
 jobs:
   check:
-    runs-on: portal-x86
-    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout geo-develop
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install deps
-        shell: bash
-        run: pnpm install --frozen-lockfile
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Check HTML semantics
-        shell: bash
+      - name: Run HTML semantic spec check
+        working-directory: workflow
         env:
-          PROJECT: ${{ inputs.project || '' }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
         run: |
-          ARGS=""
-          if [ "$DRY_RUN" = "true" ]; then
-            ARGS="$ARGS --dryRun"
+          ARGS="--submit-issues"
+          if [ -n "${{ inputs.site }}" ]; then
+            ARGS="$ARGS --site=${{ inputs.site }}"
           fi
-          if [ -n "$PROJECT" ]; then
-            ARGS="$ARGS --project=$PROJECT"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
           fi
+          node scripts/semantic-spec-check.mjs $ARGS
 
-          node scripts/html-semantic-check/check-single.js $ARGS 2>&1 | tee /tmp/.cache/geo-bot/projects/html-semantic-output/output.log
+      - name: Commit reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manual-review/issues/semantic
+          if git diff --cached --quiet; then
+            echo "no report changes"
+          else
+            git commit -m "chore(semantic): weekly HTML semantic spec check reports"
+            git pull --rebase
+            git push
+          fi
