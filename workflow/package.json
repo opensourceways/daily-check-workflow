@@ -15,6 +15,7 @@
     "check:a-tag": "node scripts/check-a-tag.mjs",
     "check:tag-structure": "node scripts/check-tag-structure.mjs",
     "check:image-alt": "node scripts/check-image-alt.mjs",
+    "check:semantic": "node scripts/semantic-spec-check.mjs",
     "dashboard": "node ../dashboard/generate-dashboard.mjs",
     "pr-summary": "node scripts/fetch-prs.mjs"
   },

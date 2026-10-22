@@ -6,7 +6,6 @@
   "badAltBlacklist": ["图片", "image", "photo", "img", "截图", "screenshot", "未命名", "untitled"],
   "p0SchemaTypes": ["Organization", "BreadcrumbList", "WebSite"],
   "robots": {
-    "contentSignalExpected": { "ai-train": "yes", "search": "yes", "ai-input": "yes" },
-    "llmPolicyFilePrefix": "llms"
+    "contentSignalExpected": { "ai-train": "yes", "search": "yes", "ai-input": "yes" }
   }
 }

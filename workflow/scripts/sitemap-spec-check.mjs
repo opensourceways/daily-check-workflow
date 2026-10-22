@@ -1,16 +1,32 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadProjects } from '../lib/config.mjs';
+import { loadProjects, filterProjects } from '../lib/config.mjs';
+import { writeStats, now } from '../lib/report.mjs';
+import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
 
 const CHANGEFREQ_VALID = new Set(['always', 'hourly', 'daily', 'weekly', 'monthly', 'yearly', 'never']);
-const W3C_DATETIME_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/;
+const W3C_DATETIME_RE = /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/;
 const MAX_CHILD_SITEMAPS = 50;
 const LOC_SAMPLE_SIZE = 8;
 const CAP = { hard: 3000, missing: 2000, mismatch: 1000 };
+
+// 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
+// 有则整个"扫描+提 issue"流程跳过该项目；发现问题时生成简短/完全两份 md 报告，
+// issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效造成重复提单。
+const ISSUE_TITLE_PREFIX = '[GEO Sitemap]';
+const submitIssues = process.argv.includes('--submit-issues');
+const dryRun = process.argv.includes('--dry-run');
+
+const siteArg = process.argv.find((a) => a.startsWith('--site='));
+const siteId = siteArg ? siteArg.split('=')[1] : null;
+// MindSpore-docs 配置的 sitemapUrl 当前 404（robots.txt 声明的是 sitemap-docs-index.xml，地址待修正），默认跳过；--skip= 传空可覆盖
+const DEFAULT_SKIP = ['mindspore-docs'];
+const skipArg = process.argv.find((a) => a.startsWith('--skip='));
+const SKIPS = skipArg ? skipArg.split('=')[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : DEFAULT_SKIP;
 
 async function getText(url, timeout = 30000) {
   const controller = new AbortController();
@@ -136,6 +152,7 @@ async function checkProject(project) {
     id: project.id,
     name: project.name,
     sitemapUrl: project.sitemapUrl,
+    repo: project.repo,
     accessible: false,
     status: null,
     isIndex: false,
@@ -158,7 +175,6 @@ async function checkProject(project) {
     return r;
   }
 
-  const sitemapHost = new URL(project.sitemapUrl).host;
   const legalHosts = new Set();
   for (const u of [project.sitemapUrl, project.sitemapAliasUrl, project.domain, project.domainAlias]) {
     if (!u) continue;
@@ -438,40 +454,227 @@ function renderCatTable(key, cat) {
   return lines;
 }
 
-async function main() {
-  const skipArg = process.argv.find((a) => a.startsWith('--skip='));
-  const skips = skipArg ? skipArg.split('=')[1].split(',').map((s) => s.trim().toLowerCase()) : [];
-  const projects = await loadProjects();
-  const results = [];
-  for (const p of projects) {
-    if (skips.includes(p.id.toLowerCase())) {
-      console.log(`[sitemap-spec] 跳过 ${p.id}`);
-      results.push({ id: p.id, name: p.name, sitemapUrl: p.sitemapUrl, skipped: true, accessible: false, errors: [], warns: [], infos: [], cats: {} });
-      continue;
-    }
-    console.log(`[sitemap-spec] 检查 ${p.id} ...`);
-    try {
-      results.push(await checkProject(p));
-    } catch (e) {
-      results.push({ id: p.id, name: p.name, sitemapUrl: p.sitemapUrl, accessible: false, errors: [{ type: 'sitemap', msg: `检查异常：${e.message}` }], warns: [], infos: [], cats: {} });
+// 单项目在明细/完全版中的段落（含全部分类表格）
+function projectDetailLines(r) {
+  const lines = [];
+  if (r.skipped) {
+    lines.push('- 本轮跳过，不检查');
+    return lines;
+  }
+  if (!r.accessible) {
+    lines.push(`- ${dedupe(r.errors).map((e) => e.msg).join('；') || '不可访问'}`);
+    return lines;
+  }
+  lines.push(`- sitemap：${r.sitemapUrl}，URL 总数 ${r.urlCount}`);
+  const catEntries = Object.entries(r.cats || {});
+  if (!catEntries.length) {
+    lines.push('- 无任何缺失/不符合条目');
+    return lines;
+  }
+  lines.push(`- 问题分类统计：`);
+  lines.push('');
+  lines.push('| 分类 | 条数 | 占全部 URL 比例 |');
+  lines.push('| --- | --- | --- |');
+  for (const [key, cat] of catEntries) lines.push(`| ${CAT_TITLES[key][0]} | ${cat.count} | ${Math.round((cat.count / r.urlCount) * 100)}% |`);
+  lines.push('');
+  for (const [key, cat] of catEntries) lines.push(...renderCatTable(key, cat));
+  return lines;
+}
+
+// 提 issue / 触发扫描结论的条件：存在硬性错误（含不可访问）或告警；仅可选属性"缺失"不触发
+function hasAnyIssue(r) {
+  if (r.skipped) return false;
+  return dedupe(r.errors).length > 0 || dedupe(r.warns).length > 0;
+}
+
+// 简短版：单项目总览 + 错误/告警要点 + 每类最多 5 个示例条目
+function briefLines(r) {
+  const lines = [];
+  lines.push(`- sitemap：${r.sitemapUrl}`);
+  lines.push(`- 可访问：${r.accessible ? `是（HTTP ${r.status}），类型：${r.isIndex ? 'sitemap index' : 'urlset'}，解析到 ${r.urlCount} 个 <url>${r.isIndex ? `（子 sitemap ${r.childCount} 个${r.childErrors.length ? `，${r.childErrors.length} 个异常` : '，全部可访问'}）` : ''}` : `否（${r.status ?? '-'}）`}`);
+  if (r.legalHosts?.length > 1) lines.push(`- 合法域名清单：${r.legalHosts.join('、')}`);
+  if (r.newVersions) lines.push(`- newVersions（仅检查匹配版本的子 sitemap）：${r.newVersions.join('、')}`);
+  if (r.locSamples?.length) {
+    const ok = r.locSamples.filter((x) => x.ok).length;
+    lines.push(`- loc 抽样访问：${ok}/${r.locSamples.length} 可访问${ok < r.locSamples.length ? `；失败：${r.locSamples.filter((x) => !x.ok).map((x) => `${x.loc} → ${x.status}`).join('；')}` : ''}`);
+  }
+  lines.push('');
+  for (const e of dedupe(r.errors)) lines.push(`- ❌ [${e.type}] ${e.msg}`);
+  for (const w of dedupe(r.warns)) lines.push(`- ⚠️ [${w.type}] ${w.msg}`);
+  const catEntries = Object.entries(r.cats || {});
+  if (catEntries.length) {
+    lines.push('');
+    lines.push('**分类条目数**：');
+    lines.push('');
+    for (const [key, cat] of catEntries) {
+      lines.push(`- ${CAT_TITLES[key][0]}：${cat.count} 条（${Math.round((cat.count / r.urlCount) * 100)}%）`);
+      for (const it of sampleArray(cat.items, 5)) lines.push(`  - ${it.loc}${it.note ? ` —— ${it.note}` : ''}`);
+      if (cat.count > 5) lines.push(`  - …其余 ${cat.count - 5} 条见完全版报告`);
     }
   }
+  return lines;
+}
 
-  const dateStr = new Date().toISOString().slice(0, 10);
+function issueTitleFor(r) {
+  const e = dedupe(r.errors).length;
+  const w = dedupe(r.warns).length;
+  return `${ISSUE_TITLE_PREFIX} ${r.name}（${r.id}）：sitemap 属性规范问题（错误 ${e} 类 / 告警 ${w} 类）`;
+}
+
+function issueBodyFor(r, fullFileName, startedAt) {
+  const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
+  const refName = process.env.GITHUB_REF_NAME || 'archive';
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/sitemap/${fullFileName}`;
+  const lines = [];
+  lines.push(`本 issue 由 GEO 例行检查（sitemap 属性规范维度）自动生成。以下为对项目 sitemap（含 index 递归子 sitemap）按 sitemaps.org 规范核查 loc / lastmod / changefreq / xhtml:link 得出的问题（${startedAt.slice(0, 10)}）。`);
+  lines.push('');
+  lines.push(`**项目**：${r.name}（${r.id}）`);
+  lines.push('');
+  lines.push(...briefLines(r));
+  lines.push('');
+  lines.push('### 完全版报告');
+  lines.push('');
+  lines.push('简短版每类仅列最多 5 个示例，全部条目见检查仓库内的完全版报告：');
+  lines.push('');
+  lines.push(`> [${fullFileName}](${fullUrl})`);
+  lines.push('');
+  lines.push('### 处理说明');
+  lines.push('');
+  lines.push('- loc 类：修正 sitemap 生成配置，使全部 loc 为本项目合法域名的绝对 URL（index 中的子 sitemap 地址同样要求）');
+  lines.push('- lastmod 类：lastmod 应为页面真实最后修改时间而非构建时间；无法准确获取时建议省略该属性（可选）');
+  lines.push('- changefreq 类：取值须在 `always/hourly/daily/weekly/monthly/yearly/never` 枚举内；`never` 仅用于已归档页面');
+  lines.push('- xhtml:link 类：存在其他语言版本的页面需用 `<xhtml:link rel="alternate" hreflang="" href=""/>` 列出每个语言版本（包括自身）；单语言页面无需声明');
+  lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 若认为某条属预期（误报），请在 issue 评论说明，维护者会关闭本 issue');
+  lines.push('');
+  lines.push('<sub>由 daily-check-workflow sitemap 规范检查（sitemap-spec-check）自动生成。</sub>');
+  return lines.join('\n');
+}
+
+// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
+// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
+async function precheckExistingIssue(project) {
+  const parsed = parseOwnerRepo(project.repo);
+  if (!parsed) {
+    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
+  }
+  let existing;
+  try {
+    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
+  } catch (err) {
+    if (hasToken()) {
+      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
+    }
+    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
+  }
+  if (existing.length) {
+    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
+    return { block: true, canSubmit: false, notes: [`已存在未关闭的 sitemap 规范 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
+  }
+  if (!hasToken()) {
+    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
+  }
+  return { block: false, canSubmit: true, notes: [] };
+}
+
+function skippedEntry(project, notes) {
+  return {
+    id: project.id,
+    name: project.name,
+    sitemapUrl: project.sitemapUrl,
+    repo: project.repo,
+    skipped: true,
+    accessible: false,
+    errors: [],
+    warns: [],
+    infos: notes.map((n) => ({ type: 'sitemap', msg: n, dedup: n })),
+    cats: {},
+  };
+}
+
+async function checkProjectSafe(project) {
+  console.log(`[sitemap-spec] 检查 ${project.id} ...`);
+  try {
+    return await checkProject(project);
+  } catch (e) {
+    return { id: project.id, name: project.name, sitemapUrl: project.sitemapUrl, repo: project.repo, accessible: false, errors: [{ type: 'sitemap', msg: `检查异常：${e.message}` }], warns: [], infos: [], cats: {} };
+  }
+}
+
+async function main() {
+  const projects = await loadProjects();
+  const targets = filterProjects(projects, siteId);
+  const startedAt = now();
+  const dateStr = startedAt.slice(0, 10);
   const reportName = `${dateStr}-sitemap-规范检查报告.md`;
   const detailName = `${dateStr}-sitemap-问题条目明细.md`;
+  const dir = resolve(ROOT, 'manual-review', 'issues', 'sitemap');
+  await mkdir(dir, { recursive: true });
+
+  const results = [];
+  for (const project of targets) {
+    if (SKIPS.includes(project.id.toLowerCase())) {
+      console.log(`[sitemap-spec] 跳过 ${project.id}`);
+      results.push(skippedEntry(project, ['默认跳过（MindSpore-docs 配置的 sitemapUrl 当前 404，真实地址待修正；用 --skip= 传空可强制检查）']));
+      continue;
+    }
+    if (!submitIssues) {
+      results.push(await checkProjectSafe(project));
+      continue;
+    }
+    const pre = await precheckExistingIssue(project);
+    pre.notes.forEach((n) => console.log(`[sitemap-spec] ${project.id}: ${n}`));
+    if (pre.block) {
+      results.push(skippedEntry(project, pre.notes));
+      continue;
+    }
+    console.log(`\n[sitemap-spec] ===== ${project.id} =====`);
+    const entry = await checkProjectSafe(project);
+    if (hasAnyIssue(entry)) {
+      const fullFileName = `sitemap-${entry.id}-${dateStr}-full.md`;
+      const briefFileName = `sitemap-${entry.id}-${dateStr}-brief.md`;
+      if (!dryRun) {
+        const header = [`# Sitemap 属性规范完全版报告 · ${entry.name}（${entry.id}）`, '', `- 检查时间：${startedAt}`, `- 检查项：loc / lastmod / changefreq / xhtml:link（规范来源：sitemaps.org，见 measures/03-sitemap/规范.md）`, ''];
+        await writeFile(resolve(dir, fullFileName), header.concat(projectDetailLines(entry)).join('\n') + '\n', 'utf8');
+        const bheader = [`# Sitemap 属性规范简短报告 · ${entry.name}（${entry.id}）`, '', `- 检查时间：${startedAt}`, ''];
+        await writeFile(resolve(dir, briefFileName), bheader.concat(briefLines(entry)).join('\n') + '\n', 'utf8');
+        entry.reports = { full: `manual-review/issues/sitemap/${fullFileName}`, brief: `manual-review/issues/sitemap/${briefFileName}` };
+      }
+      const body = issueBodyFor(entry, fullFileName, startedAt);
+      const title = issueTitleFor(entry);
+      const target = parseOwnerRepo(project.repo);
+      if (dryRun || !target || !pre.canSubmit) {
+        console.log(`\n[sitemap-spec] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
+        console.log(body);
+        entry.issueAction = 'dry-run';
+      } else {
+        const created = await createIssue({ ...target, title, body });
+        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
+        console.log(`[sitemap-spec] ${project.id}: ✨ 已创建 issue：${url}`);
+        entry.issueAction = 'created';
+        entry.issueUrl = url;
+      }
+    } else {
+      console.log(`[sitemap-spec] ${project.id}: 未发现错误/告警，不提 issue`);
+    }
+    results.push(entry);
+  }
+
+  const statsPath = await writeStats('sitemap-spec-stats', { timestamp: startedAt, measure: 'sitemap-spec', results });
 
   // ---- 汇总报告 ----
   const lines = [];
   lines.push('# Sitemap 属性规范检查报告');
   lines.push('');
-  lines.push(`- 检查时间：${new Date().toISOString()}`);
-  lines.push(`- 检查范围：projects.config.json 中 ${projects.length - skips.length} 个项目（跳过：${skips.join(', ') || '无'}）`);
+  lines.push(`- 检查时间：${startedAt}`);
+  lines.push(`- 检查范围：projects.config.json 中 ${targets.length - results.filter((r) => r.skipped).length} 个项目（跳过：${results.filter((r) => r.skipped).map((r) => r.id).join(', ') || '无'}）`);
+  lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
   lines.push(`- 规范来源：archive/SEO标准及覆盖情况.md（sitemaps.org），measures/03-sitemap/规范.md`);
   lines.push(`- 检查项：loc（必选，绝对 URL、可访问）、lastmod（W3C 格式、非构建时间）、changefreq（有效枚举值、避免 never）、xhtml:link（多语言 alternate 完整性）`);
   lines.push(`- 特殊约定：配置了 newVersions 的项目仅检查 index 中匹配 newVersions 的子 sitemap；domainAlias/sitemapAliasUrl 中的域名视为合法 loc 域名（openEuler 的 openatom.cn 不再计为主机不一致问题）`);
   lines.push(`- xhtml:link 核实规则：仅当该页面按语言路径规则在 sitemap URL 全集中确实存在其他语言版本时，缺失/不完整才计为问题；规则——默认（zh-en-prefix）/zh/xxx ↔ /en/xxx、无前缀页 ↔ /zh、/en 两版本；MindSpore：/path ↔ /path/en，文章类（news/technology-blogs/activities/version-updates）/type/id ↔ /type/en/id`);
-  lines.push(`- 完整缺失/不符合条目清单见：[${detailName}](./${detailName})`);
+  lines.push(`- 机器可读结果：workflow/stats/sitemap-spec-stats.json`);
+  if (!submitIssues) lines.push(`- 完整缺失/不符合条目清单见：[${detailName}](./${detailName})`);
   lines.push('');
   lines.push('## 总览');
   lines.push('');
@@ -485,55 +688,62 @@ async function main() {
     const s = r.stats;
     const errLoc = s ? s.locMissing + s.locNonAbsolute + s.locHostMismatch : '-';
     lines.push(
-      `| ${r.name}（${r.id}） | ${r.sitemapUrl || '-'} | ${r.accessible ? `✅ (${r.status})` : `❌ (${r.status ?? '-'})`} | ${r.isIndex ? `index(${r.childCount})` : 'urlset'} | ${r.urlCount} | ${s ? errLoc : '-'} | ${s ? `${s.lastmodMissing} (${Math.round((s.lastmodMissing / r.urlCount) * 100)}%)` : '-'} | ${s ? `${s.changefreqMissing} (${Math.round((s.changefreqMissing / r.urlCount) * 100)}%)` : '-'} | ${s ? `${s.xhtmlMissing}/${s.multilingualPages}` : '-'} | ${verdict(r)} |`
+      `| ${r.name}（${r.id}） | ${r.sitemapUrl || '-'} | ${r.accessible ? `✅ (${r.status})` : `❌ (${r.status ?? '-'})`} | ${r.isIndex ? `index(${r.childCount})` : 'urlset'} | ${r.urlCount} | ${s ? errLoc : '-'} | ${s ? `${s.lastmodMissing} (${Math.round((s.lastmodMissing / r.urlCount) * 100)}%)` : '-'} | ${s ? `${s.changefreqMissing} (${Math.round((s.changefreqMissing / r.urlCount) * 100)}%)` : '-'} | ${s ? `${s.xhtmlMissing}/${s.multilingualPages}` : '-'} | ${verdict(r)}${r.issueUrl ? `，[issue](${r.issueUrl})` : ''} |`
     );
   }
   lines.push('');
   lines.push('## 各项目明细');
-  for (const r of results) {
+  if (submitIssues) {
     lines.push('');
-    lines.push(`### ${r.name}（${r.id}） — ${verdict(r)}`);
-    if (r.skipped) {
+    lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 \`sitemap-<项目ID>-${dateStr}-full.md\`）`);
+    for (const r of results.filter((x) => hasAnyIssue(x))) {
+      lines.push(`- ${r.name}（${r.id}）：\`sitemap-${r.id}-${dateStr}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : ''}`);
+    }
+  } else {
+    for (const r of results) {
       lines.push('');
-      lines.push('- 本轮按要求跳过，不检查');
-      continue;
-    }
-    lines.push('');
-    lines.push(`- sitemap：${r.sitemapUrl || '未配置'}`);
-    if (r.legalHosts?.length > 1) lines.push(`- 合法域名清单（domain/domainAlias/sitemapUrl/sitemapAliasUrl）：${r.legalHosts.join('、')}`);
-    if (r.newVersions) lines.push(`- newVersions（本轮仅检查匹配这些版本的子 sitemap）：${r.newVersions.join('、')}`);
-    if (r.accessible) {
-      lines.push(`- 可访问：是（HTTP ${r.status}），类型：${r.isIndex ? 'sitemap index' : 'urlset'}，解析到 ${r.urlCount} 个 <url>${r.isIndex ? `（子 sitemap ${r.childCount} 个${r.childErrors.length ? `，其中不可访问/异常 ${r.childErrors.length} 个` : '，全部可访问'}）` : ''}`);
-    }
-    const errors = dedupe(r.errors);
-    const warns = dedupe(r.warns);
-    const infos = dedupe(r.infos || []);
-    if (r.stats) {
-      lines.push(`- lastmod：缺失 ${r.stats.lastmodMissing}/${r.urlCount}；去重值 ${r.stats.lastmodDistinct} 个${r.stats.lastmodAllSame ? `；**所有页面同一个值：${r.stats.lastmodAllSame}**` : ''}`);
-      lines.push(`- changefreq：缺失 ${r.stats.changefreqMissing}/${r.urlCount}；出现的值：${r.stats.changefreqValues.join(', ') || '(无)'}`);
-      lines.push(`- xhtml:link：核实规则 ${r.stats.langMode}${r.stats.hreflangs.length ? `（已声明 hreflang：${r.stats.hreflangs.join(', ')}）` : ''}：多语言页面 ${r.stats.multilingualPages} 个，其中缺失/不完整 ${r.stats.xhtmlMissing} 个、声明完整 ${r.stats.xhtmlOk} 个；单语言页面 ${r.stats.singleLangPages} 个（不计为问题）`);
-    }
-    if (r.locSamples?.length) {
-      const ok = r.locSamples.filter((x) => x.ok).length;
-      lines.push(`- loc 抽样访问：${ok}/${r.locSamples.length} 可访问${ok < r.locSamples.length ? `；失败：${r.locSamples.filter((x) => !x.ok).map((x) => `${x.loc} → ${x.status}`).join('；')}` : ''}`);
-    }
-    if (errors.length) {
-      lines.push(`- ❌ 错误：`);
-      for (const e of errors) lines.push(`  - [${e.type}] ${e.msg}`);
-    }
-    if (warns.length) {
-      lines.push(`- ⚠️ 告警：`);
-      for (const w of warns) lines.push(`  - [${w.type}] ${w.msg}`);
-    }
-    if (infos.length) {
-      lines.push(`- ℹ️ 说明：`);
-      for (const i of infos) lines.push(`  - [${i.type}] ${i.msg}`);
-    }
-    const cats = Object.entries(r.cats || {});
-    if (cats.length) {
-      lines.push(`- 条目清单（完整见 [${detailName}](./${detailName})）：`);
-      for (const [key, cat] of cats) {
-        lines.push(`  - ${CAT_TITLES[key][0]}：${cat.count} 条`);
+      lines.push(`### ${r.name}（${r.id}） — ${verdict(r)}`);
+      lines.push('');
+      if (r.skipped) {
+        for (const i of r.infos || []) lines.push(`- ${i.msg}`);
+        continue;
+      }
+      lines.push(`- sitemap：${r.sitemapUrl || '未配置'}`);
+      if (r.legalHosts?.length > 1) lines.push(`- 合法域名清单（domain/domainAlias/sitemapUrl/sitemapAliasUrl）：${r.legalHosts.join('、')}`);
+      if (r.newVersions) lines.push(`- newVersions（本轮仅检查匹配这些版本的子 sitemap）：${r.newVersions.join('、')}`);
+      if (r.accessible) {
+        lines.push(`- 可访问：是（HTTP ${r.status}），类型：${r.isIndex ? 'sitemap index' : 'urlset'}，解析到 ${r.urlCount} 个 <url>${r.isIndex ? `（子 sitemap ${r.childCount} 个${r.childErrors.length ? `，其中不可访问/异常 ${r.childErrors.length} 个` : '，全部可访问'}）` : ''}`);
+      }
+      const errors = dedupe(r.errors);
+      const warns = dedupe(r.warns);
+      const infos = dedupe(r.infos || []);
+      if (r.stats) {
+        lines.push(`- lastmod：缺失 ${r.stats.lastmodMissing}/${r.urlCount}；去重值 ${r.stats.lastmodDistinct} 个${r.stats.lastmodAllSame ? `；**所有页面同一个值：${r.stats.lastmodAllSame}**` : ''}`);
+        lines.push(`- changefreq：缺失 ${r.stats.changefreqMissing}/${r.urlCount}；出现的值：${r.stats.changefreqValues.join(', ') || '(无)'}`);
+        lines.push(`- xhtml:link：核实规则 ${r.stats.langMode}${r.stats.hreflangs.length ? `（已声明 hreflang：${r.stats.hreflangs.join(', ')}）` : ''}：多语言页面 ${r.stats.multilingualPages} 个，其中缺失/不完整 ${r.stats.xhtmlMissing} 个、声明完整 ${r.stats.xhtmlOk} 个；单语言页面 ${r.stats.singleLangPages} 个（不计为问题）`);
+      }
+      if (r.locSamples?.length) {
+        const ok = r.locSamples.filter((x) => x.ok).length;
+        lines.push(`- loc 抽样访问：${ok}/${r.locSamples.length} 可访问${ok < r.locSamples.length ? `；失败：${r.locSamples.filter((x) => !x.ok).map((x) => `${x.loc} → ${x.status}`).join('；')}` : ''}`);
+      }
+      if (errors.length) {
+        lines.push(`- ❌ 错误：`);
+        for (const e of errors) lines.push(`  - [${e.type}] ${e.msg}`);
+      }
+      if (warns.length) {
+        lines.push(`- ⚠️ 告警：`);
+        for (const w of warns) lines.push(`  - [${w.type}] ${w.msg}`);
+      }
+      if (infos.length) {
+        lines.push(`- ℹ️ 说明：`);
+        for (const i of infos) lines.push(`  - [${i.type}] ${i.msg}`);
+      }
+      const cats = Object.entries(r.cats || {});
+      if (cats.length) {
+        lines.push(`- 条目清单（完整见 [${detailName}](./${detailName})）：`);
+        for (const [key, cat] of cats) {
+          lines.push(`  - ${CAT_TITLES[key][0]}：${cat.count} 条`);
+        }
       }
     }
   }
@@ -546,55 +756,30 @@ async function main() {
   if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.id).join('、')}，主要是 lastmod 疑似构建时间、xhtml:link 缺失或 changefreq=never、loc 域名不一致等，按 measures/03-sitemap/规范.md 关键要求第 2/3/4 条评估整改。`);
   if (!bad.length && !warn.length) lines.push('- 全部项目 sitemap 属性符合规范。');
   lines.push('');
-  lines.push('> 注：xhtml:link 为条件性必选——仅当页面存在其他语言版本时必须声明；整站无任何 alternate 的，无法自动判定是否多语言，已标注需人工确认。lastmod "非构建时间"通过全量同值 + 与响应头 Last-Modified 对比启发式判断。各分类的完整/截断条目清单见明细文件。');
+  lines.push('> 注：xhtml:link 为条件性必选——仅当页面存在其他语言版本时必须声明（以 sitemap 全集核实）；lastmod "非构建时间"通过全量同值 + 与响应头 Last-Modified 对比启发式判断。各分类的完整/截断条目清单见明细文件或各项目完全版。');
 
-  const dir = resolve(ROOT, 'manual-review', 'issues', 'sitemap');
-  await mkdir(dir, { recursive: true });
   await writeFile(resolve(dir, reportName), lines.join('\n'), 'utf8');
 
-  // ---- 明细文件 ----
-  const d = [];
-  d.push(`# Sitemap 缺失/不符合规范条目明细`);
-  d.push('');
-  d.push(`- 配套汇总报告：[${reportName}](./${reportName})`);
-  d.push(`- 规范来源：archive/SEO标准及覆盖情况.md（sitemaps.org）`);
-  d.push(`- 说明：lastmod/changefreq/xhtml:link 为 sitemaps.org 可选属性，其"缺失"不代表硬性违规，是否整改按 measures/03-sitemap/规范.md 关键要求评估；loc 缺失/非绝对 URL、lastmod 格式错误、changefreq 非法值等为硬性不符合。单类清单超过上限时按表内标注截断。`);
-  for (const r of results) {
+  // ---- 明细文件（仅常规模式；提 issue 模式按去重规则不重复输出明细） ----
+  if (!submitIssues) {
+    const d = [];
+    d.push(`# Sitemap 缺失/不符合规范条目明细`);
     d.push('');
-    d.push(`## ${r.name}（${r.id}） — ${verdict(r)}`);
-    if (r.skipped) {
+    d.push(`- 配套汇总报告：[${reportName}](./${reportName})`);
+    d.push(`- 规范来源：archive/SEO标准及覆盖情况.md（sitemaps.org）`);
+    d.push(`- 说明：lastmod/changefreq/xhtml:link 为 sitemaps.org 可选属性，其"缺失"不代表硬性违规，是否整改按 measures/03-sitemap/规范.md 关键要求评估；loc 缺失/非绝对 URL、lastmod 格式错误、changefreq 非法值等为硬性不符合。单类清单超过上限时按表内标注截断。`);
+    for (const r of results) {
       d.push('');
-      d.push('- 本轮按要求跳过，不检查');
-      continue;
-    }
-    if (!r.accessible) {
+      d.push(`## ${r.name}（${r.id}） — ${verdict(r)}`);
       d.push('');
-      d.push(`- ${dedupe(r.errors).map((e) => e.msg).join('；') || '不可访问'}`);
-      continue;
+      d.push(...projectDetailLines(r));
     }
-    d.push('');
-    d.push(`- sitemap：${r.sitemapUrl}，URL 总数 ${r.urlCount}`);
-    const catEntries = Object.entries(r.cats || {});
-    if (!catEntries.length) {
-      d.push('- 无任何缺失/不符合条目');
-      continue;
-    }
-    d.push(`- 问题分类统计：`);
-    d.push('');
-    d.push('| 分类 | 条数 | 占全部 URL 比例 |');
-    d.push('| --- | --- | --- |');
-    for (const [key, cat] of catEntries) d.push(`| ${CAT_TITLES[key][0]} | ${cat.count} | ${Math.round((cat.count / r.urlCount) * 100)}% |`);
-    d.push('');
-    for (const [key, cat] of catEntries) {
-      d.push(...renderCatTable(key, cat));
-    }
+    await writeFile(resolve(dir, detailName), d.join('\n'), 'utf8');
   }
-  const detailPath = resolve(dir, detailName);
-  await writeFile(detailPath, d.join('\n'), 'utf8');
 
-  console.log(`[sitemap-spec] 汇总报告与明细已写入：`);
-  console.log(`  ${resolve(dir, reportName)}`);
-  console.log(`  ${detailPath}`);
+  console.log(`[sitemap-spec] 检查完成：stats -> ${statsPath}`);
+  console.log(`[sitemap-spec] 汇总报告 -> ${resolve(dir, reportName)}`);
+  if (!submitIssues) console.log(`[sitemap-spec] 明细 -> ${resolve(dir, detailName)}`);
 }
 
 main().catch((e) => {

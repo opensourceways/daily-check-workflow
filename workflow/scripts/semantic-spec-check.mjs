@@ -1,10 +1,11 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadProjects } from '../lib/config.mjs';
+import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { fetchText } from '../lib/http.mjs';
 import { parseSitemap } from '../lib/sitemap.mjs';
 import { writeStats, now } from '../lib/report.mjs';
+import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -14,7 +15,19 @@ const BAD_LINK_TEXT = new Set(rules.badLinkTextBlacklist.map((t) => t.toLowerCas
 const BAD_ALT = new Set(rules.badAltBlacklist.map((t) => t.toLowerCase()));
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
-const SKIP_IDS = ['MindSpore-docs'];
+
+// 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
+// 有则跳过该项目整个"扫描+提单"流程；有发现时生成简短/完全两份 md 报告，
+// issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
+const ISSUE_TITLE_PREFIX = '[GEO HTML Semantic]';
+const submitIssues = process.argv.includes('--submit-issues');
+const dryRun = process.argv.includes('--dry-run');
+const siteArg = process.argv.find((a) => a.startsWith('--site='));
+const siteId = siteArg ? siteArg.split('=')[1] : null;
+// MindSpore-docs 按要求默认跳过；--skip= 传空可强制检查
+const skipArg = process.argv.find((a) => a.startsWith('--skip='));
+const SKIPS = skipArg ? skipArg.split('=')[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : ['mindspore-docs'];
+
 const DOC_HOME_PAGES = {
   'openEuler-docs': [['/zh/', '文档首页 /zh/'], ['/en/', '文档首页 /en/']],
   'openGauss-docs': [['/zh/', '文档首页 /zh/'], ['/en/', '文档首页 /en/']],
@@ -24,23 +37,51 @@ const SAMPLE_CAP = 4;
 const LANGS = new Set(['zh', 'en', 'ja', 'ko', 'fr', 'es', 'de', 'ru', 'pt', 'hi', 'zh-cn', 'zh-tw']);
 const SKIP_SECTION = /^(docs|versiondocs|tag|tags|category|categories|search|archives?)$/i;
 
+const SECTIONING = ['article', 'aside', 'main', 'section'];
+
 const ISSUE_META = {
-  'a.badText': { spec: '06', name: '无语义链接文本', level: 'error' },
-  'a.jsHref': { spec: '06', name: 'javascript: 伪协议 href', level: 'error' },
-  'a.invalidHref': { spec: '06', name: 'href 空/缺失/#', level: 'error' },
-  'a.extNoRel': { spec: '06', name: '外链 target=_blank 缺 rel=noopener', level: 'error' },
-  'a.imgLinkNoAlt': { spec: '06', name: '图片链接缺 alt', level: 'error' },
-  'a.brokenAnchor': { spec: '06', name: '锚点指向不存在的 id', level: 'warn' },
-  's.h1Count': { spec: '07', name: 'h1 数量不为 1', level: 'error' },
-  's.headingSkip': { spec: '07', name: '标题层级跳级', level: 'error' },
-  's.noMain': { spec: '07', name: '缺 `<main>` 区块', level: 'error' },
-  's.noNav': { spec: '07', name: '缺 `<nav>` 区块', level: 'warn' },
-  's.noFooter': { spec: '07', name: '缺 `<footer>` 区块', level: 'warn' },
-  's.clientShell': { spec: '07', name: '页面为客户端渲染壳，静态 HTML 无实质内容', level: 'error' },
-  'i.missingAlt': { spec: '08', name: '`<img>` 缺 alt 属性', level: 'error' },
-  'i.badAlt': { spec: '08', name: '无意义 alt 文本', level: 'error' },
-  'i.longAlt': { spec: '08', name: 'alt 超过 125 字符', level: 'warn' },
-  'i.dupAlt': { spec: '08', name: '同页 alt 大量重复', level: 'warn' },
+  's.header.missing': { spec: '10', group: 'header/footer', name: '缺顶层 `<header>`（banner）', level: 'error' },
+  's.header.duplicate': { spec: '10', group: 'header/footer', name: '多个同时可见的顶层 `<header>`', level: 'error' },
+  's.footer.missing': { spec: '10', group: 'header/footer', name: '缺顶层 `<footer>`（contentinfo）', level: 'error' },
+  's.footer.duplicate': { spec: '10', group: 'header/footer', name: '多个同时可见的顶层 `<footer>`', level: 'error' },
+  's.hf.nesting': { spec: '10', group: 'header/footer', name: '`<header>`/`<footer>` 互为祖先/后代（自嵌套）', level: 'error' },
+  's.main.missing': { spec: '10', group: 'main', name: '缺 `<main>`', level: 'error' },
+  's.main.duplicate': { spec: '10', group: 'main', name: '多个同时可见的 `<main>`', level: 'error' },
+  's.main.nesting': { spec: '10', group: 'main', name: '`<main>` 嵌套 `<main>`（自嵌套）', level: 'error' },
+  's.h1.missing': { spec: '10', group: 'h1~h6', name: '缺 `<h1>` 或 `<h1>` 内无可见文本', level: 'error' },
+  's.h1.duplicate': { spec: '10', group: 'h1~h6', name: '多个 `<h1>`', level: 'error' },
+  's.heading.skip': { spec: '10', group: 'h1~h6', name: '标题层级跳级', level: 'error' },
+  's.heading.nesting': { spec: '10', group: 'h1~h6', name: '标题标签嵌套标题标签（自嵌套）', level: 'error' },
+  'i.noAlt': { spec: '10', group: 'img', name: '`<img>` 不存在 alt 属性', level: 'error' },
+  'a.noHref': { spec: '10', group: 'a', name: '`<a>` 不存在 href 属性', level: 'error' },
+  'a.noText': { spec: '10', group: 'a', name: '`<a>` 内无可见文本（或仅含无 alt 的 `<img>`）', level: 'error' },
+  'a.jsHref': { spec: '10', group: 'a', name: 'href 使用 `javascript:` 协议', level: 'error' },
+  'a.badHref': { spec: '10', group: 'a', name: 'href 为空，非合法 URL', level: 'error' },
+  'a.badText': { spec: '06', group: '附加', name: '无语义链接文本', level: 'error' },
+  'a.placeholder': { spec: '06', group: '附加', name: 'href 为 `#` 占位', level: 'error' },
+  'a.extNoRel': { spec: '06', group: '附加', name: '外链 target=_blank 缺 rel=noopener', level: 'error' },
+  'a.brokenAnchor': { spec: '06', group: '附加', name: '锚点指向不存在的 id', level: 'warn' },
+  's.noNav': { spec: '07', group: '附加', name: '缺 `<nav>` 区块', level: 'warn' },
+  's.clientShell': { spec: '07', group: '附加', name: '页面为客户端渲染壳，静态 HTML 无实质内容', level: 'error' },
+  'i.badAlt': { spec: '08', group: '附加', name: '无意义 alt 文本', level: 'error' },
+  'i.longAlt': { spec: '08', group: '附加', name: 'alt 超过 125 字符', level: 'warn' },
+  'i.dupAlt': { spec: '08', group: '附加', name: '同页 alt 大量重复', level: 'warn' },
+};
+const GROUP_ORDER = ['header/footer', 'main', 'h1~h6', 'img', 'a', '附加'];
+
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+const BLOCK_CLOSES_P = new Set(['address', 'article', 'aside', 'blockquote', 'details', 'div', 'dl', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'main', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'ul']);
+const AFTER_RULES = {
+  li: new Set(['li']),
+  dd: new Set(['dd', 'dt']),
+  dt: new Set(['dd', 'dt']),
+  td: new Set(['td', 'th']),
+  th: new Set(['td', 'th']),
+  tr: new Set(['tr', 'tbody', 'tfoot', 'thead']),
+  tbody: new Set(['tbody', 'tfoot']),
+  tfoot: new Set(['tbody']),
+  option: new Set(['option', 'optgroup']),
+  optgroup: new Set(['optgroup']),
 };
 
 function trunc(s, n = 100) {
@@ -77,41 +118,37 @@ function stripTags(s) {
     .trim();
 }
 
-function extractImgs(s) {
-  const imgs = [];
-  const re = /<img\b([^>]*)\/?>/gi;
-  let m;
-  while ((m = re.exec(s)) !== null) {
-    const a = parseAttrs(m[1]);
-    imgs.push({ src: a.src ?? '', alt: a.alt ?? null });
-  }
-  return imgs;
-}
-
-function extractAnchors(html) {
-  const out = [];
-  const re = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+function parseTree(html) {
+  const root = { tag: '#root', attrs: {}, children: [], parent: null, contentStart: 0, end: html.length };
+  const stack = [root];
+  const nodes = [];
+  const re = /<(\/?)([a-zA-Z][a-zA-Z0-9:._-]*)((?:"[^"]*"|'[^']*'|[^>])*)>/g;
   let m;
   while ((m = re.exec(html)) !== null) {
-    const a = parseAttrs(m[1]);
-    const inner = m[2];
-    out.push({
-      href: a.href ?? null,
-      rel: a.rel ?? null,
-      target: a.target ?? null,
-      text: stripTags(inner),
-      imgs: extractImgs(inner),
-    });
+    const closing = m[1] === '/';
+    const tag = m[2].toLowerCase();
+    if (tag === 'html' || tag === 'head' || tag === 'body') continue;
+    if (closing) {
+      for (let i = stack.length - 1; i > 0; i--) {
+        if (stack[i].tag === tag) {
+          for (let k = stack.length - 1; k >= i; k--) stack[k].end = m.index;
+          stack.length = i;
+          break;
+        }
+      }
+      continue;
+    }
+    let top = stack[stack.length - 1];
+    if (top.tag === 'p' && BLOCK_CLOSES_P.has(tag)) { top.end = m.index; stack.pop(); top = stack[stack.length - 1]; }
+    const rule = AFTER_RULES[tag];
+    if (rule && rule.has(top.tag)) { top.end = m.index; stack.pop(); top = stack[stack.length - 1]; }
+    const selfClose = VOID_TAGS.has(tag) || /\/\s*$/.test(m[3]);
+    const node = { tag, attrs: parseAttrs(m[3]), children: [], parent: top, contentStart: m.index + m[0].length, end: html.length };
+    top.children.push(node);
+    nodes.push(node);
+    if (!selfClose) stack.push(node);
   }
-  return out;
-}
-
-function headingSequence(html) {
-  const out = [];
-  const re = /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
-  let m;
-  while ((m = re.exec(html)) !== null) out.push({ level: Number(m[1]), text: trunc(stripTags(m[2]), 60) });
-  return out;
+  return nodes;
 }
 
 function collectIds(html) {
@@ -122,81 +159,169 @@ function collectIds(html) {
   return ids;
 }
 
+function isDescendantOf(node, tags) {
+  let p = node.parent;
+  while (p) {
+    if (tags.includes(p.tag)) return true;
+    p = p.parent;
+  }
+  return false;
+}
+
+function isVisible(node) {
+  let n = node;
+  while (n && n.tag !== '#root') {
+    const a = n.attrs;
+    const ah = a['aria-hidden'];
+    if (ah !== undefined && String(ah).toLowerCase() !== 'false') return false;
+    if ('hidden' in a) return false;
+    if (/display\s*:\s*none/i.test(a.style || '')) return false;
+    n = n.parent;
+  }
+  return true;
+}
+
+function descendantsOf(node, tag) {
+  const out = [];
+  const stack = [...node.children];
+  while (stack.length) {
+    const n = stack.pop();
+    if (n.tag === tag) out.push(n);
+    stack.push(...n.children);
+  }
+  return out;
+}
+
+function classesOf(node) {
+  const c = String(node.attrs.class || '').trim();
+  return c ? trunc(c.split(/\s+/).slice(0, 3).join('.'), 60) : '(无class)';
+}
+
 function checkPage(rawHtml, pageUrl) {
   const html = toContentHtml(rawHtml);
+  const nodes = parseTree(html);
+  const textOf = (n) => stripTags(html.slice(n.contentStart, n.end));
   const issues = {};
   const push = (type, item) => {
     (issues[type] ||= { count: 0, samples: [] });
     issues[type].count += 1;
-    if (issues[type].samples.length < 5) issues[type].samples.push(item);
+    if (issues[type].samples.length < 10) issues[type].samples.push(item);
   };
 
   const origin = new URL(pageUrl).origin;
-  const anchors = extractAnchors(html);
-  const ids = collectIds(html);
-  for (const a of anchors) {
-    const href = (a.href ?? '').trim();
-    if (a.text && BAD_LINK_TEXT.has(a.text.toLowerCase())) {
-      push('a.badText', { text: trunc(a.text, 40), href: trunc(href, 90) });
+
+  for (const t of ['header', 'footer']) {
+    const key = t === 'header' ? 's.header' : 's.footer';
+    const els = nodes.filter((n) => n.tag === t);
+    const topEls = els.filter((n) => !isDescendantOf(n, [...SECTIONING, 'nav']));
+    if (topEls.length === 0) {
+      push(`${key}.missing`, { existing: els.length, note: els.length ? '现有元素均为 Sectioning Content/nav 的后代' : '' });
     }
-    if (a.href === null || href === '' || href === '#' || href === '#!' || href === '####') {
-      push('a.invalidHref', { text: trunc(a.text, 40), href: a.href === null ? '(缺失)' : href });
-    } else if (/^javascript:/i.test(href)) {
-      push('a.jsHref', { text: trunc(a.text, 40), href: trunc(href, 90) });
-    } else if (href.startsWith('#') && href !== '#top') {
-      const frag = decodeURIComponent(href.slice(1));
-      if (frag && !ids.has(frag)) push('a.brokenAnchor', { href: trunc(href, 90) });
+    const vis = topEls.filter(isVisible);
+    if (vis.length > 1) {
+      push(`${key}.duplicate`, { visible: vis.length, classes: vis.slice(0, 5).map(classesOf).join(' / ') });
     }
-    if (/^https?:\/\//i.test(href)) {
-      let external = false;
-      try { external = new URL(href).origin !== origin; } catch { external = true; }
-      if (external && a.target === '_blank' && (!a.rel || !/noopener/i.test(a.rel))) {
-        push('a.extNoRel', { text: trunc(a.text, 40), href: trunc(href, 90), rel: a.rel ?? '(无)' });
+  }
+  for (const n of nodes.filter((x) => x.tag === 'header' || x.tag === 'footer')) {
+    let p = n.parent;
+    while (p && p.tag !== '#root') {
+      if (p.tag === 'header' || p.tag === 'footer') {
+        push('s.hf.nesting', { outer: p.tag, inner: n.tag, cls: classesOf(n) });
+        break;
       }
-    }
-    if (!a.text && a.imgs.length > 0 && a.imgs.some((i) => !i.alt)) {
-      push('a.imgLinkNoAlt', { src: trunc(a.imgs[0].src, 90) });
+      p = p.parent;
     }
   }
 
-  const headings = headingSequence(html);
-  const h1s = headings.filter((h) => h.level === 1);
-  if (h1s.length !== 1) {
-    push('s.h1Count', { h1: h1s.length, texts: h1s.map((h) => h.text).slice(0, 5) });
+  const mains = nodes.filter((n) => n.tag === 'main');
+  const visMains = mains.filter(isVisible);
+  if (visMains.length === 0) push('s.main.missing', { existing: mains.length });
+  else if (visMains.length > 1) push('s.main.duplicate', { visible: visMains.length, classes: visMains.slice(0, 5).map(classesOf).join(' / ') });
+  for (const n of mains) {
+    if (isDescendantOf(n, ['main'])) push('s.main.nesting', { cls: classesOf(n) });
   }
-  for (let i = 1; i < headings.length; i++) {
-    if (headings[i].level > headings[i - 1].level + 1) {
-      push('s.headingSkip', { from: `h${headings[i - 1].level}`, to: `h${headings[i].level}`, text: headings[i].text });
+
+  const heads = nodes.filter((n) => /^h[1-6]$/.test(n.tag));
+  const h1s = heads.filter((n) => n.tag === 'h1' && isVisible(n));
+  if (h1s.length === 0) {
+    push('s.h1.missing', { existingH1: heads.filter((n) => n.tag === 'h1').length, note: '静态 HTML 无可见的 <h1>' });
+  } else if (h1s.every((n) => textOf(n) === '')) {
+    push('s.h1.missing', { h1: h1s.length, note: '<h1> 存在但内无可见文本' });
+  }
+  if (h1s.length > 1) push('s.h1.duplicate', { h1: h1s.length, texts: h1s.slice(0, 5).map((n) => trunc(textOf(n), 60)) });
+  for (let i = 1; i < heads.length; i++) {
+    const prev = Number(heads[i - 1].tag[1]);
+    const cur = Number(heads[i].tag[1]);
+    if (cur > prev + 1) push('s.heading.skip', { from: `h${prev}`, to: `h${cur}`, text: trunc(textOf(heads[i]), 60) });
+  }
+  for (const n of heads) {
+    if (isDescendantOf(n, ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])) {
+      push('s.heading.nesting', { inner: n.tag, text: trunc(textOf(n), 60) });
     }
   }
-  const landmarks = {};
-  for (const tag of ['header', 'nav', 'main', 'article', 'section', 'aside', 'footer']) {
-    landmarks[tag] = (html.match(new RegExp(`<${tag}\\b`, 'gi')) || []).length;
-  }
-  if (!landmarks.main) push('s.noMain', {});
-  if (!landmarks.nav) push('s.noNav', {});
-  if (!landmarks.footer) push('s.noFooter', {});
 
-  const imgs = extractImgs(html);
+  const imgs = nodes.filter((n) => n.tag === 'img');
   const altCounts = new Map();
   for (const img of imgs) {
-    if (img.alt === null) push('i.missingAlt', { src: trunc(img.src, 100) });
-    else if (img.alt && BAD_ALT.has(img.alt.trim().toLowerCase())) push('i.badAlt', { alt: trunc(img.alt, 60), src: trunc(img.src, 80) });
-    if (img.alt && img.alt.length > 125) push('i.longAlt', { alt: trunc(img.alt, 140) });
-    if (img.alt) altCounts.set(img.alt, (altCounts.get(img.alt) || 0) + 1);
+    const alt = img.attrs.alt;
+    if (alt === undefined) push('i.noAlt', { src: trunc(img.attrs.src || '(无src)', 100) });
+    else {
+      if (alt !== '' && BAD_ALT.has(String(alt).trim().toLowerCase())) push('i.badAlt', { alt: trunc(alt, 60), src: trunc(img.attrs.src || '', 80) });
+      if (String(alt).length > 125) push('i.longAlt', { alt: trunc(alt, 140) });
+      if (alt) altCounts.set(alt, (altCounts.get(alt) || 0) + 1);
+    }
   }
   for (const [alt, n] of altCounts) {
     if (n >= 3) push('i.dupAlt', { alt: trunc(alt, 60), count: n });
   }
 
-  const divCount = (html.match(/<div\b/gi) || []).length;
+  const anchors = nodes.filter((n) => n.tag === 'a');
+  const ids = collectIds(html);
+  for (const a of anchors) {
+    const hrefRaw = a.attrs.href;
+    const href = hrefRaw === undefined ? '' : String(hrefRaw).trim();
+    const text = textOf(a);
+    if (hrefRaw === undefined) {
+      push('a.noHref', { text: trunc(text, 40), cls: classesOf(a) });
+    } else {
+      if (text && BAD_LINK_TEXT.has(text.toLowerCase())) push('a.badText', { text: trunc(text, 40), href: trunc(href, 90) });
+      if (href === '') push('a.badHref', { text: trunc(text, 40) });
+      else if (/^javascript:/i.test(href)) push('a.jsHref', { text: trunc(text, 40), href: trunc(href, 90) });
+      else if (href === '#' || href === '#!' || href === '####') push('a.placeholder', { text: trunc(text, 40), cls: classesOf(a) });
+      else if (href.startsWith('#') && href !== '#top') {
+        const frag = decodeURIComponent(href.slice(1));
+        if (frag && !ids.has(frag)) push('a.brokenAnchor', { href: trunc(href, 90) });
+      }
+      if (/^https?:\/\//i.test(href)) {
+        let external = false;
+        try { external = new URL(href).origin !== origin; } catch { external = true; }
+        if (external && a.attrs.target === '_blank' && !/noopener/i.test(String(a.attrs.rel || ''))) {
+          push('a.extNoRel', { text: trunc(text, 40), href: trunc(href, 90), rel: a.attrs.rel || '(无)' });
+        }
+      }
+    }
+    if (text === '') {
+      const innerImgs = descendantsOf(a, 'img');
+      if (innerImgs.length === 0 || innerImgs.some((im) => im.attrs.alt === undefined)) {
+        push('a.noText', { href: trunc(hrefRaw === undefined ? '(无href)' : href, 90), cls: classesOf(a) });
+      }
+    }
+  }
+
+  const landmarks = {};
+  for (const tag of ['header', 'nav', 'main', 'article', 'section', 'aside', 'footer']) {
+    landmarks[tag] = nodes.filter((n) => n.tag === tag).length;
+  }
+  if (!landmarks.nav) push('s.noNav', {});
+
+  const divCount = nodes.filter((n) => n.tag === 'div').length;
   const semanticCount = Object.values(landmarks).reduce((a, b) => a + b, 0);
   return {
     issues,
     stats: {
       anchors: anchors.length,
       images: imgs.length,
-      headings: headings.map((h) => `h${h.level}`).join(','),
+      headings: heads.map((h) => h.tag).join(','),
       divCount,
       semanticCount,
       landmarks,
@@ -212,7 +337,7 @@ async function pickPortalPages(project) {
     return ok ? text : '';
   };
   let urls = [];
-  let raw = await fetchXml(project.sitemapUrl);
+  const raw = await fetchXml(project.sitemapUrl);
   if (raw) {
     let parsed = parseSitemap(raw);
     urls = parsed.urls;
@@ -234,7 +359,7 @@ async function pickPortalPages(project) {
     if (/\.(md|pdf|txt|xml|json)$/i.test(u.pathname)) continue;
     const segs = u.pathname.split('/').filter(Boolean);
     if (!segs.length || SKIP_SECTION.test(segs[0])) continue;
-    let i = LANGS.has(segs[0].toLowerCase()) ? 1 : 0;
+    const i = LANGS.has(segs[0].toLowerCase()) ? 1 : 0;
     const section = (segs[i] || '').toLowerCase();
     if (!section || SKIP_SECTION.test(section)) continue;
     const depth = segs.length;
@@ -248,14 +373,252 @@ async function pickPortalPages(project) {
   return pages;
 }
 
-const projects = await loadProjects();
-const reportData = { timestamp: now(), measure: 'html-semantics-spec-check', projects: [] };
+// ---- 报告渲染 ----
+function levelOf(type) { return ISSUE_META[type]?.level || 'warn'; }
+function specOf(type) { return ISSUE_META[type]?.spec || '10'; }
+function groupOf(type) { return ISSUE_META[type]?.group || '附加'; }
+function nameOf(type) { return ISSUE_META[type]?.name || type; }
+function isCore(type) { return specOf(type) === '10'; }
+function esc(s) {
+  return String(s ?? '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function renderSamples(iss, cap = 10) {
+  const rows = [];
+  for (const s of iss.samples.slice(0, cap)) {
+    const parts = Object.entries(s)
+      .filter(([, v]) => v !== '' && v !== undefined && v !== null)
+      .map(([k, v]) => `${k}=${esc(Array.isArray(v) ? v.join(' / ') : v)}`);
+    rows.push(`    - ${parts.join('，') || '(无详情)'}`);
+  }
+  return rows;
+}
 
-for (const project of projects) {
-  if (SKIP_IDS.includes(project.id)) {
-    reportData.projects.push({ id: project.id, name: project.name, skipped: true, reason: '按要求跳过（MindSpore-docs 本次不检查）' });
+function sortTypes(types) {
+  return types.sort((a, b) => {
+    const ga = GROUP_ORDER.indexOf(groupOf(a));
+    const gb = GROUP_ORDER.indexOf(groupOf(b));
+    if (ga !== gb) return ga - gb;
+    if (levelOf(a) !== levelOf(b)) return levelOf(a) === 'error' ? -1 : 1;
+    return a.localeCompare(b);
+  });
+}
+
+const COMMON_HEADER = [
+  '- 规范来源：**measures/10-HTML-semantic-check/规范.md「检查细节」**（header/footer/main/h1~h6/img alt/a 的缺失·重复·层级结构判定）；06/07/08 未覆盖项（黑名单文本、外链 noopener、失效锚点、alt 质量等）为附加项',
+  `检查抽样范围：门户类 = 首页（meta-refresh 跟随）+ 至多 ${SAMPLE_CAP} 个 sitemap 栏目页；文档类 = /zh/、/en/ 文档首页`,
+  '- 解析口径：线上静态/SSR HTML 剔除 `<script>`/`<style>`/注释/`<noscript>` 后构建元素树；不含 JS 运行时插入的 DOM',
+  '- 可见性判定：仅能静态识别 `aria-hidden`（值非 false）、`hidden`、行内 `style="display:none"`；class/媒体查询控制的显隐无法判定，「多个同时可见」存在误报可能，请打开页面复核',
+  '- 顶层判定：`<header>`/`<footer>` 非 Sectioning Content（article/aside/main/section）或 `<nav>` 的后代即顶层候选',
+];
+
+function pageDetailLines(pg) {
+  const out = [];
+  if (!pg.accessible) {
+    out.push(`- ❌ ${pg.url}：不可访问（HTTP ${pg.status}），未纳入统计`);
+    out.push('');
+    return out;
+  }
+  const st = pg.stats || {};
+  out.push(`#### ${pg.finalUrl || pg.url}`);
+  out.push('');
+  out.push(`- 规模：链接 ${st.anchors ?? '-'} 个，图片 ${st.images ?? '-'} 张，div ${st.divCount ?? '-'} 个，语义区块 ${st.semanticCount ?? '-'} 个（header ${st.landmarks?.header ?? 0}/nav ${st.landmarks?.nav ?? 0}/main ${st.landmarks?.main ?? 0}/article ${st.landmarks?.article ?? 0}/section ${st.landmarks?.section ?? 0}/aside ${st.landmarks?.aside ?? 0}/footer ${st.landmarks?.footer ?? 0}），标题序列 ${esc(st.headings || '(无)')}`);
+  if (pg.shell) out.push(`- ℹ️ ${pg.note}`);
+  const issueTypes = sortTypes(Object.keys(pg.issues || {}));
+  if (!issueTypes.length) {
+    out.push('- ✅ 未发现规范问题');
+  } else {
+    for (const type of issueTypes) {
+      const v = pg.issues[type];
+      const badge = levelOf(type) === 'error' ? '❌' : '⚠️';
+      out.push(`- ${badge} [${specOf(type)}·${groupOf(type)}] ${nameOf(type)}：${v.count} 处`);
+      out.push(...renderSamples(v));
+    }
+  }
+  out.push('');
+  return out;
+}
+
+function summarize(p) {
+  let coreErr = 0, extraErr = 0, warn = 0, inaccessible = 0;
+  for (const pg of p.pages) {
+    if (!pg.accessible) { inaccessible++; continue; }
+    for (const [type, v] of Object.entries(pg.issues || {})) {
+      if (levelOf(type) === 'warn') warn += v.count;
+      else if (isCore(type)) coreErr += v.count;
+      else extraErr += v.count;
+    }
+  }
+  const verdict = p.pages.length === inaccessible ? '❌ 页面不可访问' : inaccessible ? '❌' : coreErr || extraErr ? '❌' : warn ? '⚠️' : '✅';
+  return { coreErr, extraErr, warn, inaccessible, verdict };
+}
+
+function overviewTable(p, s) {
+  return [
+    `### ${p.name}（${p.id}） — ${s.verdict}`,
+    '',
+    '| 抽查页面数 | 检查细节(10) | 附加项(06/07/08) | 其中 warn | 不可访问 |',
+    '| --- | --- | --- | --- | --- |',
+    `| ${p.pages.length} | ${s.coreErr} | ${s.extraErr} | ${s.warn} | ${s.inaccessible} |`,
+  ];
+}
+
+function perTypeLines(p) {
+  const agg = new Map();
+  for (const pg of p.pages) {
+    for (const [type, v] of Object.entries(pg.issues || {})) {
+      const t = agg.get(type) || { count: 0, pages: new Set() };
+      t.count += v.count;
+      t.pages.add(pg.finalUrl || pg.url);
+      agg.set(type, t);
+    }
+  }
+  const out = [];
+  for (const type of sortTypes([...agg.keys()])) {
+    const t = agg.get(type);
+    out.push('');
+    out.push(`**${nameOf(type)}**（[${specOf(type)}·${groupOf(type)}] ${levelOf(type) === 'error' ? '❌' : '⚠️'}）：${t.count} 处，涉及 ${t.pages.size} 个页面`);
+    for (const u of [...t.pages].slice(0, 5)) out.push(`- ${u}`);
+    if (t.pages.size > 5) out.push(`- …其余 ${t.pages.size - 5} 个页面见完全版报告`);
+  }
+  return out;
+}
+
+function fullReportFor(p, s, startedAt) {
+  const out = [];
+  out.push(`# HTML 语义化检查完全版报告 · ${p.name}（${p.id}）`);
+  out.push('');
+  out.push(`- 检查时间：${startedAt}`);
+  out.push(...COMMON_HEADER);
+  out.push('');
+  out.push(...overviewTable(p, s));
+  out.push('');
+  out.push('## 抽查页面');
+  out.push('');
+  for (const pg of p.pages) {
+    const arrow = pg.finalUrl && pg.finalUrl !== pg.url ? ` → ${pg.finalUrl}` : '';
+    out.push(`- ${pg.url}${arrow}（HTTP ${pg.status}${pg.accessible ? ' ✅' : ' ❌'}）`);
+  }
+  out.push('');
+  out.push('## 逐页明细');
+  out.push('');
+  for (const pg of p.pages) out.push(...pageDetailLines(pg));
+  return out.join('\n') + '\n';
+}
+
+function briefReportFor(p, s, startedAt) {
+  const out = [];
+  out.push(`# HTML 语义化检查简短报告 · ${p.name}（${p.id}）`);
+  out.push('');
+  out.push(`- 检查时间：${startedAt}`);
+  out.push(...COMMON_HEADER);
+  out.push('');
+  out.push(...overviewTable(p, s));
+  out.push('');
+  out.push('## 问题分类摘要（每类最多列 5 个页面）');
+  out.push('');
+  out.push(...perTypeLines(p));
+  out.push('');
+  return out.join('\n') + '\n';
+}
+
+function issueBodyFor(p, s, fullFileName, startedAt) {
+  const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
+  const refName = process.env.GITHUB_REF_NAME || 'archive';
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/semantic/${fullFileName}`;
+  const lines = [];
+  lines.push(`本 issue 由 GEO 例行检查（HTML 元素语义化维度）自动生成。按 measures/10-HTML-semantic-check/规范.md「检查细节」对项目抽样页面（${p.pages.length} 个）的静态/SSR HTML 检查，发现以下问题（${startedAt.slice(0, 10)}）：`);
+  lines.push('');
+  lines.push(`**项目**：${p.name}（${p.id}）`);
+  lines.push('');
+  lines.push(`**规模**：检查细节(10) 问题 ${s.coreErr} 处；附加项(06/07/08) 问题 ${s.extraErr} 处；建议项 ${s.warn} 处`);
+  lines.push('');
+  lines.push('## 问题分类摘要');
+  lines.push('');
+  lines.push(...perTypeLines(p));
+  lines.push('');
+  lines.push('## 抽查页面');
+  lines.push('');
+  for (const pg of p.pages) {
+    const arrow = pg.finalUrl && pg.finalUrl !== pg.url ? ` → ${pg.finalUrl}` : '';
+    lines.push(`- ${pg.url}${arrow}（HTTP ${pg.status}${pg.accessible ? ' ✅' : ' ❌'}）`);
+  }
+  lines.push('');
+  lines.push('### 完全版报告');
+  lines.push('');
+  lines.push('每页逐项问题与样例（含 src/href/class 定位信息）见检查仓库内的完全版报告：');
+  lines.push('');
+  lines.push(`> [${fullFileName}](${fullUrl})`);
+  lines.push('');
+  lines.push('### 检查口径说明');
+  lines.push('');
+  lines.push(...COMMON_HEADER.map((l) => l.replace('检查抽样范围：', '抽样范围：')));
+  lines.push('');
+  lines.push('### 处理说明');
+  lines.push('');
+  lines.push('- 修复后（补齐 alt/href/h1、消除自嵌套与多份可见的 header/footer/main、标题不跳级等）合并 PR 并关闭本 issue');
+  lines.push('- issue 未关闭期间不会重复扫描该项目，也不会重复提单；关闭后下一轮定时检查会重新扫描');
+  lines.push('- 「多个同时可见的顶层 header/footer/main」由桌面/移动双份 DOM 触发的属已知误报场景（class/媒体查询控制的显隐无法静态判定），请在 issue 评论说明后由维护者关闭，或在双份元素上补 `aria-hidden`（隐藏份）/保持单份');
+  lines.push('- 其余误报（如 SPA 首屏壳属预期设计）同样请评论说明后关闭');
+  lines.push('');
+  lines.push('<sub>由 daily-check-workflow HTML 语义化检查（workflow/scripts/semantic-spec-check.mjs）自动生成。</sub>');
+  return lines.join('\n');
+}
+
+// 扫描前查重：已有本维度未关闭 issue 则跳过整个"扫描+提单"；
+// 查询失败时有 token（生产）直接跳过（宁漏勿重），无 token（本地）只扫描不提单。
+async function precheckExistingIssue(project) {
+  const parsed = parseOwnerRepo(project.repo);
+  if (!parsed) {
+    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
+  }
+  let existing;
+  try {
+    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
+  } catch (err) {
+    if (hasToken()) {
+      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
+    }
+    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
+  }
+  if (existing.length) {
+    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
+    return { block: true, canSubmit: false, notes: [`已存在未关闭的 HTML 语义化 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
+  }
+  if (!hasToken()) {
+    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
+  }
+  return { block: false, canSubmit: true, notes: [] };
+}
+
+const startedAt = now();
+const dateStr = startedAt.slice(0, 10);
+const OUT_DIR = resolve(ROOT, 'manual-review/issues/semantic');
+await mkdir(OUT_DIR, { recursive: true });
+
+const projects = await loadProjects();
+const targets = filterProjects(projects, siteId);
+const reportData = {
+  timestamp: startedAt,
+  measure: 'html-semantics-spec-check',
+  spec: 'measures/10-HTML-semantic-check/规范.md（检查细节）+ 06/07/08 附加项',
+  mode: submitIssues ? (dryRun ? 'submit-issues-dry-run' : 'submit-issues') : 'scan',
+  projects: [],
+};
+
+for (const project of targets) {
+  if (SKIPS.includes(project.id.toLowerCase())) {
+    reportData.projects.push({ id: project.id, name: project.name, skipped: true, reason: '默认跳过（MindSpore-docs 本次不检查；用 --skip= 传空可强制检查）' });
     console.log(`[skip] ${project.id}`);
     continue;
+  }
+  let pre;
+  if (submitIssues) {
+    pre = await precheckExistingIssue(project);
+    pre.notes.forEach((n) => console.log(`[semantic] ${project.id}: ${n}`));
+    if (pre.block) {
+      reportData.projects.push({ id: project.id, name: project.name, domain: project.domain, repo: project.repo, blocked: true, notes: pre.notes, pages: [] });
+      continue;
+    }
   }
   const docPaths = DOC_HOME_PAGES[project.id];
   const pages = docPaths
@@ -306,145 +669,129 @@ for (const project of projects) {
       aggregate[type].count += v.count;
     }
   }
-  reportData.projects.push({ id: project.id, name: project.name, domain: project.domain, pages: pageResults, aggregate });
+  const pEntry = { id: project.id, name: project.name, domain: project.domain, repo: project.repo, pages: pageResults, aggregate };
+  reportData.projects.push(pEntry);
+
+  if (submitIssues) {
+    const s = summarize(pEntry);
+    const errorTotal = s.coreErr + s.extraErr;
+    if (errorTotal > 0) {
+      const fullFileName = `semantic-${project.id}-${dateStr}-full.md`;
+      const briefFileName = `semantic-${project.id}-${dateStr}-brief.md`;
+      if (!dryRun) {
+        await writeFile(resolve(OUT_DIR, fullFileName), fullReportFor(pEntry, s, startedAt), 'utf8');
+        await writeFile(resolve(OUT_DIR, briefFileName), briefReportFor(pEntry, s, startedAt), 'utf8');
+        pEntry.reports = { full: `manual-review/issues/semantic/${fullFileName}`, brief: `manual-review/issues/semantic/${briefFileName}` };
+      }
+      const title = `${ISSUE_TITLE_PREFIX} ${project.name}（${project.id}）：抽样页面 HTML 语义化检查发现 ${errorTotal} 处规范问题`;
+      const bodyText = issueBodyFor(pEntry, s, fullFileName, startedAt);
+      const target = parseOwnerRepo(project.repo);
+      if (dryRun || !target || !pre.canSubmit) {
+        console.log(`\n[semantic] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
+        console.log(bodyText);
+        pEntry.issueAction = dryRun ? 'dry-run' : 'print-only';
+      } else {
+        const created = await createIssue({ ...target, title, body: bodyText });
+        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
+        console.log(`[semantic] ${project.id}: ✨ 已创建 issue：${url}`);
+        pEntry.issueAction = 'created';
+        pEntry.issueUrl = url;
+      }
+    } else {
+      console.log(`[semantic] ${project.id}: 未发现必选级问题，不提 issue`);
+    }
+  }
   const total = Object.values(aggregate).reduce((a, b) => a + b.count, 0);
   console.log(`[${project.id}] pages=${pageResults.length} issues=${total}`);
 }
 
 await writeStats('semantic-spec-stats', reportData);
 
-function levelOf(type) { return ISSUE_META[type]?.level || 'warn'; }
-function specOf(type) { return ISSUE_META[type]?.spec || ''; }
-function nameOf(type) { return ISSUE_META[type]?.name || type; }
-
-const ts = reportData.timestamp;
-const date = ts.slice(0, 10);
+// ---- 汇总报告 ----
 const lines = [];
-lines.push('# HTML 元素语义化规范抽查报告（06 a 标签 / 07 标签结构 / 08 图片 alt）');
+lines.push('# HTML 元素语义化规范抽查报告');
 lines.push('');
-lines.push(`- 检查时间：${ts}`);
-lines.push(`- 检查范围：projects.config.json 全部项目，按规范 measures/06-a-tag-semantics、07-tag-structure-semantics、08-image-alt 抽查；每个项目抽取少量页面（门户类：首页 + 至多 ${SAMPLE_CAP} 个 sitemap 抽样页；文档类：仅 /zh/ 与 /en/ 首页）`);
-lines.push('- 跳过项：MindSpore-docs（按要求本次不检查）');
-lines.push('- 解析口径：抓取线上静态/SSR 渲染 HTML，剔除 `<script>`/`<style>`/`<!-- -->`/`<noscript>` 后按正则解析，仅反映已渲染到 HTML 的内容，不含 JS 运行时动态插入的 DOM');
-lines.push('- 检测项：06 无语义链接文本、javascript: 伪协议、href 空/缺失/#、外链 target=_blank 缺 rel=noopener、图片链接缺 alt、站内锚点指向不存在的 id；07 h1 唯一性、标题层级跳级、main/nav/footer 语义区块；08 img 缺 alt、无意义 alt、alt>125 字符、同页 alt 重复≥3');
-lines.push('- 判定：error 级为规范必选项违规（❌），warn 级为规范可选项/建议项（⚠️）');
-lines.push('- 壳页面：静态 HTML 仅为客户端渲染壳（无实质 DOM）的页面记为 07 规范问题「客户端渲染壳」（搜索引擎/AI 无法解析其语义结构）；meta-refresh 跳转页自动跟随到真实目标后检查');
+lines.push(`- 检查时间：${startedAt}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
+lines.push(...COMMON_HEADER);
+lines.push('- 判定：error 级为规范/附加必选项违规（❌），warn 级为建议项（⚠️）；客户端渲染壳页面记附加项，不做元素级检查；有 error 级问题即触发提 issue');
 lines.push('');
 
-const overview = [];
+const overviews = [];
 for (const p of reportData.projects) {
-  if (p.skipped) continue;
-  let err = 0, warn = 0, inaccessible = 0;
-  const bySpec = { '06': 0, '07': 0, '08': 0 };
-  for (const pg of p.pages) {
-    if (!pg.accessible) { inaccessible++; continue; }
-    for (const [type, v] of Object.entries(pg.issues || {})) {
-      if (levelOf(type) === 'error') err += v.count; else warn += v.count;
-      bySpec[specOf(type)] = (bySpec[specOf(type)] || 0) + v.count;
-    }
-  }
-  const verdict = p.pages.length === inaccessible ? '❌ 页面不可访问' : inaccessible ? '❌' : err ? '❌' : warn ? '⚠️' : '✅';
-  overview.push({ p, err, warn, inaccessible, bySpec, verdict });
+  if (p.skipped || p.blocked) continue;
+  const s = summarize(p);
+  overviews.push({ p, ...s });
 }
 
 lines.push('## 总览');
 lines.push('');
-lines.push('| 项目 | 抽查页面数 | 06 a标签 | 07 结构 | 08 alt | 不可访问 | 结论 |');
+lines.push('| 项目 | 抽查页面数 | 检查细节(10) | 附加项(06/07/08) | 其中 warn | 不可访问 | 结论 |');
 lines.push('| --- | --- | --- | --- | --- | --- | --- |');
-for (const o of overview) {
-  lines.push(`| ${o.p.name}（${o.p.id}） | ${o.p.pages.length} | ${o.bySpec['06'] || 0} | ${o.bySpec['07'] || 0} | ${o.bySpec['08'] || 0} | ${o.inaccessible} | ${o.verdict} |`);
+for (const o of overviews) {
+  const tag = o.p.issueUrl ? `，[issue](${o.p.issueUrl})` : o.p.issueAction === 'dry-run' ? '（dry-run 未提交）' : o.p.issueAction === 'print-only' ? '（未提单：无 token 或查重降级）' : '';
+  lines.push(`| ${o.p.name}（${o.p.id}） | ${o.p.pages.length} | ${o.coreErr} | ${o.extraErr} | ${o.warn} | ${o.inaccessible} | ${o.verdict}${tag} |`);
+}
+for (const p of reportData.projects.filter((x) => x.blocked)) {
+  lines.push(`| ${p.name}（${p.id}） | - | - | - | - | - | ⏭️ 已有未关闭 issue，跳过 |`);
 }
 lines.push('');
 lines.push('## 问题类型汇总');
 lines.push('');
 const typeAgg = new Map();
-for (const p of reportData.projects) {
-  if (p.skipped) continue;
-  for (const pg of p.pages) {
+for (const o of overviews) {
+  for (const pg of o.p.pages) {
     for (const [type, v] of Object.entries(pg.issues || {})) {
       const t = typeAgg.get(type) || { total: 0, projs: new Map() };
       t.total += v.count;
-      t.projs.set(p.id, (t.projs.get(p.id) || 0) + v.count);
+      t.projs.set(o.p.id, (t.projs.get(o.p.id) || 0) + v.count);
       typeAgg.set(type, t);
     }
   }
 }
-lines.push('| 规范 | 级别 | 问题类型 | 总次数 | 涉及项目（次数） |');
-lines.push('| --- | --- | --- | --- | --- |');
-const typeOrder = ['a.badText', 'a.jsHref', 'a.invalidHref', 'a.extNoRel', 'a.imgLinkNoAlt', 'a.brokenAnchor', 's.h1Count', 's.headingSkip', 's.noMain', 's.noNav', 's.noFooter', 'i.missingAlt', 'i.badAlt', 'i.longAlt', 'i.dupAlt'];
-for (const type of typeOrder.filter((t) => typeAgg.has(t)).concat([...typeAgg.keys()].filter((t) => !typeOrder.includes(t)))) {
+lines.push('| 组 | 来源 | 级别 | 问题类型 | 总次数 | 涉及项目（次数） |');
+lines.push('| --- | --- | --- | --- | --- | --- |');
+for (const type of sortTypes([...typeAgg.keys()])) {
   const t = typeAgg.get(type);
   const projStr = [...t.projs.entries()].sort((a, b) => b[1] - a[1]).map(([id, n]) => `${id}(${n})`).join('、');
-  lines.push(`| ${specOf(type)} | ${levelOf(type) === 'error' ? '❌ 必选' : '⚠️ 建议'} | ${nameOf(type)} | ${t.total} | ${projStr} |`);
+  lines.push(`| ${groupOf(type)} | ${specOf(type)}${isCore(type) ? ' 检查细节' : ' 附加'} | ${levelOf(type) === 'error' ? '❌' : '⚠️'} | ${nameOf(type)} | ${t.total} | ${projStr} |`);
 }
 lines.push('');
 lines.push('## 各项目明细');
-lines.push('');
-
-function renderSamples(iss) {
-  const rows = [];
-  for (const s of iss.samples) {
-    const parts = Object.entries(s).filter(([, v]) => v !== '' && v !== undefined).map(([k, v]) => `${k}=${Array.isArray(v) ? v.join(' / ') : v}`);
-    rows.push(`    - ${parts.join('，') || '(无详情)'}`);
+if (submitIssues) {
+  lines.push('');
+  lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 \`semantic-<项目ID>-${dateStr}-full.md\`）`);
+  for (const o of overviews) {
+    if (!o.p.reports && !o.p.issueAction) continue;
+    lines.push(`- ${o.p.name}（${o.p.id}）：\`${o.p.reports ? o.p.reports.full : '（dry-run 未写文件）'}\`${o.p.issueUrl ? `，issue：${o.p.issueUrl}` : o.p.issueAction === 'dry-run' ? '，（dry-run 未提交）' : o.p.issueAction === 'print-only' ? '，（未提单：无 token 或查重降级）' : ''}`);
   }
-  return rows;
-}
-
-for (const o of overview) {
-  const p = o.p;
-  lines.push(`### ${p.name}（${p.id}） — ${o.verdict}`);
+} else {
   lines.push('');
-  lines.push('抽查页面：');
-  lines.push('');
-  for (const pg of p.pages) {
-    const arrow = pg.finalUrl && pg.finalUrl !== pg.url ? ` → ${pg.finalUrl}` : '';
-    lines.push(`- ${pg.url}${arrow}（HTTP ${pg.status}${pg.accessible ? ' ✅' : ' ❌'}）`);
-  }
-  lines.push('');
-  for (const pg of p.pages) {
-    if (!pg.accessible) {
-      lines.push(`- ❌ ${pg.url}：不可访问（HTTP ${pg.status}），未纳入统计`);
-      lines.push('');
-      continue;
-    }
-    const st = pg.stats || {};
-    const issueTypes = Object.keys(pg.issues || {});
-    lines.push(`#### ${pg.finalUrl || pg.url}`);
+  for (const o of overviews) {
+    lines.push(`### ${o.p.name}（${o.p.id}） — ${o.verdict}`);
     lines.push('');
-    lines.push(`- 规模：链接 ${st.anchors ?? '-'} 个，图片 ${st.images ?? '-'} 张，div ${st.divCount ?? '-'} 个，语义区块 ${st.semanticCount ?? '-'} 个（header ${st.landmarks?.header ?? 0}/nav ${st.landmarks?.nav ?? 0}/main ${st.landmarks?.main ?? 0}/article ${st.landmarks?.article ?? 0}/section ${st.landmarks?.section ?? 0}/aside ${st.landmarks?.aside ?? 0}/footer ${st.landmarks?.footer ?? 0}），标题序列 ${st.headings || '(无)'}`);
-    if (pg.shell) lines.push(`- ℹ️ ${pg.note}`);
-    if (!issueTypes.length) {
-      lines.push('- ✅ 未发现规范问题');
-    } else {
-      for (const type of issueTypes.sort((a, b) => (levelOf(a) === levelOf(b) ? 0 : levelOf(a) === 'error' ? -1 : 1))) {
-        const v = pg.issues[type];
-        const badge = levelOf(type) === 'error' ? '❌' : '⚠️';
-        lines.push(`- ${badge} [${specOf(type)}] ${nameOf(type)}：${v.count} 处`);
-        lines.push(...renderSamples(v));
-      }
+    lines.push('抽查页面：');
+    lines.push('');
+    for (const pg of o.p.pages) {
+      const arrow = pg.finalUrl && pg.finalUrl !== pg.url ? ` → ${pg.finalUrl}` : '';
+      lines.push(`- ${pg.url}${arrow}（HTTP ${pg.status}${pg.accessible ? ' ✅' : ' ❌'}）`);
     }
     lines.push('');
+    for (const pg of o.p.pages) lines.push(...pageDetailLines(pg));
   }
 }
 
-lines.push('## 跳过项');
 lines.push('');
-for (const p of reportData.projects.filter((x) => x.skipped)) {
-  lines.push(`- ${p.name}（${p.id}）：${p.reason}`);
+lines.push('## 跳过/查重拦截');
+lines.push('');
+const skipLike = reportData.projects.filter((x) => x.skipped || x.blocked);
+if (!skipLike.length) lines.push('- 无');
+for (const p of skipLike) {
+  lines.push(`- ${p.name}（${p.id}）：${p.skipped ? p.reason : (p.notes || []).join('；')}`);
 }
 lines.push('');
-lines.push('## 共性问题概览（按整改优先级）');
-lines.push('');
-lines.push('1. **08 `<img>` 缺 alt**：覆盖面最广（812 处/9 项目）。openGauss-portal 首页轮播/新闻图片、MindSpore-portal 全站 banner、openUBMC 生态伙伴 logo 是重灾区；文档站 DSL 首页背景图（*/dsl/assets/img/*.png/jpg）也整批缺失。属模板/公共组件层问题，修一处组件可批量生效。');
-lines.push('2. **06 外链 target=_blank 缺 rel=noopener**：170 处，openEuler 系（官网+文档共用同一页脚组件，友链全部裸奔）与 openGauss-docs 首页快捷入口为主；部分链接写了 `rel="noreferrer"` 但没有 `noopener`（规范上应显式包含 noopener）。');
-lines.push('3. **06 图片链接缺 alt**：58 处，集中在 openUBMC 生态伙伴 logo 链接与 openEuler 页脚 logo（atom-logo 等），与问题 1 同源。');
-lines.push('4. **07 h1 缺失/不唯一**：13 页，HiFloat 全部抽样页（站点为 SPA，静态 HTML 无 h1）、openEuler-docs/openGauss-docs 文档首页（无 h1）需优先补。');
-lines.push('5. **07 客户端渲染壳**：openUBMC-docs 的 /docs/zh/latest、/docs/en/latest 返回 Nuxt CSR 壳（`data-ssr="false"`），静态 HTML 无任何语义结构，对 SEO/AI 抓取影响最大，建议核查文档站部署是否应为静态渲染。');
-lines.push('6. **06 无语义链接文本 / href 空或 #**：零星分布（openEuler FAQ 的 "here" ×2、UnifiedBus "here" ×1；UnifiedBus 页脚 "Vendor ID"/"Device ID and Module ID" 链接无 href 共 8 处、openEuler nestos "下载体验" 无 href、openUBMC "Create Meeting" 无 href），逐条替换为 `<a href>` 或补语义文本即可。');
-lines.push('');
 
-const outDir = resolve(ROOT, 'manual-review/issues/semantic');
-await mkdir(outDir, { recursive: true });
-const outPath = resolve(outDir, `${date}-html语义化-抽查报告.md`);
+const outPath = resolve(OUT_DIR, `${dateStr}-html语义化-抽查报告.md`);
 await writeFile(outPath, lines.join('\n'), 'utf8');
 console.log('DONE ->', outPath);

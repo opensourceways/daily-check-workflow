@@ -5,6 +5,7 @@ import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { parseSitemap } from '../lib/sitemap.mjs';
 import { extractTitle, extractMeta } from '../lib/html.mjs';
 import { writeStats, now } from '../lib/report.mjs';
+import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -12,6 +13,15 @@ const ROOT = resolve(__dirname, '..', '..');
 // 参考 seo-check/scripts/description-check.js：按字段把页面值分组，组内 >1 个页面即重复组。
 // 区别：不遍历本地构建产物，而是按 sitemap 全量页面 URL 发请求获取 HTML。
 const FIELDS = ['title', 'description', 'keywords'];
+// 缺失成因：noElement=标签/元素根本不存在；empty=元素存在但内容为空
+const MISSING_REASONS = ['noElement', 'empty'];
+
+// 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
+// 有则整个"扫描+提 issue"流程跳过该项目；发现重复时生成简短/完全两份 md 报告，
+// issue 正文用简短版并附指向本仓库完全版报告的链接。
+const ISSUE_TITLE_PREFIX = '[GEO TDK Duplicate]';
+const submitIssues = process.argv.includes('--submit-issues');
+const dryRun = process.argv.includes('--dry-run');
 
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
@@ -106,11 +116,13 @@ async function collectUrls(project) {
   return { urls, notes };
 }
 
+// 判重只看有非空取值的页面；空值/缺失元素由独立的"缺失检查"统计，不重复计入判重
 function buildFieldMaps(pages) {
   const maps = new Map(FIELDS.map((f) => [f, new Map()]));
   for (const page of pages) {
     for (const field of FIELDS) {
       const value = page[field] ?? '';
+      if (!value) continue;
       const map = maps.get(field);
       if (!map.has(value)) map.set(value, []);
       map.get(value).push(page.url);
@@ -130,7 +142,7 @@ const targets = filterProjects(projects, siteId);
 const results = [];
 
 const startedAt = now();
-const dateStr = dateStrOf(startedAt);
+const dateStr = startedAt.slice(0, 10);
 const dir = resolve(ROOT, 'manual-review', 'issues', 'tdk');
 await mkdir(dir, { recursive: true });
 const reportPath = resolve(dir, `tdk-duplicate-report-${dateStr}.md`);
@@ -140,11 +152,13 @@ async function checkProject(project) {
     projectId: project.id,
     projectName: project.name,
     sitemapUrl: project.sitemapUrl,
+    repo: project.repo,
     urlCount: 0,
     fetched: 0,
     failed: [],
     notes: [],
     duplicates: {},
+    missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
   };
 
   const { urls, notes } = await collectUrls(project);
@@ -166,15 +180,33 @@ async function checkProject(project) {
       entry.failed.push({ url, status: res.status ?? '请求失败' });
       return null;
     }
+    const raw = {
+      title: extractTitle(res.text),
+      description: extractMeta(res.text, 'description'),
+      keywords: extractMeta(res.text, 'keywords'),
+    };
     return {
       url,
-      title: extractTitle(res.text) ?? '',
-      description: extractMeta(res.text, 'description') ?? '',
-      keywords: extractMeta(res.text, 'keywords') ?? '',
+      title: raw.title ?? '',
+      description: raw.description ?? '',
+      keywords: raw.keywords ?? '',
+      raw,
     };
   });
   const okPages = pages.filter(Boolean);
   entry.fetched = okPages.length;
+  for (const p of okPages) {
+    for (const field of FIELDS) {
+      const v = p.raw[field];
+      if (v === null) entry.missing[field].noElement.push(p.url);
+      else if (v === '') entry.missing[field].empty.push(p.url);
+    }
+  }
+  const missingCounts = FIELDS.map((f) => {
+    const m = entry.missing[f];
+    return `${f}=${m.noElement.length + m.empty.length}`;
+  }).join(' ');
+  console.log(`[tdk-dup] ${project.id}: 缺失情况 ${missingCounts}（元素缺失/内容为空分开统计）`);
 
   const maps = buildFieldMaps(okPages);
   for (const field of FIELDS) {
@@ -237,7 +269,154 @@ function detailLines(r) {
       for (const u of g.urls) lines.push(`- ${u}`);
     }
   }
+  const m = r.missing;
+  if (m) {
+    lines.push('');
+    lines.push('#### TDK 缺失检查');
+    lines.push('');
+    const total = missingTotal(r);
+    if (!total) {
+      lines.push('无缺失');
+      return lines;
+    }
+    lines.push(`共 ${total} 个页面存在 TDK 缺失`);
+    for (const field of FIELDS) {
+      const fm = m[field];
+      if (!fm) continue;
+      const count = fm.noElement.length + fm.empty.length;
+      if (!count) continue;
+      lines.push('');
+      lines.push(`##### ${field} 缺失（${count} 页）`);
+      lines.push('');
+      for (const u of fm.noElement) lines.push(`- ${u}（元素缺失）`);
+      for (const u of fm.empty) lines.push(`- ${u}（元素存在但内容为空）`);
+    }
+  }
   return lines;
+}
+
+function missingTotal(r) {
+  if (!r.missing) return 0;
+  return FIELDS.reduce((n, f) => n + (r.missing[f]?.noElement.length ?? 0) + (r.missing[f]?.empty.length ?? 0), 0);
+}
+
+// ---- 提 issue 模式：报告与正文 ----
+function hasAnyDup(r) {
+  return FIELDS.some((f) => r.duplicates[f]?.groups > 0);
+}
+
+// 提 issue / 列入明细指针的触发条件：有重复或有缺失
+function hasAnyIssue(r) {
+  return hasAnyDup(r) || missingTotal(r) > 0;
+}
+
+// 简短版：单项目总览 + 每字段最多 3 组、每组最多 5 个 URL
+function briefLines(r) {
+  const lines = [];
+  lines.push(`- 检查范围：sitemap 全量页面 ${r.urlCount} 个，成功抓取 ${r.fetched} 个（失败 ${r.failed.length} 个不计入）`);
+  for (const field of FIELDS) {
+    const d = r.duplicates[field];
+    if (!d || !d.groups) continue;
+    lines.push('');
+    lines.push(`**${field}**：${d.groups} 组重复，涉及 ${d.pages} 个页面`);
+    for (const g of d.list.slice(0, 3)) {
+      const value = g.value.length > 80 ? `${g.value.slice(0, 80)}…` : g.value;
+      lines.push(`- [重复 ${g.count} 次] \`${value}\``);
+      for (const u of g.urls.slice(0, 5)) lines.push(`  - ${u}`);
+      if (g.urls.length > 5) lines.push(`  - …其余 ${g.urls.length - 5} 个见完全版报告`);
+    }
+    if (d.list.length > 3) lines.push(`- …其余 ${d.list.length - 3} 组见完全版报告`);
+  }
+  const m = r.missing;
+  if (m && missingTotal(r) > 0) {
+    lines.push('');
+    const parts = FIELDS.map((f) => {
+      const c = (m[f]?.noElement.length ?? 0) + (m[f]?.empty.length ?? 0);
+      if (!c) return null;
+      return `${f} ${c} 页（元素缺失 ${m[f].noElement.length} / 内容为空 ${m[f].empty.length}）`;
+    }).filter(Boolean);
+    lines.push(`**TDK 缺失**：共 ${missingTotal(r)} 页 —— ${parts.join('；')}`);
+    const items = [];
+    for (const f of FIELDS) {
+      for (const u of m[f].noElement) items.push(`- ${u}（${f} 元素缺失）`);
+      for (const u of m[f].empty) items.push(`- ${u}（${f} 内容为空）`);
+    }
+    lines.push(...items.slice(0, 5));
+    if (items.length > 5) lines.push(`- …其余 ${items.length - 5} 条见完全版报告`);
+  }
+  return lines;
+}
+
+function headerBlock(title) {
+  return [
+    `# ${title}`,
+    '',
+    `- 检查时间：${startedAt}`,
+    '- 检查方式：按 sitemap 全量页面逐页请求 HTML，对 title（`<title>`）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`）按原文精确分组，同值 ≥2 页记为重复组；空值/缺失不参与判重，单独在"TDK 缺失检查"中列出（区分元素缺失/内容为空）',
+    '',
+  ];
+}
+
+function fullReportFor(r) {
+  return [...headerBlock(`TDK 重复检查完全版报告 · ${r.projectName}（${r.projectId}）`), ...detailLines(r)].join('\n') + '\n';
+}
+
+function briefReportFor(r) {
+  return [...headerBlock(`TDK 重复检查简短报告 · ${r.projectName}（${r.projectId}）`), ...briefLines(r)].join('\n') + '\n';
+}
+
+function issueBodyFor(r, fullFileName) {
+  const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
+  const refName = process.env.GITHUB_REF_NAME || 'archive';
+  const fullUrl = `https://github.com/${ghRepo}/blob/${refName}/manual-review/issues/tdk/${fullFileName}`;
+  const lines = [];
+  lines.push(`本 issue 由 GEO 例行检查（TDK 重复性维度）自动生成。以下为 TDK（title/description/keywords）重复与缺失问题，按 sitemap 全量页面逐页抓取后判重/查缺得出（${startedAt.slice(0, 10)}）。`);
+  lines.push('');
+  lines.push(`**项目**：${r.projectName}（${r.projectId}）`);
+  lines.push('');
+  lines.push(...briefLines(r));
+  lines.push('');
+  lines.push('### 完全版报告');
+  lines.push('');
+  lines.push(`本简短报告仅列出部分重复组，完整重复组及全部涉及 URL 见检查仓库内的完全版报告：`);
+  lines.push('');
+  lines.push(`> [${fullFileName}](${fullUrl})`);
+  lines.push('');
+  lines.push('### 处理说明');
+  lines.push('');
+  lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同');
+  lines.push('- 缺失项：为"元素缺失"的页面补上 `<title>` / `<meta name="description">` / `<meta name="keywords">`，为"内容为空"的页面填入实际描述');
+  lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 若认为某组重复属预期（如多语言/模板页），请在 issue 评论说明，维护者会关闭本 issue');
+  lines.push('');
+  lines.push('<sub>由 daily-check-workflow TDK 重复检查自动生成。</sub>');
+  return lines.join('\n');
+}
+
+// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
+// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
+async function precheckExistingIssue(project) {
+  const parsed = parseOwnerRepo(project.repo);
+  if (!parsed) {
+    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
+  }
+  let existing;
+  try {
+    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
+  } catch (err) {
+    if (hasToken()) {
+      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
+    }
+    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
+  }
+  if (existing.length) {
+    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
+    return { block: true, canSubmit: false, notes: [`已存在未关闭的 TDK 重复 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
+  }
+  if (!hasToken()) {
+    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
+  }
+  return { block: false, canSubmit: true, notes: [] };
 }
 
 for (const project of targets) {
@@ -248,13 +427,59 @@ for (const project of targets) {
       projectId: project.id,
       projectName: project.name,
       sitemapUrl: project.sitemapUrl,
+      repo: project.repo,
       skipped: true,
       urlCount: 0,
       fetched: 0,
       failed: [],
       notes: ['默认跳过（docs 大站页面量级大，且历史版本/多语言同页 TDK 同值属预期；用 --skip= 传空可强制检查）'],
-      duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
+      duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])), missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
     };
+  } else if (submitIssues) {
+    const pre = await precheckExistingIssue(project);
+    pre.notes.forEach((n) => console.log(`[tdk-dup] ${project.id}: ${n}`));
+    if (pre.block) {
+      results.push({
+        projectId: project.id,
+        projectName: project.name,
+        sitemapUrl: project.sitemapUrl,
+        repo: project.repo,
+        skipped: true,
+        urlCount: 0,
+        fetched: 0,
+        failed: [],
+        notes: pre.notes,
+        duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])), missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
+      });
+      continue;
+    }
+    console.log(`\n[tdk-dup] ===== ${project.id} =====`);
+    entry = await checkProject(project);
+    if (hasAnyIssue(entry)) {
+      const fullFileName = `tdk-duplicate-${entry.projectId}-${dateStr}-full.md`;
+      const briefFileName = `tdk-duplicate-${entry.projectId}-${dateStr}-brief.md`;
+      if (!dryRun) {
+        await writeFile(resolve(dir, fullFileName), fullReportFor(entry), 'utf8');
+        await writeFile(resolve(dir, briefFileName), briefReportFor(entry), 'utf8');
+        entry.reports = { full: `manual-review/issues/tdk/${fullFileName}`, brief: `manual-review/issues/tdk/${briefFileName}` };
+      }
+      const body = issueBodyFor(entry, fullFileName);
+      const title = `${ISSUE_TITLE_PREFIX} ${entry.projectName}（${entry.projectId}）：TDK title/description/keywords 存在重复或缺失`;
+      const target = parseOwnerRepo(project.repo);
+      if (dryRun || !target || !pre.canSubmit) {
+        console.log(`\n[tdk-dup] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
+        console.log(body);
+        entry.issueAction = 'dry-run';
+      } else {
+        const created = await createIssue({ ...target, title, body });
+        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
+        console.log(`[tdk-dup] ${project.id}: ✨ 已创建 issue：${url}`);
+        entry.issueAction = 'created';
+        entry.issueUrl = url;
+      }
+    } else {
+      console.log(`[tdk-dup] ${project.id}: 未发现重复与缺失，不提 issue`);
+    }
   } else {
     console.log(`\n[tdk-dup] ===== ${project.id} =====`);
     entry = await checkProject(project);
@@ -269,33 +494,38 @@ lines.push('# TDK 重复性检查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查方式：参照 seo-check/scripts/description-check.js 的分组判重逻辑，数据源改为各项目 sitemap 全量页面 URL 逐页请求 HTML（非本地构建产物遍历）`);
-lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值归入"(缺失)"组');
+lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
 lines.push(`- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（页面量级大，且多语言/历史版本同页 TDK 同值属预期）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面`);
-lines.push(`- 完整重复组数据见：workflow/stats/tdk-duplicate-stats.json`);
+lines.push(`- 完整重复组与缺失数据见：workflow/stats/tdk-duplicate-stats.json`);
 lines.push('');
 lines.push('## 总览');
 lines.push('');
-lines.push('| 项目 | sitemap 页面数 | 成功抓取 | 抓取失败 | title 重复组/页 | description 重复组/页 | keywords 重复组/页 | 结论 |');
-lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
+lines.push('| 项目 | sitemap 页面数 | 成功抓取 | 抓取失败 | title 重复组/页 | description 重复组/页 | keywords 重复组/页 | 缺失页 t/d/k | 结论 |');
+lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
 for (const r of results) {
   if (r.skipped) {
-    lines.push(`| ${r.projectName}（${r.projectId}） | - | - | - | - | - | - | ⏭️ 跳过 |`);
+    lines.push(`| ${r.projectName}（${r.projectId}） | - | - | - | - | - | - | - | ⏭️ 跳过 |`);
     continue;
   }
   const d = r.duplicates;
   const fmt = (f) => (d && d[f] ? `${d[f].groups}/${d[f].pages}` : '-');
+  const fmtM = r.missing ? FIELDS.map((f) => (r.missing[f]?.noElement.length ?? 0) + (r.missing[f]?.empty.length ?? 0)).join('/') : '-';
   const hasDup = d && FIELDS.some((f) => d[f] && d[f].groups > 0);
-  const verdict = r.urlCount === 0 ? '❌ 无法检查' : hasDup ? '⚠️ 存在重复' : '✅ 无重复';
-  lines.push(`| ${r.projectName}（${r.projectId}） | ${r.urlCount} | ${r.fetched} | ${r.failed.length} | ${fmt('title')} | ${fmt('description')} | ${fmt('keywords')} | ${verdict} |`);
+  const hasMissing = missingTotal(r) > 0;
+  const verdict = r.urlCount === 0 ? '❌ 无法检查' : hasDup ? (hasMissing ? '⚠️ 存在重复+缺失' : '⚠️ 存在重复') : hasMissing ? '⚠️ 存在缺失' : '✅ 正常';
+  lines.push(`| ${r.projectName}（${r.projectId}） | ${r.urlCount} | ${r.fetched} | ${r.failed.length} | ${fmt('title')} | ${fmt('description')} | ${fmt('keywords')} | ${fmtM} | ${verdict} |`);
 }
 lines.push('');
 lines.push('## 各项目明细');
-for (const r of results) lines.push(...detailLines(r));
+if (submitIssues) {
+  lines.push('');
+  lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见同目录 `tdk-duplicate-<项目ID>-' + dateStr + '-full.md`）');
+  const withIssue = results.filter((r) => !r.skipped && r.urlCount > 0 && hasAnyIssue(r));
+  for (const r of withIssue) lines.push(`- ${r.projectName}（${r.projectId}）：\`tdk-duplicate-${r.projectId}-${dateStr}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : ''}`);
+} else {
+  for (const r of results) lines.push(...detailLines(r));
+}
 
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
 console.log(`\n[tdk-dup] 检查完成：stats -> ${statsPath}`);
 console.log(`[tdk-dup] 报告 -> ${reportPath}`);
-
-function dateStrOf(iso) {
-  return iso.slice(0, 10);
-}
