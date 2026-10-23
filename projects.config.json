@@ -118,7 +118,7 @@
       "domain": "https://hifloat.gccorg.com",
       "stack": "vitepress",
       "robotsUrl": "https://hifloat.gccorg.com/robots.txt",
-      "sitemapUrl": "https://hifloat.gccorg.com/sitemap.xml",
+      "sitemapUrl": "https://hifloat.test.osinfra.cn/sitemap.xml",
       "llmsUrl": "https://hifloat.gccorg.com/llms.txt"
     }
   ]
