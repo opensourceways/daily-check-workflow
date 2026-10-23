@@ -16,10 +16,10 @@ node scripts/check-sitemap.mjs --site=openEuler-portal  # 检查单个项目
 | 脚本 | 措施 | 输出文件 |
 |------|------|----------|
 | check-robots.mjs | robots.txt | stats/robots-stats.json |
-| check-llms-txt.mjs | llms.txt | stats/llms-txt-stats.json |
+| check-llms-txt.mjs | llms.txt 规范检查（结构/描述覆盖率/llms-full/发现头/robots 联动/抽样链接；`--submit-issues` 支持提单，前缀 `[GEO llms.txt]`，brief/full 双报告） | scheduled-reports/llms/`<date>`/ + stats/llms-txt-stats.json |
 | check-sitemap.mjs | sitemap 快速统计（旧版轻量） | stats/sitemap-stats.json |
 | sitemap-spec-check.mjs | sitemap 属性规范检查（index 递归、newVersions/domainAlias 约定、xhtml:link 全集核实；`--submit-issues` 支持提单，前缀 `[GEO Sitemap]`） | scheduled-reports/sitemap/`<date>`/ + stats/sitemap-spec-stats.json |
-| check-jsonld.mjs | JSON-LD | stats/jsonld-stats.json |
+| check-jsonld.mjs | JSON-LD 规范检查（采样页语法/@context/P0 三件套/必填属性/占位符；`--submit-issues` 支持提单，前缀 `[GEO JSON-LD]`，brief/full 双报告） | scheduled-reports/jsonld/`<date>`/ + stats/jsonld-stats.json |
 | check-tdk.mjs | TDK | stats/tdk-stats.json |
 | check-tdk-duplicate.mjs | TDK 重复判重（sitemap 全量逐页抓取分组判重；`--submit-issues` 支持提单，是"检查+提 issue"流程的模板实现） | scheduled-reports/tdk/`<date>`/ + stats/tdk-duplicate-stats.json |
 | check-a-tag.mjs | a 标签语义 | stats/a-tag-stats.json |
@@ -71,6 +71,8 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 - **Sitemap 属性规范**：`scripts/sitemap-spec-check.mjs` + `../.github/workflows/sitemap-spec-check.yml`（每日 04:30 UTC），前缀 `[GEO Sitemap]`
 - **robots.txt 规范**：`scripts/check-robots.mjs` + `../.github/workflows/robots-txt-check.yml`（每日 04:00 UTC），前缀 `[GEO Robots.txt]`；因单项目报告很短，**不做简短/完全双报告**，issue 正文直接嵌入完整明细（当日汇总报告仍入库并在 issue 尾部附链接）；触发提单=硬性错误（告警与 robotsUrl 未配置不提单）
 - **HTML 语义化**：`scripts/semantic-spec-check.mjs` + `../.github/workflows/html-semantic-check.yml`（每周三 05:30 UTC），前缀 `[GEO HTML Semantic]`；按 measures/10「检查细节」抽样页面检查（门户=首页+sitemap 抽 4 栏目页，文档=/zh/、/en/ 首页，默认跳过 MindSpore-docs）；触发提单=存在 error 级问题（仅 warn 不提）；"多个同时可见的 header/footer/main"存在 class 控制显隐的已知误报场景，issue 正文已附复核说明
+- **llms.txt 规范**：`scripts/check-llms-txt.mjs` + `../.github/workflows/llms-txt-check.yml`（每日 05:00 UTC），前缀 `[GEO llms.txt]`；触发提单=P0 级硬性错误（P1/P2 计告警不提单；robots LLM-Policy 联动缺失仅告警，提单归 robots.txt 维度，避免同根因跨维度重复提单）；llmsUrl 未配置的项目记 ❌ 但不查重、不提单
+- **JSON-LD 规范**：`scripts/check-jsonld.mjs` + `../.github/workflows/json-ld-check.yml`（每日 06:00 UTC），前缀 `[GEO JSON-LD]`；采样首页+`check-rules.json` samplePages+llms.txt 前 2 条内容页；触发提单=P0 级硬性错误（语法/@context/P0 三件套/Google 必填属性/占位符；重复块、面包屑项、inLanguage、@id 覆盖率等计告警不提单）
 
 其他维度接入时照此模式复制；细则约定（前缀查重、双报告、汇总去重、链接分支、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
 

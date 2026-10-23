@@ -1,0 +1,64 @@
+name: JSON-LD Spec Check
+
+on:
+  schedule:
+    # 每日 06:00 UTC（北京时间 14:00）
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "只检查指定项目 (projects.config.json 里的 id，留空则全量)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run（仅扫描与打印 issue 正文，不提 issue；汇总报告仍会生成并 commit）"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: json-ld-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run JSON-LD spec check
+        working-directory: workflow
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+        run: |
+          ARGS="--submit-issues"
+          if [ -n "${{ inputs.site }}" ]; then
+            ARGS="$ARGS --site=${{ inputs.site }}"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          node scripts/check-jsonld.mjs $ARGS
+
+      - name: Commit reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scheduled-reports/jsonld
+          if git diff --cached --quiet; then
+            echo "no report changes"
+          else
+            git commit -m "chore(json-ld): daily spec check reports"
+            git pull --rebase
+            git push
+          fi

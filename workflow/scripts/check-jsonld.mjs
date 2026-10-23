@@ -1,14 +1,33 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { fetchText } from '../lib/http.mjs';
 import { extractJsonLd } from '../lib/html.mjs';
+import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 
-const RULES_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'config', 'check-rules.json');
+// 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
+// 有则跳过该项目整个"扫描+提单"流程；有硬性错误时生成简短/完全两份 md 报告，
+// issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
+const ISSUE_TITLE_PREFIX = '[GEO JSON-LD]';
+const startedAt = now();
+const dateStr = startedAt.slice(0, 10);
+
+const siteArg = process.argv.find((a) => a.startsWith('--site='));
+const siteId = siteArg ? siteArg.split('=')[1] : null;
+const submitIssues = process.argv.includes('--submit-issues');
+const dryRun = process.argv.includes('--dry-run');
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..', '..');
+const RULES_PATH = resolve(__dirname, '..', 'config', 'check-rules.json');
 const rules = JSON.parse(await readFile(RULES_PATH, 'utf8'));
 const SAMPLE_PAGES = rules.samplePages || ['/'];
+
+const dir = resolve(ROOT, 'scheduled-reports', 'jsonld', dateStr);
+await mkdir(dir, { recursive: true });
+const reportName = 'report.md';
 
 const P0_TYPES = ['Organization', 'WebSite', 'BreadcrumbList'];
 
@@ -31,16 +50,10 @@ const PAGE_LEVEL_TYPES = new Set(['WebPage', 'WebSite', 'Article', 'TechArticle'
 const PLACEHOLDER_RE = /(^|\b)(todo|fixme|tbd|placeholder|待填|占位)\b/i;
 const CANONICAL_CONTEXT = 'https://schema.org';
 
-const siteArg = process.argv.find((a) => a.startsWith('--site='));
-const siteId = siteArg ? siteArg.split('=')[1] : null;
+// ---- 单项目扫描（两种模式共用） ----
 
-const projects = await loadProjects();
-const targets = filterProjects(projects, siteId);
-
-const results = [];
-
-for (const project of targets) {
-  const entry = { projectId: project.id, projectName: project.name, domain: project.domain, checks: {} };
+async function scanProject(project) {
+  const entry = { projectId: project.id, projectName: project.name, domain: project.domain, repo: project.repo, checks: {} };
   const types = new Set();
   const requiredMissing = [];
   const placeholderHits = [];
@@ -118,16 +131,19 @@ for (const project of targets) {
         pageTypes.add(Array.isArray(node['@type']) ? node['@type'].join('/') : node['@type']);
       }
     }
-    perPage.push({ page: label, jsonLdBlocks: blocks.length, types: [...pageTypes] });
+    perPage.push({ page: label, url: sampleUrls.get(label), jsonLdBlocks: blocks.length, types: [...pageTypes] });
   }
 
+  entry.checks.pagesRequested = [...sampleUrls.keys()];
   entry.checks.accessible = firstOk;
   entry.checks.httpStatus = firstStatus;
 
   if (!firstOk) {
     entry.error = `首页不可访问 (${firstStatus})`;
-    results.push(entry);
-    continue;
+    entry.hardErrors = [entry.error];
+    entry.warnings = [];
+    entry.verdict = '❌';
+    return entry;
   }
 
   entry.checks.pagesSampled = pagesSampled;
@@ -149,8 +165,322 @@ for (const project of targets) {
   entry.checks.usesGraph = usesGraph;
   entry.checks.inLanguageMissing = inLanguageMissing || nestedIssues.filter((i) => i.issue?.includes('inLanguage')).length;
 
+  classify(entry);
+  return entry;
+}
+
+// 错误/告警分级：P0（语法/@context/三件套/Google 必填属性/占位符）计硬性错误并触发提单；
+// P1 与结构建议（重复块、面包屑层级项、headline 超长、logo 形态、inLanguage、@id 覆盖率）计告警。
+function classify(entry) {
+  const c = entry.checks;
+  const errs = [];
+  const warns = [];
+  if (c.jsonLdCount === 0) errs.push('采样页面未发现任何合法 JSON-LD 块');
+  if (c.invalidCount > 0) errs.push(`JSON 语法错误块 ${c.invalidCount} 个（含语法错误的块无法解析，请检查采样页面的 \`application/ld+json\` 内容）`);
+  if (c.contextErrorCount > 0) errs.push(`@context 异常块 ${c.contextErrorCount} 个（应固定为 https://schema.org）`);
+  if (c.p0Missing.length) errs.push(`P0 三件套缺失：${c.p0Missing.join(' / ')}（采样页未出现该类型）`);
+  if (c.requiredMissingCount > 0) {
+    const grouped = new Map();
+    for (const m of c.requiredMissing) grouped.set(`${m.type}.${m.prop}`, (grouped.get(`${m.type}.${m.prop}`) || 0) + 1);
+    const top = [...grouped.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k}×${n}`).join('、');
+    errs.push(`Google 必填属性缺失 ${c.requiredMissingCount} 处（主要：${top}${grouped.size > 3 ? ' 等' : ''}）`);
+  }
+  if (c.placeholderCount > 0) errs.push(`占位符取值 ${c.placeholderCount} 处（TODO/待填/占位等，禁止上线）`);
+  if (c.duplicateBlockCount > 0) warns.push(`同页语义重复块 ${c.duplicateBlockCount} 处（页面：${c.pagesWithDuplicates.join('、')}，常见根因：模板+插件双重注入）`);
+  if (c.nestedIssues.length > 0) warns.push(`结构与推荐项问题 ${c.nestedIssues.length} 处（面包屑项/headline 长度/logo/inLanguage 等，逐条见完全版）`);
+  if (c.jsonLdCount > 0 && c.idCoverage !== null && c.idCoverage < 1) warns.push(`@id 覆盖率 ${(c.idCoverage * 100).toFixed(0)}%（P1 实体关联：WebPage.isPartOf → WebSite → Organization 引用链）`);
+  entry.hardErrors = errs;
+  entry.warnings = warns;
+  entry.verdict = errs.length ? '❌' : warns.length ? '⚠️' : '✅';
+}
+
+// 触发提单条件：存在 P0 级硬性错误（告警不提单）
+function hasAnyIssue(r) {
+  return !r.skipped && (r.hardErrors?.length || 0) > 0;
+}
+
+// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
+// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
+async function precheckExistingIssue(project) {
+  const parsed = parseOwnerRepo(project.repo);
+  if (!parsed) {
+    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
+  }
+  let existing;
+  try {
+    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
+  } catch (err) {
+    if (hasToken()) {
+      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
+    }
+    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
+  }
+  if (existing.length) {
+    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
+    return { block: true, canSubmit: false, notes: [`已存在未关闭的 JSON-LD 规范 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
+  }
+  if (!hasToken()) {
+    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
+  }
+  return { block: false, canSubmit: true, notes: [] };
+}
+
+function fullUrlOf(fileName) {
+  const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
+  const refName = process.env.GITHUB_REF_NAME || 'archive';
+  return `https://github.com/${ghRepo}/blob/${refName}/scheduled-reports/jsonld/${dateStr}/${fileName}`;
+}
+
+function issueTitleFor(r) {
+  return `${ISSUE_TITLE_PREFIX} ${r.projectName}（${r.projectId}）：JSON-LD 规范问题（${r.hardErrors.length} 类）`;
+}
+
+// 简短版正文：采样概况 + 全部错误 + top5 告警（超出注明见完全版）
+function briefLines(r) {
+  const c = r.checks;
+  const lines = [];
+  lines.push('### 采样概况');
+  lines.push('');
+  lines.push(
+    `- 采样页面：${(c.pagesRequested || []).join('、') || '-'}；发现合法块 ${c.jsonLdCount ?? 0} 个；类型：${(c.schemaTypes || []).join('、') || '(无)'}`
+  );
+  lines.push('');
+  lines.push(r.hardErrors.length ? `### 问题清单（${r.hardErrors.length} 类硬性不符合）` : '### 问题清单（无 P0 级硬性不符合）');
+  lines.push('');
+  for (const e of r.hardErrors) lines.push(`- ❌ ${e}`);
+  const top = (r.warnings || []).slice(0, 5);
+  if (top.length) {
+    lines.push('');
+    lines.push(`### 告警（${r.warnings.length} 条${r.warnings.length > top.length ? `，列前 ${top.length} 条，其余见完全版` : ''}）`);
+    lines.push('');
+    for (const w of top) lines.push(`- ⚠️ ${w}`);
+  }
+  return lines;
+}
+
+// 完全版明细：全部错误/告警 + 必填缺失逐条 + 结构问题逐条 + 占位符/context/重复块清单
+function detailLines(r) {
+  const c = r.checks;
+  const lines = [];
+  lines.push('### 项目信息');
+  lines.push('');
+  lines.push(`- 项目：${r.projectName}（${r.projectId}）`);
+  lines.push(`- 采样域名：${r.domain}`);
+  lines.push(`- 结论：${r.verdict}（硬性错误 ${r.hardErrors.length} 类 / 告警 ${(r.warnings || []).length} 条）`);
+  lines.push('');
+  lines.push('### 采样页面');
+  lines.push('');
+  lines.push('| 页面 | JSON-LD 块数 | 类型 |');
+  lines.push('| --- | --- | --- |');
+  for (const p of c.perPage || []) lines.push(`| ${p.page} | ${p.jsonLdBlocks} | ${(p.types || []).join('、') || '-'} |`);
+  lines.push('');
+  lines.push(r.hardErrors.length ? `### 问题清单（全部 ${r.hardErrors.length} 类硬性不符合）` : '### 问题清单（无 P0 级硬性不符合）');
+  lines.push('');
+  for (const e of r.hardErrors) lines.push(`- ❌ ${e}`);
+  if ((r.warnings || []).length) {
+    lines.push('');
+    lines.push(`### 告警（全部 ${r.warnings.length} 条）`);
+    lines.push('');
+    for (const w of r.warnings) lines.push(`- ⚠️ ${w}`);
+  }
+  if ((c.requiredMissing || []).length) {
+    lines.push('');
+    lines.push(`### Google 必填属性缺失（全部 ${c.requiredMissing.length} 处）`);
+    lines.push('');
+    lines.push('| 页面 | 类型 | 缺失属性 |');
+    lines.push('| --- | --- | --- |');
+    for (const m of c.requiredMissing) lines.push(`| ${m.page} | ${m.type} | ${m.prop} |`);
+  }
+  if ((c.nestedIssues || []).length) {
+    lines.push('');
+    lines.push(`### 结构与推荐项问题（全部 ${c.nestedIssues.length} 处）`);
+    lines.push('');
+    for (const n of c.nestedIssues) lines.push(`- ⚠️ ${n.page} · ${n.type}：${n.issue}`);
+  }
+  if ((c.placeholderHits || []).length) {
+    lines.push('');
+    lines.push(`### 占位符取值（全部 ${c.placeholderHits.length} 处）`);
+    lines.push('');
+    for (const h of c.placeholderHits) lines.push(`- ❌ \`${h.prop}\`：${h.value}`);
+  }
+  if ((c.contextErrors || []).length) {
+    lines.push('');
+    lines.push(`### @context 异常（全部 ${c.contextErrors.length} 处）`);
+    lines.push('');
+    for (const e of c.contextErrors) lines.push(`- ❌ ${e.page}：${e.detail}`);
+  }
+  return lines;
+}
+
+function issueBodyFor(r, fullFileName) {
+  const lines = [];
+  lines.push(`本 issue 由 GEO 例行检查（JSON-LD 维度）自动生成。以下问题按 measures/04-json-ld/规范.md 验收基线（P0）对采样页面（${(r.checks.pagesRequested || []).length} 个）静态 HTML 核查得出（${dateStr}）。`);
+  lines.push('');
+  lines.push(`**项目**：${r.projectName}（${r.projectId}）`);
+  lines.push(`**采样入口**：${r.domain}`);
+  lines.push('');
+  lines.push(...briefLines(r));
+  lines.push('');
+  lines.push('### 完全版报告');
+  lines.push('');
+  lines.push('逐页类型、必填属性缺失逐条清单与结构问题明细见检查仓库内的完全版报告：');
+  lines.push('');
+  lines.push(`> [${fullFileName}](${fullUrlOf(fullFileName)})`);
+  lines.push('');
+  lines.push('### 规范要点');
+  lines.push('');
+  lines.push('- `application/ld+json` 必须由 SSG/SSR 输出在最终 HTML 中，`JSON.parse` 可通过，`@context` 固定 `https://schema.org`');
+  lines.push('- 全站 P0 三件套：Organization（name+url）、WebSite（name+url）、BreadcrumbList（itemListElement 各项含 position+name）');
+  lines.push('- 各类型 Google 必填属性齐全且非空（如 TechArticle：headline ≤110 字符 / image / datePublished / author / publisher）');
+  lines.push('- 取值只来自页面可见内容或真实事实，禁止编造，禁止占位符（TODO/待填/xxx）');
+  lines.push('- 同一页面避免语义完全重复的块（模板+插件双重注入是常见根因）');
+  lines.push('');
+  lines.push('### 处理说明');
+  lines.push('');
+  lines.push('- 按问题清单修复 JSON-LD 注入（补全必填属性、去重块、移除占位符）后合并 PR 并关闭本 issue');
+  lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 若认为某条属预期（误报，如采样页确实不适用某类型），请在 issue 评论说明，维护者会关闭本 issue');
+  lines.push('');
+  lines.push(`> 当日全量检查汇总报告：[${reportName}](${fullUrlOf(reportName)})`);
+  lines.push('');
+  lines.push('<sub>由 daily-check-workflow JSON-LD 规范检查（check-jsonld）自动生成。</sub>');
+  return lines.join('\n');
+}
+
+// ---- 扫描 + 提 issue ----
+
+const projects = await loadProjects();
+const targets = filterProjects(projects, siteId);
+const results = [];
+
+for (const project of targets) {
+  if (!submitIssues) {
+    console.log(`[json-ld] ===== ${project.id} =====`);
+    results.push(await scanProject(project));
+    continue;
+  }
+  const pre = await precheckExistingIssue(project);
+  pre.notes.forEach((n) => console.log(`[json-ld] ${project.id}: ${n}`));
+  if (pre.block) {
+    results.push({
+      projectId: project.id,
+      projectName: project.name,
+      domain: project.domain,
+      repo: project.repo,
+      skipped: true,
+      checks: {},
+      hardErrors: [],
+      warnings: [],
+      notes: pre.notes,
+      verdict: '⏭️',
+    });
+    continue;
+  }
+  console.log(`\n[json-ld] ===== ${project.id} =====`);
+  const entry = await scanProject(project);
+  if (hasAnyIssue(entry)) {
+    const title = issueTitleFor(entry);
+    const fullFileName = `${entry.projectId}-full.md`;
+    const body = issueBodyFor(entry, fullFileName);
+    const target = parseOwnerRepo(project.repo);
+    if (!dryRun) {
+      await writeFile(resolve(dir, fullFileName), `# JSON-LD 检查完全版报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n\n` + detailLines(entry).join('\n') + '\n', 'utf8');
+      await writeFile(resolve(dir, `${entry.projectId}-brief.md`), `# JSON-LD 检查简短报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n- 采样入口：${entry.domain}\n- 结论：${entry.verdict}\n\n` + briefLines(entry).join('\n') + '\n', 'utf8');
+      entry.reports = { full: `scheduled-reports/jsonld/${dateStr}/${fullFileName}`, brief: `scheduled-reports/jsonld/${dateStr}/${entry.projectId}-brief.md` };
+    }
+    if (dryRun || !target || !pre.canSubmit) {
+      console.log(`\n[json-ld] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
+      console.log(body);
+      entry.issueAction = dryRun ? 'dry-run' : 'print-only';
+    } else {
+      const created = await createIssue({ ...target, title, body });
+      const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
+      console.log(`[json-ld] ${project.id}: ✨ 已创建 issue：${url}`);
+      entry.issueAction = 'created';
+      entry.issueUrl = url;
+    }
+  } else {
+    console.log(`[json-ld] ${project.id}: 无 P0 硬性错误，不提 issue${(entry.warnings || []).length ? `（有 ${entry.warnings.length} 条告警，见报告）` : ''}`);
+  }
   results.push(entry);
 }
+
+// ---- stats + Markdown 报告 ----
+
+const report = { timestamp: startedAt, measure: 'json-ld', samplePages: SAMPLE_PAGES, mode: submitIssues ? (dryRun ? 'submit-issues-dry-run' : 'submit-issues') : 'scan', results };
+const statsPath = await writeStats('jsonld-stats', report);
+
+function overviewRow(r) {
+  if (r.skipped) {
+    return `| ${r.projectName}（${r.projectId}） | ⏭️ | - | - | - | - | - | - | - | ⏭️ 查重跳过 |`;
+  }
+  const c = r.checks;
+  const tag = r.issueUrl ? `，[issue](${r.issueUrl})` : r.issueAction === 'dry-run' ? '（dry-run 未提交）' : r.issueAction === 'print-only' ? '（未提单：无 token 或查重降级）' : '';
+  if (!c.accessible) {
+    return `| ${r.projectName}（${r.projectId}） | ❌ (${c.httpStatus}) | - | - | - | - | - | - | - | ${r.verdict}${tag} |`;
+  }
+  return `| ${r.projectName}（${r.projectId}） | ✅ | ${c.jsonLdCount} | ${c.invalidCount} | ${c.contextErrorCount} | ${c.p0Missing.length ? `❌ ${c.p0Missing.join('/')}` : '✅'} | ${c.requiredMissingCount} | ${c.placeholderCount} | ${(r.warnings || []).length} | ${r.verdict}${tag} |`;
+}
+
+const lines = [];
+lines.push('# JSON-LD 规范检查报告');
+lines.push('');
+lines.push(`- 检查时间：${startedAt}`);
+lines.push(`- 检查范围：projects.config.json 中 ${results.length} 个项目${results.some((r) => r.skipped) ? `（查重跳过：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
+lines.push(`- 采样策略：首页 + \`check-rules.json\` 的 \`samplePages\`（${SAMPLE_PAGES.join('、')}）+ 各项目 llms.txt 前 2 条真实内容页链接，仅统计返回 200 的页面`);
+lines.push('- 规范来源：measures/04-json-ld/规范.md（验收基线 P0–P2）');
+lines.push('- 检查项：JSON 语法、`@context`、P0 三件套覆盖（Organization/WebSite/BreadcrumbList）、各类型 Google 必填属性、占位符；告警级：重复块、面包屑项完整性、headline ≤110、publisher/Organization logo 形态、inLanguage、`@id` 覆盖率');
+lines.push('- 特殊约定：提单触发 = P0 级硬性错误（语法错误/@context 异常/三件套缺失/必填属性缺失/占位符/首页不可访问）；P1 结构项仅计告警入报告');
+lines.push('- 机器可读结果：workflow/stats/jsonld-stats.json');
+lines.push('');
+lines.push('## 总览');
+lines.push('');
+lines.push('| 项目 | 首页可访问 | 合法块 | 语法错误 | @context 异常 | P0 三件套 | 必填缺失 | 占位符 | 告警 | 结论 |');
+lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+for (const r of results) lines.push(overviewRow(r));
+lines.push('');
+if (submitIssues) {
+  lines.push('## 各项目明细');
+  lines.push('');
+  lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录下 `<项目ID>-full.md`）');
+  lines.push('');
+  for (const r of results.filter(hasAnyIssue)) {
+    lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.reports ? r.reports.full : '（dry-run 未写文件）'}\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : r.issueAction === 'print-only' ? '，（未提单：无 token 或查重降级）' : ''}`);
+  }
+} else {
+  lines.push('## 各项目明细');
+  for (const r of results) {
+    lines.push('');
+    lines.push(`### ${r.projectName}（${r.projectId}） — ${r.verdict}`);
+    lines.push('');
+    if (r.skipped) {
+      for (const n of r.notes || []) lines.push(`- ${n}`);
+      continue;
+    }
+    if (!r.checks.accessible) {
+      lines.push(`- ${r.hardErrors.join('；')}`);
+      continue;
+    }
+    lines.push(...detailLines(r).slice(4));
+  }
+}
+lines.push('');
+lines.push('## 结论与建议');
+lines.push('');
+const bad = results.filter((r) => !r.skipped && r.hardErrors.length);
+const warn = results.filter((r) => !r.skipped && !r.hardErrors.length && (r.warnings || []).length);
+const skipped = results.filter((r) => r.skipped);
+if (bad.length) lines.push(`- 硬性不符合：${bad.map((r) => `${r.projectId}（${r.hardErrors[0]}${r.hardErrors.length > 1 ? ` 等 ${r.hardErrors.length} 类` : ''}）`).join('；')}，需优先整改。`);
+if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.projectId).join('、')}，多为 P1 结构/推荐项（重复块、inLanguage、@id 覆盖率等），是否整改人工定夺。`);
+if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
+if (!bad.length && !warn.length && !skipped.length) lines.push('- 全部项目采样页面 JSON-LD 符合 P0 基线。');
+lines.push('');
+lines.push(`> 注：本报告由 workflow/scripts/check-jsonld.mjs 自动生成（同批次数据见 workflow/stats/jsonld-stats.json）。取值真实性（与页面可见内容一致、无编造）与富媒体资格（Rich Results Test）仍需人工抽查，见 measures/04-json-ld/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警不提单）。' : ''}`);
+
+const reportPath = resolve(dir, reportName);
+await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
 
 async function llmsEntryPages(project, domainRoot) {
   if (!project.llmsUrl) return [];
@@ -260,13 +590,14 @@ function scanPlaceholders(value, label, hits, path = '') {
   }
 }
 
-const report = { timestamp: now(), measure: 'json-ld', samplePages: SAMPLE_PAGES, results };
-const path = await writeStats('jsonld-stats', report);
-console.log(`[json-ld] 检查完成，${results.length} 个项目，结果已写入 ${path}`);
+console.log(`[json-ld] 检查完成，${results.length} 个项目，结果已写入 ${statsPath}`);
+console.log(`[json-ld] 规范检查报告 -> ${reportPath}`);
 console.log(
   JSON.stringify(
     results.map((r) => ({
       id: r.projectId,
+      verdict: r.verdict,
+      skipped: !!r.skipped,
       blocks: r.checks?.jsonLdCount,
       invalid: r.checks?.invalidCount,
       ctxErr: r.checks?.contextErrorCount,
@@ -279,6 +610,10 @@ console.log(
       inLangMiss: r.checks?.inLanguageMissing,
       placeholder: r.checks?.placeholderCount,
       types: r.checks?.schemaTypes,
+      errors: r.hardErrors,
+      warnings: r.warnings?.length,
+      issueAction: r.issueAction,
+      issueUrl: r.issueUrl,
     })),
     null,
     2

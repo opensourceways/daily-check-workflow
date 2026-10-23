@@ -1,3 +1,10 @@
+// check-robots.mjs —— robots.txt 维度例行检查：抓取各项目（含 alias 域）robots.txt 并按
+// archive/SEO标准及覆盖情况.md + measures/01-robots-txt/规范.md 核查，输出 stats JSON 与
+// scheduled-reports/robotstxt/<日期>/report.md；--submit-issues 模式向各项目 AtomGit 仓库提 issue。
+//
+// 用法（详见 measures/01-robots-txt/工具与脚本.md 的参数表与执行流程图）：
+//   node workflow/scripts/check-robots.mjs [--site=<项目ID>] [--submit-issues] [--dry-run]
+// 环境变量：ATOMGIT_TOKEN（缺省时只扫描不提单）、GITHUB_REPOSITORY/GITHUB_REF_NAME（正文链接）。
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,19 +20,24 @@ import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '
 import { writeStats, now } from '../lib/report.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// ROOT 为 workflow/ 目录
 const ROOT = resolve(__dirname, '..');
+// 期望值（如 Content-Signal 规范口径）放配置文件，调口径只改 check-rules.json 不改代码
 const RULES_PATH = resolve(ROOT, 'config', 'check-rules.json');
 const rules = JSON.parse(await readFile(RULES_PATH, 'utf8'));
 const ROBOTS_RULES = rules.robots || {};
 const EXPECTED_CS = ROBOTS_RULES.contentSignalExpected || { 'ai-train': 'yes', search: 'yes', 'ai-input': 'yes' };
 const EXPECTED_CS_TEXT = Object.entries(EXPECTED_CS).map(([k, v]) => `${k}=${v}`).join(', ');
+// 引用链接可达性探测只需确认可访问，截断 64KB 避免下载大 sitemap/llms 全文
 const LINK_MAX_BYTES = 64 * 1024;
 
 // issue 前缀常量：变更会使旧 issue 查重失效造成重复提单，勿随意改动
 const ISSUE_TITLE_PREFIX = '[GEO Robots.txt]';
+// 单次运行的统一时间戳：决定日期目录名与报告内所有日期展示
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
 
+// CLI 参数（process.argv 手工解析，零依赖）
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
 const submitIssues = process.argv.includes('--submit-issues');
@@ -34,10 +46,16 @@ const dryRun = process.argv.includes('--dry-run');
 const projects = await loadProjects();
 const targets = filterProjects(projects, siteId);
 
+// 当日产物目录：scheduled-reports/robotstxt/<YYYY-MM-DD>/，同一天重跑覆盖（ROOT 上一级为仓库根）
 const dir = resolve(ROOT, '..', 'scheduled-reports', 'robotstxt', dateStr);
 await mkdir(dir, { recursive: true });
 const reportName = 'report.md';
 
+/**
+ * 检查一条 robots.txt 内引用的链接（Sitemap / LLM-Policy 值）：
+ * 非绝对 URL 直接判不可访问；否则 GET 探测状态码；
+ * host 与 robots.txt 所在 host 不同 → 标记 crossHost（跨域引用，上层计告警而非错误）。
+ */
 async function checkLink(url, robotsHost) {
   const link = { url, absolute: isAbsoluteUrl(url) };
   if (!link.absolute) {
@@ -52,6 +70,10 @@ async function checkLink(url, robotsHost) {
   return link;
 }
 
+/**
+ * 抓取并解析单个 robots.txt URL（主域或 alias 域共用），产出该文件的全部字段级检查结果。
+ * 抓取失败时仅 accessible/httpStatus/error 有效，上层据此提前返回。
+ */
 async function checkOneRobots(url) {
   const entry = { robotsUrl: url };
   const { ok, status, text } = await fetchText(url);
@@ -62,22 +84,26 @@ async function checkOneRobots(url) {
     return entry;
   }
 
+  // 按行解析为 user-agent 组 + 全局字段；raw 已过滤空行、逐行 trim（用于域名一致性比对）
   const parsed = parseRobots(text);
   const host = new URL(url).host;
   entry.userAgentPresent = parsed.userAgents.length > 0;
   entry.userAgents = parsed.userAgents;
   entry.allowValues = parsed.allow;
   entry.disallowValues = parsed.disallow;
+  // 规范要求 allow/disallow "至少其一"，两者皆无才是不合规
   entry.hasAllowOrDisallow = parsed.allow.length > 0 || parsed.disallow.length > 0;
   entry.pathFormatIssues = pathFormatIssues(parsed);
   entry.sitewideBlocked = isSitewideBlocked(parsed);
 
   entry.sitemapPresent = parsed.sitemap.length > 0;
+  // 逐条 Sitemap 声明检查可达性（单文件维度数量少，串行即可）
   entry.sitemapLinks = [];
   for (const s of parsed.sitemap) entry.sitemapLinks.push(await checkLink(s, host));
 
   entry.contentSignal = parsed.contentSignal;
   entry.contentSignalPresent = !!parsed.contentSignal;
+  // 与期望键值表逐键比对（顺序/空格不敏感），缺失字段单独走 contentSignalPresent 判定
   entry.contentSignalIssues = parsed.contentSignal ? diffContentSignal(parsed.contentSignal, EXPECTED_CS) : [];
 
   entry.llmPolicy = parsed.llmPolicy;
@@ -91,6 +117,7 @@ async function checkOneRobots(url) {
         return '';
       }
     })();
+    // 指向 llms.txt 的判定：路径末段以 llms 开头（兼容 llms.txt / llms-full.txt）
     entry.llmPolicyPointsToLlmsTxt = /\/llms[^/]*$/i.test(path);
   } else {
     entry.llmPolicyLinks = [];
@@ -106,6 +133,10 @@ async function checkOneRobots(url) {
   return entry;
 }
 
+/**
+ * 汇总单个检查结果（主域或 alias 域）的硬性错误清单——verdict ❌ 与提单触发条件都以此为准；
+ * 告警（跨域引用等）不在此列，由 scanProject 单独归入 warnings。
+ */
 function collectErrors(c) {
   const errs = [];
   if (!c.userAgentPresent) errs.push('缺 User-agent');
@@ -122,8 +153,13 @@ function collectErrors(c) {
   return errs;
 }
 
+/**
+ * 扫描单个项目（常规/提单两种模式共用）：主域必查；配置了 robotsAliasUrl 时 alias 域
+ * 执行同套检查（错误加"alias 域："前缀），并将两域非空行逐行比对记入 aliasConsistent。
+ */
 async function scanProject(project) {
   const entry = { projectId: project.id, projectName: project.name, robotsUrl: project.robotsUrl, repo: project.repo, checks: {} };
+  // 未配置 robotsUrl（docs 子目录型项目）：仅记录 ❌，不查重、不提单
   if (!project.robotsUrl) {
     entry.error = 'robotsUrl 未配置';
     entry.verdict = '❌';
@@ -134,6 +170,7 @@ async function scanProject(project) {
 
   const main = await checkOneRobots(project.robotsUrl);
   entry.checks = main;
+  // 主域都抓不到时后续检查无意义，单条错误直接返回
   if (main.error) {
     entry.error = main.error;
     entry.verdict = '❌';
@@ -161,6 +198,7 @@ async function scanProject(project) {
 
   const warnings = [];
   if (entry.alias && entry.aliasConsistent === false) warnings.push('主域与 alias 域 robots.txt 内容不一致');
+  // 跨域引用在本仓库口径里只计告警（domainAlias 视为合法域名），是否整改人工定夺
   if (main.crossDomainRefs.length) warnings.push(`主域跨域引用：${main.crossDomainRefs.map((l) => l.url).join(', ')}`);
   entry.hardErrors = hardErrors;
   entry.warnings = warnings;
@@ -168,6 +206,7 @@ async function scanProject(project) {
   return entry;
 }
 
+/** 提单模式下因"已有未关闭同前缀 issue / 查重失败(有token)"被跳过的占位条目 */
 function skippedEntry(project, notes) {
   return {
     projectId: project.id,
@@ -215,6 +254,7 @@ async function precheckExistingIssue(project) {
   return { block: false, canSubmit: true, notes: [] };
 }
 
+/** 当日汇总报告在 GitHub 上的 blob 链接（issue 正文尾部引用），分支跟随 Actions 运行时 */
 function summaryUrl() {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
   const refName = process.env.GITHUB_REF_NAME || 'archive';
@@ -225,6 +265,11 @@ function issueTitleFor(r) {
   return `${ISSUE_TITLE_PREFIX} ${r.projectName}（${r.projectId}）：robots.txt 规范问题（${r.hardErrors.length} 项）`;
 }
 
+/**
+ * issue 正文 = 单一版完整明细（本维度单项目明细很短，不受 body 长度限制影响，
+ * 不做 brief/full 双报告拆分，也不写每项目产物文件）：
+ * 问题清单 → robots 现状原文 → 规范要点 → 固定处理说明 → 当日汇总报告链接。
+ */
 function issueBodyFor(r) {
   const c = r.checks;
   const lines = [];
@@ -273,6 +318,7 @@ function issueBodyFor(r) {
 
 const results = [];
 for (const project of targets) {
+  // 常规模式：只扫描记录，不接触 AtomGit
   if (!submitIssues) {
     console.log(`[robots] ===== ${project.id} =====`);
     results.push(await scanProject(project));
@@ -295,6 +341,7 @@ for (const project of targets) {
     const title = issueTitleFor(entry);
     const body = issueBodyFor(entry);
     const target = parseOwnerRepo(project.repo);
+    // dry-run / 无 token / owner:repo 解析失败 → 仅打印正文，行为等同
     if (dryRun || !target || !pre.canSubmit) {
       console.log(`\n[robots] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
       console.log(body);
@@ -317,6 +364,7 @@ for (const project of targets) {
 const report = { timestamp: startedAt, measure: 'robots-txt', results };
 const statsPath = await writeStats('robots-stats', report);
 
+// 链接结果渲染成报告行 / 表格单元格
 function fmtLink(l) {
   const state = l.accessible ? `✅ (${l.status})` : `❌ (${l.status ?? l.error})`;
   return `${l.url} → ${state}${l.crossHost ? '（跨域引用）' : ''}`;
@@ -327,6 +375,8 @@ function fmtLinkCell(links) {
   const cross = links.filter((l) => l.crossHost).length;
   return `${ok}/${links.length} 可访问${cross ? `，${cross} 条跨域` : ''}`;
 }
+
+/** 汇总报告中单项目的完整明细小节（### 标题 + 检查结果 + 错误/告警 + robots 原文） */
 function detailLines(r) {
   const lines = [];
   lines.push(`### ${r.projectName}（${r.projectId}） — ${r.verdict}${r.issueUrl ? `，[issue](${r.issueUrl})` : r.issueAction === 'dry-run' ? '（dry-run 未提交）' : ''}`);
@@ -335,6 +385,7 @@ function detailLines(r) {
     for (const n of r.notes || []) lines.push(`- ${n}`);
     return lines;
   }
+  // 跳过/未配置的兜底行也必须是列表行，且总览表内该行仍是表格行（勿在此处混入表格）
   if (!r.checks.accessible) {
     lines.push(`- ${r.robotsUrl ? r.hardErrors.join('；') : 'robotsUrl 未配置，项目无独立 robots.txt（属主站子目录），详见 measures/01-robots-txt/各项目差异点.md'}`);
     return lines;
@@ -372,6 +423,7 @@ function detailLines(r) {
   return lines;
 }
 
+// 汇总报告：两种模式都含全量明细（issue 正文与明细同源且本维度体量小，不适用双报告维度的"仅总览"去重规则）
 const lines = [];
 lines.push('# robots.txt 规范检查报告');
 lines.push('');
@@ -387,6 +439,7 @@ lines.push('## 总览');
 lines.push('');
 lines.push('| 项目 | robots 地址（主域） | 主域可访问 | alias 可访问 | 主/alias 一致 | User-agent | allow∨disallow | 路径格式 | 禁整站 | Sitemap 链接 | Content-Signal | LLM-Policy 链接 | 结论 |');
 lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
+// 总览每一行（含跳过/未配置分支）都必须输出与表头等列数（13）的表格行，混入非表格行会导致表格断裂
 for (const r of results) {
   if (r.skipped) {
     lines.push(`| ${r.projectName}（${r.projectId}） | ${r.robotsUrl || '未配置'} | ⏭️ | - | - | - | - | - | - | - | - | - | ⏭️ 查重跳过 |`);
@@ -428,6 +481,7 @@ lines.push(`> 注：本报告由 workflow/scripts/check-robots.mjs 自动生成�
 const reportPath = resolve(dir, reportName);
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
 
+// ---- 控制台输出：人读摘要 + 机读结果（CI 场景可截取末尾 JSON）----
 console.log(`[robots] 检查完成，${results.length} 个项目，结果已写入 ${statsPath}`);
 console.log(`[robots] 规范检查报告 -> ${reportPath}`);
 console.log(
