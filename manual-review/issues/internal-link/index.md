@@ -15,3 +15,7 @@
 ## openUBMC
 
 [[GEO 优化]：内链整改：入口薄弱页面补链 + 正文断链修复](https://gitcode.com/openUBMC/website/issues/285)
+
+## UnifiedBus
+
+[[GEO优化]：内链分析路由与配置问题](https://gitcode.com/unifiedbus/UnifiedBus-portal/issues/108)
