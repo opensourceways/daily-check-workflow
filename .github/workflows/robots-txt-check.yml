@@ -37,7 +37,6 @@ jobs:
           node-version: 20
 
       - name: Run robots.txt spec check
-        working-directory: workflow
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
         run: |
@@ -48,7 +47,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          node scripts/check-robots.mjs $ARGS
+          node scripts/checks/check-robots.mjs $ARGS
 
       - name: Commit reports
         run: |

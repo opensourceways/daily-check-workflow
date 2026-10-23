@@ -10,7 +10,7 @@ import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
 
-const rules = JSON.parse(await readFile(resolve(ROOT, 'workflow/config/check-rules.json'), 'utf8'));
+const rules = JSON.parse(await readFile(resolve(ROOT, 'scripts/config/check-rules.json'), 'utf8'));
 const BAD_LINK_TEXT = new Set(rules.badLinkTextBlacklist.map((t) => t.toLowerCase()));
 const BAD_ALT = new Set(rules.badAltBlacklist.map((t) => t.toLowerCase()));
 
@@ -560,7 +560,7 @@ function issueBodyFor(p, s, fullFileName, startedAt) {
   lines.push('- 「多个同时可见的顶层 header/footer/main」由桌面/移动双份 DOM 触发的属已知误报场景（class/媒体查询控制的显隐无法静态判定），请在 issue 评论说明后由维护者关闭，或在双份元素上补 `aria-hidden`（隐藏份）/保持单份');
   lines.push('- 其余误报（如 SPA 首屏壳属预期设计）同样请评论说明后关闭');
   lines.push('');
-  lines.push('<sub>由 daily-check-workflow HTML 语义化检查（workflow/scripts/semantic-spec-check.mjs）自动生成。</sub>');
+  lines.push('<sub>由 daily-check-workflow HTML 语义化检查（scripts/checks/semantic-spec-check.mjs）自动生成。</sub>');
   return lines.join('\n');
 }
 

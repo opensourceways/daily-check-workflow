@@ -1,5 +1,5 @@
 // AtomGit API v5 轻量客户端(基于全局 fetch,零依赖)。
-// 与 main 分支 scripts/lib/atomgit-api.js 等价的读/写子集,供 TDK 重复提单流程使用。
+// 与重构前 main 分支旧 scripts/lib/atomgit-api.js 等价的读/写子集,供 TDK 重复提单流程使用。
 // 环境变量:
 //   ATOMGIT_TOKEN    写操作(建 issue)必需;私有仓列 issue 也必需
 //   ATOMGIT_API_BASE 可选,默认 https://api.atomgit.com

@@ -496,7 +496,7 @@ lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查方式：参照 seo-check/scripts/description-check.js 的分组判重逻辑，数据源改为各项目 sitemap 全量页面 URL 逐页请求 HTML（非本地构建产物遍历）`);
 lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
 lines.push(`- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（页面量级大，且多语言/历史版本同页 TDK 同值属预期）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面`);
-lines.push(`- 完整重复组与缺失数据见：workflow/stats/tdk-duplicate-stats.json`);
+lines.push(`- 完整重复组与缺失数据见：scripts/stats/tdk-duplicate-stats.json`);
 lines.push('');
 lines.push('## 总览');
 lines.push('');

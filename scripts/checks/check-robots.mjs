@@ -3,7 +3,7 @@
 // scheduled-reports/robotstxt/<日期>/report.md；--submit-issues 模式向各项目 AtomGit 仓库提 issue。
 //
 // 用法（详见 measures/01-robots-txt/工具与脚本.md 的参数表与执行流程图）：
-//   node workflow/scripts/check-robots.mjs [--site=<项目ID>] [--submit-issues] [--dry-run]
+//   node scripts/checks/check-robots.mjs [--site=<项目ID>] [--submit-issues] [--dry-run]
 // 环境变量：ATOMGIT_TOKEN（缺省时只扫描不提单）、GITHUB_REPOSITORY/GITHUB_REF_NAME（正文链接）。
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -20,7 +20,7 @@ import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '
 import { writeStats, now } from '../lib/report.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-// ROOT 为 workflow/ 目录
+// ROOT 为 scripts/ 目录
 const ROOT = resolve(__dirname, '..');
 // 期望值（如 Content-Signal 规范口径）放配置文件，调口径只改 check-rules.json 不改代码
 const RULES_PATH = resolve(ROOT, 'config', 'check-rules.json');
@@ -431,9 +431,9 @@ lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查范围：projects.config.json 中 ${results.length} 个项目${results.some((r) => r.skipped) ? `（查重跳过：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}；配置了 robotsAliasUrl 的项目额外检查主域/alias 一致性（当前：${results.filter((r) => r.alias).map((r) => r.projectId).join('、') || '无'}）`);
 lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
 lines.push('- 规范来源：archive/SEO标准及覆盖情况.md（robots.txt 字段表），measures/01-robots-txt/规范.md');
-lines.push(`- 检查项：User-agent（必选）、allow/disallow（至少其一、路径以 / 开头）、sitemap（必选，含链接可访问性）、Content-Signal（必选，规范值 ${EXPECTED_CS_TEXT}，期望值配置于 workflow/config/check-rules.json）、LLM-Policy（必选，指向 llms.txt 且可访问）、禁整站判定、主域/alias 内容一致性、跨域引用告警`);
+lines.push(`- 检查项：User-agent（必选）、allow/disallow（至少其一、路径以 / 开头）、sitemap（必选，含链接可访问性）、Content-Signal（必选，规范值 ${EXPECTED_CS_TEXT}，期望值配置于 scripts/config/check-rules.json）、LLM-Policy（必选，指向 llms.txt 且可访问）、禁整站判定、主域/alias 内容一致性、跨域引用告警`);
 lines.push('- 特殊约定：Sitemap/LLM-Policy 的 host 与 robots.txt 所在 host 不一致时计告警（跨主机 Sitemap 声明可能不被搜索引擎识别），不计硬性错误；"引用目录须以 / 结尾"的目录语义判定不在脚本范围，见 measures/01-robots-txt/检测方式.md');
-lines.push('- 机器可读结果：workflow/stats/robots-stats.json');
+lines.push('- 机器可读结果：scripts/stats/robots-stats.json');
 lines.push('');
 lines.push('## 总览');
 lines.push('');
@@ -476,7 +476,7 @@ if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.projectId).joi
 if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
 if (!bad.length && !warn.length && !skipped.length) lines.push('- 全部项目 robots.txt 符合规范。');
 lines.push('');
-lines.push(`> 注：本报告由 workflow/scripts/check-robots.mjs 自动生成（同批次数据见 workflow/stats/robots-stats.json）。Content-Signal 期望值取自 workflow/config/check-rules.json；"引用目录须以 / 结尾"、disallow 误伤等业务判断仍需人工，见 measures/01-robots-txt/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警与 robotsUrl 未配置不提单）。' : ''}`);
+lines.push(`> 注：本报告由 scripts/checks/check-robots.mjs 自动生成（同批次数据见 scripts/stats/robots-stats.json）。Content-Signal 期望值取自 scripts/config/check-rules.json；"引用目录须以 / 结尾"、disallow 误伤等业务判断仍需人工，见 measures/01-robots-txt/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警与 robotsUrl 未配置不提单）。' : ''}`);
 
 const reportPath = resolve(dir, reportName);
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');

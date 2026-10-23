@@ -11,10 +11,10 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 ## 仓库结构
 
 - `projects.config.json`：项目清单。关键字段：`id`、`name`、`repo`（gitcode URL，可解析出 AtomGit owner/repo）、`domain/domainAlias`、`sitemapUrl/sitemapAliasUrl`、`robotsUrl/robotsAliasUrl`（robots 维度：仅两者齐备的项目做主域/alias 一致性检查）、`llmsUrl`、`newVersions`（docs 站版本过滤）。
-- `workflow/lib/`：`config.mjs`（loadProjects/filterProjects）、`http.mjs`（fetchText）、`sitemap.mjs`（parseSitemap，含 index 子 sitemap）、`html.mjs`（extractTitle/extractMeta，引号感知）、`robots.mjs`（parseRobots 分组 + 禁整站/路径格式/Content-Signal 比对）、`report.mjs`（writeStats/now）、`atomgit.mjs`（API 客户端 + parseOwnerRepo）。
-- `workflow/config/check-rules.json`：可调规则（含 `robots.contentSignalExpected` 期望值；改规范口径只改这里，勿改脚本）。
-- `workflow/scripts/check-<dim>-*.mjs` / `<dim>-spec-check.mjs`：维度脚本；`workflow/package.json` 加 `check:<x>` 短命令。
-- 产物三件套：`scheduled-reports/<dim>/<YYYY-MM-DD>/`（给人看的 md 报告，按日期分目录、目录内文件名不带维度/日期前缀，进 git，由 Action 回写）、`workflow/stats/<dim>-stats.json`（给机器，不进 git 也勿依赖同日多次跑）、控制台日志。`manual-review/issues/` 仅存历史平铺报告与人工核查快照（2026-10-13 及以前），不再新增。
+- `scripts/lib/`：`config.mjs`（loadProjects/filterProjects）、`http.mjs`（fetchText）、`sitemap.mjs`（parseSitemap，含 index 子 sitemap）、`html.mjs`（extractTitle/extractMeta，引号感知）、`robots.mjs`（parseRobots 分组 + 禁整站/路径格式/Content-Signal 比对）、`report.mjs`（writeStats/now）、`atomgit.mjs`（API 客户端 + parseOwnerRepo）。
+- `scripts/config/check-rules.json`：可调规则（含 `robots.contentSignalExpected` 期望值；改规范口径只改这里，勿改脚本）。
+- `scripts/checks/check-<dim>-*.mjs` / `<dim>-spec-check.mjs`：维度脚本；根 `package.json` 加 `check:<x>` 短命令。
+- 产物三件套：`scheduled-reports/<dim>/<YYYY-MM-DD>/`（给人看的 md 报告，按日期分目录、目录内文件名不带维度/日期前缀，进 git，由 Action 回写）、`scripts/stats/<dim>-stats.json`（给机器，不进 git 也勿依赖同日多次跑）、控制台日志。`manual-review/issues/` 仅存历史平铺报告与人工核查快照（2026-10-13 及以前），不再新增。
 - `measures/<NN-dim>/`：规范五件套（规范/检测方式/工具与脚本/各项目差异点/进展），每接入一个维度要同步更新"检测方式.md"和"工具与脚本.md"（后者**只描述本仓库问题扫描脚本**：`## <脚本名> 参数` 表与 `## <脚本名> 执行流程` mermaid 图，模板见 measures/03-sitemap 与 measures/01-robots-txt；讲"项目侧怎么落地/生成"的内容放可选的"实现方式.md"，见 measures/02-llms-txt 与 measures/04-json-ld）。
 
 ## 已接入的定时维度（前缀/cron 勿与既有的撞车）
@@ -30,8 +30,8 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 ## 模板参考实现（TDK 重复维度）
 
-- `workflow/scripts/check-tdk-duplicate.mjs` —— 完整流程模板
-- `workflow/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）
+- `scripts/checks/check-tdk-duplicate.mjs` —— 完整流程模板
+- `scripts/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）
 - `.github/workflows/tdk-duplicate-check.yml` —— Action 编排模板
 - `measures/05-tdk/检测方式.md`、`工具与脚本.md` —— 文档写法参照
 
@@ -78,10 +78,10 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 ## 新维度接入 checklist
 
 1. 读 `measures/<dim>/规范.md`、`检测方式.md`，确认判定标准与数据源（sitemap 全量 or 首页 or robots.txt 等）。
-2. 写/改 `workflow/scripts/check-<dim>.mjs`：复用 lib；加 `--submit-issues`/`--dry-run`；遵循上面"提 issue 流程"（含查重跳过、报告形态选型【双报告 or 单一版】、汇总去重）。
+2. 写/改 `scripts/checks/check-<dim>.mjs`：复用 lib；加 `--submit-issues`/`--dry-run`；遵循上面"提 issue 流程"（含查重跳过、报告形态选型【双报告 or 单一版】、汇总去重）。
 3. 定该维度 issue 前缀 `[GEO <Dim>]`（写进代码常量并在文档注明——前缀变更会使旧 issue 查重失效造成重复提单）；cron 时间错开既有维度（见上表）。
-4. `node --check` + 本地小跑验证：`--site=<小站如 HiFloat> --max=50 --submit-issues`（无 token 天然不提单，能看正文与产物文件；**跑前备份 `workflow/stats/*.json` 与当日 `scheduled-reports/<dim>/<date>/`，测试会覆盖当日产物**）；需要走通提单正文渲染但现网全绿时，可临时改 `check-rules.json` 期望值强制出错，验证后还原。
-5. 复制 workflow yml 改名、cron、目录（`git add scheduled-reports/<dim>`）；更新 `workflow/package.json` 短命令、本表"已接入的定时维度"、`measures/<dim>/` 两个文档（工具与脚本.md 含参数表 + mermaid 执行流程）。
+4. `node --check` + 本地小跑验证：`--site=<小站如 HiFloat> --max=50 --submit-issues`（无 token 天然不提单，能看正文与产物文件；**跑前备份 `scripts/stats/*.json` 与当日 `scheduled-reports/<dim>/<date>/`，测试会覆盖当日产物**）；需要走通提单正文渲染但现网全绿时，可临时改 `check-rules.json` 期望值强制出错，验证后还原。
+5. 复制 workflow yml 改名、cron、目录（`git add scheduled-reports/<dim>`）；更新根 `package.json` 短命令、本表"已接入的定时维度"、`measures/<dim>/` 两个文档（工具与脚本.md 含参数表 + mermaid 执行流程）。
 6. 不自动加进 `run-all.mjs`（重成本检查按需手动/Action 跑）。
 
 ## 其他注意
@@ -89,4 +89,5 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 - Windows 控制台 GBK 乱码是显示问题，文件本身 UTF-8；核对内容用 Read 工具读文件而不是看 stdout。
 - 后台长任务：`Start-Process node ...` 后工具会报 `Unknown: ChildProcess.kill`，进程实际存活，用 `Get-CimInstance Win32_Process` 查 PID。
 - **main 重构（已完成）**：archive 的 measures/workflow/manual-review/projects.config.json 结构已刷入 main，旧 `scripts/geo-daily-check` 已并入新 lib/脚本并删除。**遗留未做**：`geo-issue-analyze`（issue 回复分析）尚无新结构实现，需要时单独移植。
+- **目录重构（已完成）**：`workflow/` → `scripts/`，`workflow/scripts/` → `scripts/checks/`，`package.json`/`pnpm-lock.yaml` 移至仓库根（仓库根即 Node 项目根，`scripts/` 不再是独立项目）。
 - `scheduled-reports/` 目录当前可能不存在/为空——由定时 Action 首次运行后回写，本地只在跑脚本时生成。

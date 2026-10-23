@@ -9,7 +9,7 @@
 - 📊 [整体看板](dashboard/dashboard.md)（脚本自动生成，`node dashboard/generate-dashboard.mjs` 更新）
 - 👥 [分工表](分工表.md)（各措施 × 各项目 责任人矩阵 + 整体措施分工）
 - 🗂 [项目清单](projects.md) / [项目配置](projects.config.json)
-- 🛠 [自动化检查脚本](workflow/README.md)
+- 🛠 [自动化检查脚本](scripts/README.md)
 - 🔍 [人工检查问题](manual-review/issues/) / [复盘记录](manual-review/retrospectives/)
 - 📦 [历史归档](archive/)
 
@@ -56,15 +56,15 @@ openEuler 官网/文档 · openGauss 官网/文档 · MindSpore 官网/文档 ·
 ## 快速使用
 
 ```bash
-# 一键检查全部措施（生成 stats JSON）
-cd workflow && node scripts/run-all.mjs
+# 一键检查全部措施（生成 stats JSON，脚本零依赖，无需安装）
+node scripts/checks/run-all.mjs
 
 # 检查单个项目单个措施
-node scripts/check-sitemap.mjs --site=openEuler-portal
+node scripts/checks/check-sitemap.mjs --site=openEuler-portal
 
 # 生成/更新看板
-node ../dashboard/generate-dashboard.mjs
+node dashboard/generate-dashboard.mjs
 
 # 汇聚各仓库 issue/PR
-node scripts/fetch-prs.mjs
+node scripts/checks/fetch-prs.mjs
 ```

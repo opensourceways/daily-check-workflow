@@ -89,7 +89,7 @@
 
 | 项目 | Issue 数 | PR 数 |
 |------|----------|-------|
-| _尚未运行 fetch-prs.mjs，执行 `node workflow/scripts/fetch-prs.mjs` 生成_ | - | - |
+| _尚未运行 fetch-prs.mjs，执行 `node scripts/checks/fetch-prs.mjs` 生成_ | - | - |
 
 ## 自动化检测状态
 
@@ -125,14 +125,14 @@
 - [人工检查问题](../manual-review/issues/)
 - [复盘记录](../manual-review/retrospectives/)
 - [归档文档](../archive/)
-- [Workflow 说明](../workflow/README.md)
+- [检查脚本说明](../scripts/README.md)
 
 ## 更新方式
 
 ```bash
 # 1. 运行自动化检查（生成 stats JSON）
-cd workflow && node scripts/run-all.mjs
+node scripts/checks/run-all.mjs
 
 # 2. 生成/更新看板
-cd .. && node dashboard/generate-dashboard.mjs
+node dashboard/generate-dashboard.mjs
 ```

@@ -37,7 +37,6 @@ jobs:
           node-version: 20
 
       - name: Run JSON-LD spec check
-        working-directory: workflow
         env:
           ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
         run: |
@@ -48,7 +47,7 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
-          node scripts/check-jsonld.mjs $ARGS
+          node scripts/checks/check-jsonld.mjs $ARGS
 
       - name: Commit reports
         run: |

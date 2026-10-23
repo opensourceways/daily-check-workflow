@@ -433,7 +433,7 @@ lines.push(`- 采样策略：首页 + \`check-rules.json\` 的 \`samplePages\`�
 lines.push('- 规范来源：measures/04-json-ld/规范.md（验收基线 P0–P2）');
 lines.push('- 检查项：JSON 语法、`@context`、P0 三件套覆盖（Organization/WebSite/BreadcrumbList）、各类型 Google 必填属性、占位符；告警级：重复块、面包屑项完整性、headline ≤110、publisher/Organization logo 形态、inLanguage、`@id` 覆盖率');
 lines.push('- 特殊约定：提单触发 = P0 级硬性错误（语法错误/@context 异常/三件套缺失/必填属性缺失/占位符/首页不可访问）；P1 结构项仅计告警入报告');
-lines.push('- 机器可读结果：workflow/stats/jsonld-stats.json');
+lines.push('- 机器可读结果：scripts/stats/jsonld-stats.json');
 lines.push('');
 lines.push('## 总览');
 lines.push('');
@@ -477,7 +477,7 @@ if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.projectId).joi
 if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
 if (!bad.length && !warn.length && !skipped.length) lines.push('- 全部项目采样页面 JSON-LD 符合 P0 基线。');
 lines.push('');
-lines.push(`> 注：本报告由 workflow/scripts/check-jsonld.mjs 自动生成（同批次数据见 workflow/stats/jsonld-stats.json）。取值真实性（与页面可见内容一致、无编造）与富媒体资格（Rich Results Test）仍需人工抽查，见 measures/04-json-ld/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警不提单）。' : ''}`);
+lines.push(`> 注：本报告由 scripts/checks/check-jsonld.mjs 自动生成（同批次数据见 scripts/stats/jsonld-stats.json）。取值真实性（与页面可见内容一致、无编造）与富媒体资格（Rich Results Test）仍需人工抽查，见 measures/04-json-ld/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警不提单）。' : ''}`);
 
 const reportPath = resolve(dir, reportName);
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
