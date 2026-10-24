@@ -106,7 +106,15 @@
       "stack": "nuxt",
       "robotsUrl": "https://www.openubmc.cn/robots.txt",
       "sitemapUrl": "https://www.openubmc.cn/sitemap.xml",
-      "llmsUrl": "https://www.openubmc.cn/llms.txt"
+      "llmsUrl": "https://www.openubmc.cn/llms.txt",
+      "repoInfo": {
+        "packageName": "nuxt-app",
+        "publicDir": "packages/website/public",
+        "srcDir": "packages/website/pages",
+        "tdkArchiveDir": ".geo/tdk",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "pageEntryPattern": "^packages/website/pages/(?:zh|en)/.*\\.vue$"
+      }
     },
     {
       "id": "openUBMC-docs",
