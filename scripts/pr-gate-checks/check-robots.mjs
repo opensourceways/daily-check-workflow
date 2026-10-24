@@ -122,7 +122,6 @@ const { project, pkgName, matchedBy, registered } = await identifyProject({ argv
 if (!project) {
   // 未登记 packageName：视为该项目未接入门禁检查，正常退出放行（门禁步骤不应拦截未接入项目）
   console.log(`${TAG} ⏭️ package.json name "${pkgName}" 未匹配到任何 repoInfo.packageName（已登记：${registered.join('、') || '无'}），该项目未接入门禁检查，跳过`);
-  console.log(JSON.stringify({ projectId: null, verdict: '⏭️', skipped: true, errors: [], warnings: [] }, null, 2));
   process.exit(0);
 }
 
@@ -192,11 +191,9 @@ else {
 
 // ---- 输出 ----
 
-const verdict = errors.length ? '❌' : warnings.length ? '⚠️' : '✅';
 console.log(`${TAG} 待检项目：${project.name}（${project.id}），匹配方式：${matchedBy}（${configPath}）`);
 console.log(`${TAG} robots.txt：${robotsPath}`);
 if (!errors.length && !warnings.length) console.log(`${TAG} ✅ robots.txt 字段检查通过`);
 for (const e of errors) console.log(`${TAG} ❌ ${e}`);
 for (const w of warnings) console.log(`${TAG} ⚠️ ${w}`);
-console.log(JSON.stringify({ projectId: project.id, robotsPath, verdict, errors, warnings }, null, 2));
 process.exit(errors.length ? 1 : 0);

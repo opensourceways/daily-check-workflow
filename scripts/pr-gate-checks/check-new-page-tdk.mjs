@@ -42,7 +42,6 @@ const { project, pkgName, matchedBy, registered } = await identifyProject({ argv
 if (!project) {
   // 未登记 packageName：该项目未接入门禁检查，跳过放行（与 check-robots.mjs 行为一致）
   console.log(`${TAG} ⏭️ package.json name "${pkgName}" 未匹配到任何 repoInfo.packageName（已登记：${registered.join('、') || '无'}），该项目未接入门禁检查，跳过`);
-  console.log(JSON.stringify({ projectId: null, verdict: '⏭️', skipped: true, errors: [], warnings: [] }, null, 2));
   process.exit(0);
 }
 
@@ -288,18 +287,10 @@ for (const file of newPages) {
 
 // ---- 输出 ----
 
-const verdict = errors.length ? '❌' : warnings.length ? '⚠️' : '✅';
 console.log(`${TAG} 待检项目：${project.name}（${project.id}），匹配方式：${matchedBy}（${configPath}）`);
 console.log(`${TAG} 最新提交：${sha.slice(0, 7)}（改动中新增文件 ${added.length} 个，匹配 pageEntryPattern ${newPages.length} 个${newPages.length ? `：${newPages.join('、')}` : ''}）`);
 if (!newPages.length) console.log(`${TAG} ✅ 无新增页面，跳过 TDK / JSON-LD 核查`);
 for (const p of passed) console.log(`${TAG} ✅ [${p.dimension}] ${p.file}（${p.via}）`);
 for (const w of warnings) console.log(`${TAG} ⚠️ ${w}`);
 for (const e of errors) console.log(`${TAG} ❌ ${e}`);
-console.log(
-  JSON.stringify(
-    { projectId: project.id, head: sha, changedAdded: added, newPages, passed, verdict, errors, warnings },
-    null,
-    2
-  )
-);
 process.exit(errors.length ? 1 : 0);
