@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_check:
+        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭）"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -46,6 +51,9 @@ jobs:
           fi
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ inputs.force_check }}" = "true" ]; then
+            ARGS="$ARGS --force"
           fi
           node scripts/checks/sitemap-spec-check.mjs $ARGS
 

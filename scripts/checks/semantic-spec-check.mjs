@@ -5,7 +5,7 @@ import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { fetchText } from '../lib/http.mjs';
 import { parseSitemap } from '../lib/sitemap.mjs';
 import { writeStats, now } from '../lib/report.mjs';
-import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
+import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -19,9 +19,12 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 // 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
 // 有则跳过该项目整个"扫描+提单"流程；有发现时生成简短/完全两份 md 报告，
 // issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
+// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
+// 复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 在原 issue 评论 /close。
 const ISSUE_TITLE_PREFIX = '[GEO HTML Semantic]';
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
+const force = process.argv.includes('--force');
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
 // MindSpore-docs 按要求默认跳过；--skip= 传空可强制检查
@@ -557,6 +560,7 @@ function issueBodyFor(p, s, fullFileName, startedAt) {
   lines.push('');
   lines.push('- 修复后（补齐 alt/href/h1、消除自嵌套与多份可见的 header/footer/main、标题不跳级等）合并 PR 并关闭本 issue');
   lines.push('- issue 未关闭期间不会重复扫描该项目，也不会重复提单；关闭后下一轮定时检查会重新扫描');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 「多个同时可见的顶层 header/footer/main」由桌面/移动双份 DOM 触发的属已知误报场景（class/媒体查询控制的显隐无法静态判定），请在 issue 评论说明后由维护者关闭，或在双份元素上补 `aria-hidden`（隐藏份）/保持单份');
   lines.push('- 其余误报（如 SPA 首屏壳属预期设计）同样请评论说明后关闭');
   lines.push('');
@@ -564,31 +568,8 @@ function issueBodyFor(p, s, fullFileName, startedAt) {
   return lines.join('\n');
 }
 
-// 扫描前查重：已有本维度未关闭 issue 则跳过整个"扫描+提单"；
-// 查询失败时有 token（生产）直接跳过（宁漏勿重），无 token（本地）只扫描不提单。
-async function precheckExistingIssue(project) {
-  const parsed = parseOwnerRepo(project.repo);
-  if (!parsed) {
-    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
-  }
-  let existing;
-  try {
-    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
-  } catch (err) {
-    if (hasToken()) {
-      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
-    }
-    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
-  }
-  if (existing.length) {
-    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
-    return { block: true, canSubmit: false, notes: [`已存在未关闭的 HTML 语义化 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
-  }
-  if (!hasToken()) {
-    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
-  }
-  return { block: false, canSubmit: true, notes: [] };
-}
+// 扫描前查重与写回逻辑收敛在 lib/atomgit.mjs（precheckExistingIssues / reconcileIssue），各维度共用：
+// 非强制模式查重命中即 block 跳过；--force 强制执行时不拦截，有问题更新原 issue，无问题评论 /close。
 
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
@@ -601,7 +582,7 @@ const reportData = {
   timestamp: startedAt,
   measure: 'html-semantics-spec-check',
   spec: 'measures/10-HTML-semantic-check/规范.md（检查细节）+ 06/07/08 附加项',
-  mode: submitIssues ? (dryRun ? 'submit-issues-dry-run' : 'submit-issues') : 'scan',
+  mode: submitIssues ? `submit-issues${dryRun ? '-dry-run' : ''}${force ? '-force' : ''}` : 'scan',
   projects: [],
 };
 
@@ -613,7 +594,8 @@ for (const project of targets) {
   }
   let pre;
   if (submitIssues) {
-    pre = await precheckExistingIssue(project);
+    // 查重：--force 时已有未关闭 issue 不拦截扫描，existing 带回供写回环节更新/关闭
+    pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: 'HTML 语义化', force });
     pre.notes.forEach((n) => console.log(`[semantic] ${project.id}: ${n}`));
     if (pre.block) {
       reportData.projects.push({ id: project.id, name: project.name, domain: project.domain, repo: project.repo, blocked: true, notes: pre.notes, pages: [] });
@@ -675,6 +657,7 @@ for (const project of targets) {
   if (submitIssues) {
     const s = summarize(pEntry);
     const errorTotal = s.coreErr + s.extraErr;
+    const target = parseOwnerRepo(project.repo);
     if (errorTotal > 0) {
       const fullFileName = `${project.id}-full.md`;
       const briefFileName = `${project.id}-brief.md`;
@@ -685,18 +668,25 @@ for (const project of targets) {
       }
       const title = `${ISSUE_TITLE_PREFIX} ${project.name}（${project.id}）：抽样页面 HTML 语义化检查发现 ${errorTotal} 处规范问题`;
       const bodyText = issueBodyFor(pEntry, s, fullFileName, startedAt);
-      const target = parseOwnerRepo(project.repo);
-      if (dryRun || !target || !pre.canSubmit) {
-        console.log(`\n[semantic] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
-        console.log(bodyText);
-        pEntry.issueAction = dryRun ? 'dry-run' : 'print-only';
-      } else {
-        const created = await createIssue({ ...target, title, body: bodyText });
-        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
-        console.log(`[semantic] ${project.id}: ✨ 已创建 issue：${url}`);
-        pEntry.issueAction = 'created';
-        pEntry.issueUrl = url;
-      }
+      // 强制模式下查重命中 → 更新原 issue（标题含最新问题数一并刷新）；否则新建（分支在 reconcileIssue 内）
+      const outcome = await reconcileIssue({ target, existing: pre.existing, canWrite: pre.canSubmit, hasIssue: true, title, body: bodyText, dryRun, logPrefix: `[semantic] ${project.id}` });
+      pEntry.issueAction = outcome.action;
+      if (outcome.url) pEntry.issueUrl = outcome.url;
+    } else if (pre.existing.length) {
+      // 无问题且已有未关闭 issue（仅强制模式会走到）：至少一个抽样页抓取成功才算有效复检，
+      // 全部页面不可访问时不得下"问题已消除"结论，防止误关
+      const outcome = await reconcileIssue({
+        target,
+        existing: pre.existing,
+        canWrite: pre.canSubmit,
+        hasIssue: false,
+        verifiedClean: pEntry.pages.length > 0 && s.inaccessible < pEntry.pages.length,
+        closeBody: closeIssueCommentBody('HTML 语义化检查', dateStr),
+        dryRun,
+        logPrefix: `[semantic] ${project.id}`,
+      });
+      if (outcome.action !== 'none') pEntry.issueAction = outcome.action;
+      if (outcome.url) pEntry.issueUrl = outcome.url;
     } else {
       console.log(`[semantic] ${project.id}: 未发现必选级问题，不提 issue`);
     }
@@ -712,7 +702,7 @@ const lines = [];
 lines.push('# HTML 元素语义化规范抽查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
-lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}`);
 if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
 lines.push(...COMMON_HEADER);
 lines.push('- 判定：error 级为规范/附加必选项违规（❌），warn 级为建议项（⚠️）；客户端渲染壳页面记附加项，不做元素级检查；有 error 级问题即触发提 issue');

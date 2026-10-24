@@ -4,12 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { fetchText } from '../lib/http.mjs';
 import { extractJsonLd } from '../lib/html.mjs';
-import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
+import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 
 // 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
 // 有则跳过该项目整个"扫描+提单"流程；有硬性错误时生成简短/完全两份 md 报告，
 // issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
+// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
+// 复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 在原 issue 评论 /close。
 const ISSUE_TITLE_PREFIX = '[GEO JSON-LD]';
 const startedAt = now();
 const dateStr = startedAt.slice(0, 10);
@@ -18,6 +20,7 @@ const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
+const force = process.argv.includes('--force');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -199,31 +202,8 @@ function hasAnyIssue(r) {
   return !r.skipped && (r.hardErrors?.length || 0) > 0;
 }
 
-// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
-// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
-async function precheckExistingIssue(project) {
-  const parsed = parseOwnerRepo(project.repo);
-  if (!parsed) {
-    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
-  }
-  let existing;
-  try {
-    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
-  } catch (err) {
-    if (hasToken()) {
-      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
-    }
-    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
-  }
-  if (existing.length) {
-    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
-    return { block: true, canSubmit: false, notes: [`已存在未关闭的 JSON-LD 规范 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
-  }
-  if (!hasToken()) {
-    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
-  }
-  return { block: false, canSubmit: true, notes: [] };
-}
+// 扫描前查重与写回逻辑收敛在 lib/atomgit.mjs（precheckExistingIssues / reconcileIssue），各维度共用：
+// 非强制模式查重命中即 block 跳过；--force 强制执行时不拦截，有问题更新原 issue，无问题评论 /close。
 
 function fullUrlOf(fileName) {
   const ghRepo = process.env.GITHUB_REPOSITORY || 'opensourceways/daily-check-workflow';
@@ -339,6 +319,7 @@ function issueBodyFor(r, fullFileName) {
   lines.push('');
   lines.push('- 按问题清单修复 JSON-LD 注入（补全必填属性、去重块、移除占位符）后合并 PR 并关闭本 issue');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某条属预期（误报，如采样页确实不适用某类型），请在 issue 评论说明，维护者会关闭本 issue');
   lines.push('');
   lines.push(`> 当日全量检查汇总报告：[${reportName}](${fullUrlOf(reportName)})`);
@@ -359,7 +340,8 @@ for (const project of targets) {
     results.push(await scanProject(project));
     continue;
   }
-  const pre = await precheckExistingIssue(project);
+  // 查重：--force 时已有未关闭 issue 不拦截扫描，existing 带回供写回环节更新/关闭
+  const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: 'JSON-LD 规范', force });
   pre.notes.forEach((n) => console.log(`[json-ld] ${project.id}: ${n}`));
   if (pre.block) {
     results.push({
@@ -378,27 +360,34 @@ for (const project of targets) {
   }
   console.log(`\n[json-ld] ===== ${project.id} =====`);
   const entry = await scanProject(project);
+  const target = parseOwnerRepo(project.repo);
   if (hasAnyIssue(entry)) {
     const title = issueTitleFor(entry);
     const fullFileName = `${entry.projectId}-full.md`;
     const body = issueBodyFor(entry, fullFileName);
-    const target = parseOwnerRepo(project.repo);
     if (!dryRun) {
       await writeFile(resolve(dir, fullFileName), `# JSON-LD 检查完全版报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n\n` + detailLines(entry).join('\n') + '\n', 'utf8');
       await writeFile(resolve(dir, `${entry.projectId}-brief.md`), `# JSON-LD 检查简短报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n- 采样入口：${entry.domain}\n- 结论：${entry.verdict}\n\n` + briefLines(entry).join('\n') + '\n', 'utf8');
       entry.reports = { full: `scheduled-reports/jsonld/${dateStr}/${fullFileName}`, brief: `scheduled-reports/jsonld/${dateStr}/${entry.projectId}-brief.md` };
     }
-    if (dryRun || !target || !pre.canSubmit) {
-      console.log(`\n[json-ld] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
-      console.log(body);
-      entry.issueAction = dryRun ? 'dry-run' : 'print-only';
-    } else {
-      const created = await createIssue({ ...target, title, body });
-      const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
-      console.log(`[json-ld] ${project.id}: ✨ 已创建 issue：${url}`);
-      entry.issueAction = 'created';
-      entry.issueUrl = url;
-    }
+    // 强制模式下查重命中 → 更新原 issue；否则新建（分支在 reconcileIssue 内）
+    const outcome = await reconcileIssue({ target, existing: pre.existing, canWrite: pre.canSubmit, hasIssue: true, title, body, dryRun, logPrefix: `[json-ld] ${project.id}` });
+    entry.issueAction = outcome.action;
+    if (outcome.url) entry.issueUrl = outcome.url;
+  } else if (pre.existing.length) {
+    // 无问题且已有未关闭 issue（仅强制模式会走到）：采样首页抓取成功才算有效复检，才评论 /close
+    const outcome = await reconcileIssue({
+      target,
+      existing: pre.existing,
+      canWrite: pre.canSubmit,
+      hasIssue: false,
+      verifiedClean: !!entry.checks?.accessible,
+      closeBody: closeIssueCommentBody('JSON-LD 规范检查', dateStr),
+      dryRun,
+      logPrefix: `[json-ld] ${project.id}`,
+    });
+    if (outcome.action !== 'none') entry.issueAction = outcome.action;
+    if (outcome.url) entry.issueUrl = outcome.url;
   } else {
     console.log(`[json-ld] ${project.id}: 无 P0 硬性错误，不提 issue${(entry.warnings || []).length ? `（有 ${entry.warnings.length} 条告警，见报告）` : ''}`);
   }
@@ -407,7 +396,7 @@ for (const project of targets) {
 
 // ---- stats + Markdown 报告 ----
 
-const report = { timestamp: startedAt, measure: 'json-ld', samplePages: SAMPLE_PAGES, mode: submitIssues ? (dryRun ? 'submit-issues-dry-run' : 'submit-issues') : 'scan', results };
+const report = { timestamp: startedAt, measure: 'json-ld', samplePages: SAMPLE_PAGES, mode: submitIssues ? `submit-issues${dryRun ? '-dry-run' : ''}${force ? '-force' : ''}` : 'scan', results };
 const statsPath = await writeStats('jsonld-stats', report);
 
 function overviewRow(r) {
@@ -427,7 +416,7 @@ lines.push('# JSON-LD 规范检查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查范围：projects.config.json 中 ${results.length} 个项目${results.some((r) => r.skipped) ? `（查重跳过：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}`);
-lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}`);
 if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
 lines.push(`- 采样策略：首页 + \`check-rules.json\` 的 \`samplePages\`（${SAMPLE_PAGES.join('、')}）+ 各项目 llms.txt 前 2 条真实内容页链接，仅统计返回 200 的页面`);
 lines.push('- 规范来源：measures/04-json-ld/规范.md（验收基线 P0–P2）');
@@ -475,6 +464,10 @@ const skipped = results.filter((r) => r.skipped);
 if (bad.length) lines.push(`- 硬性不符合：${bad.map((r) => `${r.projectId}（${r.hardErrors[0]}${r.hardErrors.length > 1 ? ` 等 ${r.hardErrors.length} 类` : ''}）`).join('；')}，需优先整改。`);
 if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.projectId).join('、')}，多为 P1 结构/推荐项（重复块、inLanguage、@id 覆盖率等），是否整改人工定夺。`);
 if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
+const reopened = results.filter((r) => r.issueAction === 'updated');
+if (reopened.length) lines.push(`- 强制复检仍有问题，已更新原 issue：${reopened.map((r) => r.projectId).join('、')}。`);
+const closedList = results.filter((r) => r.issueAction === 'close-commented' || r.issueAction === 'close-dry-run');
+if (closedList.length) lines.push(`- 强制复检问题已消除，${dryRun ? '将' : '已'}评论 /close 关闭原 issue：${closedList.map((r) => r.projectId).join('、')}。`);
 if (!bad.length && !warn.length && !skipped.length) lines.push('- 全部项目采样页面 JSON-LD 符合 P0 基线。');
 lines.push('');
 lines.push(`> 注：本报告由 scripts/checks/check-jsonld.mjs 自动生成（同批次数据见 scripts/stats/jsonld-stats.json）。取值真实性（与页面可见内容一致、无编造）与富媒体资格（Rich Results Test）仍需人工抽查，见 measures/04-json-ld/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警不提单）。' : ''}`);

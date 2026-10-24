@@ -31,13 +31,13 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 ## 模板参考实现（TDK 重复维度）
 
 - `scripts/checks/check-tdk-duplicate.mjs` —— 完整流程模板
-- `scripts/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）
+- `scripts/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）+ 提单流程公共实现（`precheckExistingIssues` 查重 / `reconcileIssue` 新建·更新·/close 写回 / `closeIssueCommentBody`）
 - `.github/workflows/tdk-duplicate-check.yml` —— Action 编排模板
 - `measures/05-tdk/检测方式.md`、`工具与脚本.md` —— 文档写法参照
 
 ## 检查脚本约定
 
-1. CLI 参数（`process.argv` 手工解析，无依赖）：`--site=ID`、`--conc=10`、`--max=N`（试跑截断）、`--skip=a,b`（默认跳过清单，传空覆盖）、`--submit-issues`、`--dry-run`。轻量维度（如 robots，每项目仅 1~8 个 URL）可不实现 `--skip`/`--max`；未配置该维度关键字段（如 `robotsUrl`）的项目照常扫描记录但不查重、不提单。
+1. CLI 参数（`process.argv` 手工解析，无依赖）：`--site=ID`、`--conc=10`、`--max=N`（试跑截断）、`--skip=a,b`（默认跳过清单，传空覆盖）、`--submit-issues`、`--dry-run`、`--force`（仅配 `--submit-issues`，见"强制执行模式"）。轻量维度（如 robots，每项目仅 1~8 个 URL）可不实现 `--skip`/`--max`；未配置该维度关键字段（如 `robotsUrl`）的项目照常扫描记录但不查重、不提单。
 2. 数据源 = 对项目 `sitemapUrl` 全量展开（index 递归；有 `newVersions` 的 docs 站只取匹配版本子 sitemap，约定见 sitemap-spec-check）后**逐页实时 fetch HTML**，不发仓库构建产物；robots/llms 类单文件维度直接 GET 目标文件。
 3. 抓取：超时 20s + 2 次重试 + UA `geo-workflow-checker/1.0`；`mapLimit` 并发（默认 10）。失败页单列清单，不计入判重。
 4. **缺失与判重分开**：提取函数返回 null（元素不存在）/ ''（元素存在但空），两者都不进判重分组，而是逐页记入独立的"缺失检查"小节（区分 `noElement`/`empty`），孤立缺失（仅 1 页）也会报告；判重只对有非空取值的页面分组。
@@ -48,8 +48,8 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 按项目循环，每项目：
 
-1. **先查重再扫描**（核心防重复逻辑）：`findIssuesByTitlePrefix({owner, repo, prefix: '[GEO <Dim>]', state: 'open'})`。
-   - 有未关闭 issue（**无论是否关联 PR**）→ 跳过该项目整个"扫描+提单"，results 记 `skipped:true`。
+1. **先查重再扫描**（核心防重复逻辑）：`findIssuesByTitlePrefix({owner, repo, prefix: '[GEO <Dim>]', state: 'open'})`。查重+扫描+写回已抽成 lib 公共实现：`precheckExistingIssues`（扫描前）+ `reconcileIssue`（扫描后按结果新建/更新/关闭），各维度脚本只传 `prefix`、`dimLabel`、`force`、`hasIssue`、`verifiedClean` 等参数。
+   - 有未关闭 issue（**无论是否关联 PR**）→ 跳过该项目整个"扫描+提单"，results 记 `skipped:true`。`--force` 强制执行时**不拦截**（见第 5 条）。
    - 查询失败：有 token（生产）→ 也跳过扫描（宁漏勿重）；无 token（本地）→ 只扫描不提单。
 2. 扫描后有发现 → 触发条件=硬性错误（可选属性缺失不计；仅告警不提单，告警入报告供人工定夺）。默认写两个文件到 `scheduled-reports/<dim>/<YYYY-MM-DD>/`：
    - `<ID>-brief.md`（简短版：总览 + 每类 top3 组、每组最多 5 URL，超出注明"见完全版"）
@@ -61,10 +61,16 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
    - 链接 = `https://github.com/<GITHUB_REPOSITORY>/blob/<GITHUB_REF_NAME>/scheduled-reports/<dim>/<YYYY-MM-DD>/<文件名>`（分支跟随运行时 `GITHUB_REF_NAME`，脚本内本地缺省值仍是 `archive`，属历史遗留）。
    - `--dry-run` 或无 token/无 owner:repo → 只打印正文不提交、不写 brief/full。
 4. **去重规则（双报告维度）**：`--submit-issues` 模式下当日 `report.md` 只写"头部+总览表+指向各项目 full 文件的清单"，明细不重复输出；手动模式（不带 --submit-issues）保持含全部明细的单一汇总。单一版维度不适用此条（见上）。
+5. **强制执行模式（`--force`，仅配 `--submit-issues`；workflow 手动 dispatch 的 `force_check` 输入）**：供"修复 PR 已合并但想立即复核/关闭 issue"的场景。查重命中不再 block，照常扫描，扫描后由 `reconcileIssue` 按结果写回**原未关闭 issue**（不新建）：
+   - 仍有问题 → `PATCH /repos/{owner}/{repo}/issues/{number}` 更新第一个 open issue 的标题与正文（`issueAction='updated'`；同前缀多个 open issue 只更新第一个并打日志提示）。
+   - 无问题 → `closeIssueCommentBody()` 生成评论正文（说明行 + 空行 + 独占一行的 `/close`），对**每个** open issue POST 评论（`issueAction='close-commented'`）。
+   - **verifiedClean 护栏（必传）**：只有"检查对象确实抓取成功、本次扫描有效完成"才允许评论 /close；抓取失败/未收集到数据时判不了"已修复"，只打日志不动原 issue，防止误关。各维度取值——tdk=`urlCount>0&&fetched>0`、robots/llms/jsonld=`checks.accessible`、sitemap=`accessible===true`、semantic=至少一个抽样页 accessible。
+   - dry-run / 无 token → 仅打印"将更新 issue #N / 将评论 /close"，不写回；`--force` 单独传（不带 `--submit-issues`）无效果。
+   - 报告口径：`运行模式`行追加 `--force 强制执行`；提单模式下 full 清单行标注"强制复检仍有问题，已更新原 issue"，/close 项目单列一行；stats `mode` 追加 `-force` 后缀。
 
 ## GitHub Action 模板（复制 tdk-duplicate-check.yml 改名字）
 
-- `on`: `schedule` cron（**cron 只在默认分支 main 生效**，结构已合入 main，定时任务已启用）+ `workflow_dispatch` inputs：`site`（可空）、`dry_run`（boolean）。
+- `on`: `schedule` cron（**cron 只在默认分支 main 生效**，结构已合入 main，定时任务已启用）+ `workflow_dispatch` inputs：`site`（可空）、`dry_run`（boolean）、`force_check`（boolean，强制执行：跳过查重拦截，有问题更新原 issue、无问题评论 /close；run 步骤按 `${{ inputs.force_check }}` 追加 `--force`）。
 - `permissions: contents: write`（要把 brief/full/汇总报告 commit 回本仓库，issue 链接才能解析）；`concurrency: group: <dim>-check`。
 - Job：`runs-on: ubuntu-latest`（纯网络抓取够用；只有需要构建被检项目的检查才用 self-hosted `portal-x86`）；setup-node 20；
   步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
@@ -72,13 +78,13 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 ## AtomGit API 要点（v5，base https://api.atomgit.com）
 
 - 读（列 issues/pulls）公共仓可匿名；私有/受限仓无 token 返回 403（403=存在，404=不存在）。写必须 `Authorization: Bearer $ATOMGIT_TOKEN`。
-- **路径不对称**：列表是 repo-scoped `GET /api/v5/repos/{owner}/{repo}/issues?state=open&per_page=100`；**创建是 owner-scoped** `POST /api/v5/repos/{owner}/issues`，`repo` 放 body；更新 `PATCH /repos/{owner}/{repo}/issues/{number}`（body 字段就叫 `body`）。评论 `POST /repos/{owner}/{repo}/issues/{number}/comments`。
+- **路径不对称**：列表是 repo-scoped `GET /api/v5/repos/{owner}/{repo}/issues?state=open&per_page=100`；**创建是 owner-scoped** `POST /api/v5/repos/{owner}/issues`，`repo` 放 body；更新 `PATCH /repos/{owner}/{repo}/issues/{number}`（body 字段就叫 `body`，仅传要改的字段）。评论 `POST /repos/{owner}/{repo}/issues/{number}/comments`（关闭用评论正文末行独占一行的 `/close`，由 `closeIssueCommentBody()` 生成，同前缀多个 open issue 逐个评论）。
 - 建单返回 `number`，issue URL = `html_url` 兜底 `https://atomgit.com/{owner}/{repo}/issues/{number}`。
 
 ## 新维度接入 checklist
 
 1. 读 `measures/<dim>/规范.md`、`检测方式.md`，确认判定标准与数据源（sitemap 全量 or 首页 or robots.txt 等）。
-2. 写/改 `scripts/checks/check-<dim>.mjs`：复用 lib；加 `--submit-issues`/`--dry-run`；遵循上面"提 issue 流程"（含查重跳过、报告形态选型【双报告 or 单一版】、汇总去重）。
+2. 写/改 `scripts/checks/check-<dim>.mjs`：复用 lib；加 `--submit-issues`/`--dry-run`/`--force`；查重与写回直接调用 `precheckExistingIssues` + `reconcileIssue`（勿再复制脚本内私有实现）；遵循上面"提 issue 流程"（含查重跳过、强制执行更新/关闭原 issue 及 verifiedClean 护栏、报告形态选型【双报告 or 单一版】、汇总去重）。
 3. 定该维度 issue 前缀 `[GEO <Dim>]`（写进代码常量并在文档注明——前缀变更会使旧 issue 查重失效造成重复提单）；cron 时间错开既有维度（见上表）。
 4. `node --check` + 本地小跑验证：`--site=<小站如 HiFloat> --max=50 --submit-issues`（无 token 天然不提单，能看正文与产物文件；**跑前备份 `scripts/stats/*.json` 与当日 `scheduled-reports/<dim>/<date>/`，测试会覆盖当日产物**）；需要走通提单正文渲染但现网全绿时，可临时改 `check-rules.json` 期望值强制出错，验证后还原。
 5. 复制 workflow yml 改名、cron、目录（`git add scheduled-reports/<dim>`）；更新根 `package.json` 短命令、本表"已接入的定时维度"、`measures/<dim>/` 两个文档（工具与脚本.md 含参数表 + mermaid 执行流程）。

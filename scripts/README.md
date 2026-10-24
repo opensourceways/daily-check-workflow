@@ -44,7 +44,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
     │   ├── robots.mjs   # robots.txt 解析
     │   ├── html.mjs     # HTML 解析工具
     │   ├── gitcode.mjs  # GitCode/AtomGit API
-    │   ├── atomgit.mjs  # AtomGit API v5（提 issue 查重/建单，供 --submit-issues 模式）
+    │   ├── atomgit.mjs  # AtomGit API v5 + 提单流程公共实现（查重 precheckExistingIssues、新建/更新/评论 /close 写回 reconcileIssue，供 --submit-issues/--force 模式）
     │   └── report.mjs   # 统计输出
     ├── checks/          # 检查脚本
     ├── pr-gate-checks/  # PR 门禁静态文件检查（自包含，可复制到待检项目根运行）
@@ -62,11 +62,12 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 
 ## 维度检查 + 提 issue 流程（模板）
 
-例行"检查→生成简短/完全双报告→提 issue 到各项目 AtomGit 仓库（未关闭 issue 存在则跳过扫描+提单）"的流程以 **TDK 重复维度**为模板实现（自动产物统一写入 `../scheduled-reports/<维度>/<日期>/`）：
+例行"检查→生成简短/完全双报告→提 issue 到各项目 AtomGit 仓库（未关闭 issue 存在则跳过扫描+提单）"的流程以 **TDK 重复维度**为模板实现（自动产物统一写入 `../scheduled-reports/<维度>/<日期>/`）；查重与写回逻辑收敛在 `scripts/lib/atomgit.mjs` 的 `precheckExistingIssues`（扫描前）+ `reconcileIssue`（扫描后按结果新建/更新/评论 `/close`），各维度脚本共用：
 
-- 脚本：`scripts/checks/check-tdk-duplicate.mjs`（`--submit-issues` / `--dry-run`）
+- 脚本：`scripts/checks/check-tdk-duplicate.mjs`（`--submit-issues` / `--dry-run` / `--force`）
 - API：`scripts/lib/atomgit.mjs`（owner/repo 由 projects.config.json 的 gitcode URL 解析）
 - Action：`../.github/workflows/tdk-duplicate-check.yml`（定时 + 手动 dispatch，报告 commit 回本仓库）
+- **强制执行（`--force` / dispatch 输入 `force_check`）**：默认"已有未关闭同前缀 issue 即跳过扫描"避免重复提单；勾选 force_check 时不再被该查重拦截——照常检查，若该项目仍有本维度问题则就地 PATCH 更新原未关闭 issue 的内容（而非新建），若检查表明问题已消除（且本次为有效抓取复检）则在原 issue 内评论 `/close` 关闭。用于修复后想立即复核、更新或关闭存量 issue。dry-run / 无 token 时只打印将执行的动作、绝不写回
 
 已接入该流程的维度：
 
@@ -77,7 +78,7 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 - **llms.txt 规范**：`scripts/checks/check-llms-txt.mjs` + `../.github/workflows/llms-txt-check.yml`（每日 05:00 UTC），前缀 `[GEO llms.txt]`；触发提单=P0 级硬性错误（P1/P2 计告警不提单；robots LLM-Policy 联动缺失仅告警，提单归 robots.txt 维度，避免同根因跨维度重复提单）；llmsUrl 未配置的项目记 ❌ 但不查重、不提单
 - **JSON-LD 规范**：`scripts/checks/check-jsonld.mjs` + `../.github/workflows/json-ld-check.yml`（每日 06:00 UTC），前缀 `[GEO JSON-LD]`；采样首页+`check-rules.json` samplePages+llms.txt 前 2 条内容页；触发提单=P0 级硬性错误（语法/@context/P0 三件套/Google 必填属性/占位符；重复块、面包屑项、inLanguage、@id 覆盖率等计告警不提单）
 
-其他维度接入时照此模式复制；细则约定（前缀查重、双报告、汇总去重、链接分支、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
+其他维度接入时照此模式复制（直接复用 lib 的 `precheckExistingIssues`+`reconcileIssue`，即自带查重跳过与 `--force` 强制执行写回）；细则约定（前缀查重、双报告、汇总去重、链接分支、强制执行更新/关闭、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
 
 ## PR 门禁检查（pr-gate-checks/）
 

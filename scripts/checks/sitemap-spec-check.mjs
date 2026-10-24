@@ -3,7 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { writeStats, now } from '../lib/report.mjs';
-import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
+import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -17,9 +17,12 @@ const CAP = { hard: 3000, missing: 2000, mismatch: 1000 };
 // 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
 // 有则整个"扫描+提 issue"流程跳过该项目；发现问题时生成简短/完全两份 md 报告，
 // issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效造成重复提单。
+// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
+// 复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 在原 issue 评论 /close。
 const ISSUE_TITLE_PREFIX = '[GEO Sitemap]';
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
+const force = process.argv.includes('--force');
 
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
@@ -545,37 +548,15 @@ function issueBodyFor(r, fullFileName, startedAt) {
   lines.push('- changefreq 类：取值须在 `always/hourly/daily/weekly/monthly/yearly/never` 枚举内；`never` 仅用于已归档页面');
   lines.push('- xhtml:link 类：存在其他语言版本的页面需用 `<xhtml:link rel="alternate" hreflang="" href=""/>` 列出每个语言版本（包括自身）；单语言页面无需声明');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某条属预期（误报），请在 issue 评论说明，维护者会关闭本 issue');
   lines.push('');
   lines.push('<sub>由 daily-check-workflow sitemap 规范检查（sitemap-spec-check）自动生成。</sub>');
   return lines.join('\n');
 }
 
-// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
-// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
-async function precheckExistingIssue(project) {
-  const parsed = parseOwnerRepo(project.repo);
-  if (!parsed) {
-    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
-  }
-  let existing;
-  try {
-    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
-  } catch (err) {
-    if (hasToken()) {
-      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
-    }
-    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
-  }
-  if (existing.length) {
-    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
-    return { block: true, canSubmit: false, notes: [`已存在未关闭的 sitemap 规范 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
-  }
-  if (!hasToken()) {
-    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
-  }
-  return { block: false, canSubmit: true, notes: [] };
-}
+// 扫描前查重与写回逻辑收敛在 lib/atomgit.mjs（precheckExistingIssues / reconcileIssue），各维度共用：
+// 非强制模式查重命中即 block 跳过；--force 强制执行时不拦截，有问题更新原 issue，无问题评论 /close。
 
 function skippedEntry(project, notes) {
   return {
@@ -622,7 +603,8 @@ async function main() {
       results.push(await checkProjectSafe(project));
       continue;
     }
-    const pre = await precheckExistingIssue(project);
+    // 查重：--force 时已有未关闭 issue 不拦截扫描，existing 带回供写回环节更新/关闭
+    const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: 'sitemap 规范', force });
     pre.notes.forEach((n) => console.log(`[sitemap-spec] ${project.id}: ${n}`));
     if (pre.block) {
       results.push(skippedEntry(project, pre.notes));
@@ -630,6 +612,7 @@ async function main() {
     }
     console.log(`\n[sitemap-spec] ===== ${project.id} =====`);
     const entry = await checkProjectSafe(project);
+    const target = parseOwnerRepo(project.repo);
     if (hasAnyIssue(entry)) {
       const fullFileName = `${entry.id}-full.md`;
       const briefFileName = `${entry.id}-brief.md`;
@@ -642,25 +625,31 @@ async function main() {
       }
       const body = issueBodyFor(entry, fullFileName, startedAt);
       const title = issueTitleFor(entry);
-      const target = parseOwnerRepo(project.repo);
-      if (dryRun || !target || !pre.canSubmit) {
-        console.log(`\n[sitemap-spec] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
-        console.log(body);
-        entry.issueAction = 'dry-run';
-      } else {
-        const created = await createIssue({ ...target, title, body });
-        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
-        console.log(`[sitemap-spec] ${project.id}: ✨ 已创建 issue：${url}`);
-        entry.issueAction = 'created';
-        entry.issueUrl = url;
-      }
+      // 强制模式下查重命中 → 更新原 issue；否则新建（分支在 reconcileIssue 内）
+      const outcome = await reconcileIssue({ target, existing: pre.existing, canWrite: pre.canSubmit, hasIssue: true, title, body, dryRun, logPrefix: `[sitemap-spec] ${project.id}` });
+      entry.issueAction = outcome.action;
+      if (outcome.url) entry.issueUrl = outcome.url;
+    } else if (pre.existing.length) {
+      // 无问题且已有未关闭 issue（仅强制模式会走到）：sitemap 抓取成功才算有效复检，才评论 /close
+      const outcome = await reconcileIssue({
+        target,
+        existing: pre.existing,
+        canWrite: pre.canSubmit,
+        hasIssue: false,
+        verifiedClean: entry.accessible === true,
+        closeBody: closeIssueCommentBody('sitemap 属性规范检查', dateStr),
+        dryRun,
+        logPrefix: `[sitemap-spec] ${project.id}`,
+      });
+      if (outcome.action !== 'none') entry.issueAction = outcome.action;
+      if (outcome.url) entry.issueUrl = outcome.url;
     } else {
       console.log(`[sitemap-spec] ${project.id}: 未发现错误/告警，不提 issue`);
     }
     results.push(entry);
   }
 
-  const statsPath = await writeStats('sitemap-spec-stats', { timestamp: startedAt, measure: 'sitemap-spec', results });
+  const statsPath = await writeStats('sitemap-spec-stats', { timestamp: startedAt, measure: 'sitemap-spec', mode: submitIssues ? `submit-issues${dryRun ? '-dry-run' : ''}${force ? '-force' : ''}` : 'scan', results });
 
   // ---- 汇总报告 ----
   const lines = [];
@@ -668,7 +657,7 @@ async function main() {
   lines.push('');
   lines.push(`- 检查时间：${startedAt}`);
   lines.push(`- 检查范围：projects.config.json 中 ${targets.length - results.filter((r) => r.skipped).length} 个项目（跳过：${results.filter((r) => r.skipped).map((r) => r.id).join(', ') || '无'}）`);
-  lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+  lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}`);
   lines.push(`- 规范来源：archive/SEO标准及覆盖情况.md（sitemaps.org），measures/03-sitemap/规范.md`);
   lines.push(`- 检查项：loc（必选，绝对 URL、可访问）、lastmod（W3C 格式、非构建时间）、changefreq（有效枚举值、避免 never）、xhtml:link（多语言 alternate 完整性）`);
   lines.push(`- 特殊约定：配置了 newVersions 的项目仅检查 index 中匹配 newVersions 的子 sitemap；domainAlias/sitemapAliasUrl 中的域名视为合法 loc 域名（openEuler 的 openatom.cn 不再计为主机不一致问题）`);
@@ -697,7 +686,11 @@ async function main() {
     lines.push('');
     lines.push(`（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 \`<项目ID>-full.md\`）`);
     for (const r of results.filter((x) => hasAnyIssue(x))) {
-      lines.push(`- ${r.name}（${r.id}）：\`${r.id}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : ''}`);
+      lines.push(`- ${r.name}（${r.id}）：\`${r.id}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}${r.issueAction === 'updated' ? '（强制复检仍有问题，已更新原 issue）' : ''}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : ''}`);
+    }
+    // 强制复检通过并已评论 /close（或拟关闭）的项目单独列出
+    for (const r of results.filter((x) => x.issueAction === 'close-commented' || x.issueAction === 'close-dry-run')) {
+      lines.push(`- ${r.name}（${r.id}）：强制复检未再发现问题，${r.issueAction === 'close-commented' ? '已评论 /close 关闭原 issue' : '将评论 /close 关闭原 issue（dry-run/未写回）'}${r.issueUrl ? `：${r.issueUrl}` : ''}`);
     }
   } else {
     for (const r of results) {

@@ -5,7 +5,7 @@ import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { parseSitemap } from '../lib/sitemap.mjs';
 import { extractTitle, extractMeta } from '../lib/html.mjs';
 import { writeStats, now } from '../lib/report.mjs';
-import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
+import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..');
@@ -17,11 +17,15 @@ const FIELDS = ['title', 'description', 'keywords'];
 const MISSING_REASONS = ['noElement', 'empty'];
 
 // 提 issue 模式：扫描每个项目前先查目标 AtomGit 仓库是否已有本维度未关闭 issue（标题前缀匹配），
-// 有则整个"扫描+提 issue"流程跳过该项目；发现重复时生成简短/完全两份 md 报告，
+// 有则整个"扫描+提单"流程跳过该项目；发现重复时生成简短/完全两份 md 报告，
 // issue 正文用简短版并附指向本仓库完全版报告的链接。
+// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
+// 复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 在原 issue 评论 /close。
 const ISSUE_TITLE_PREFIX = '[GEO TDK Duplicate]';
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
+// --force 仅在 --submit-issues 模式下生效：跳过"已有未关闭 issue 即跳过扫描"的查重拦截
+const force = process.argv.includes('--force');
 
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
@@ -387,37 +391,15 @@ function issueBodyFor(r, fullFileName) {
   lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同');
   lines.push('- 缺失项：为"元素缺失"的页面补上 `<title>` / `<meta name="description">` / `<meta name="keywords">`，为"内容为空"的页面填入实际描述');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某组重复属预期（如多语言/模板页），请在 issue 评论说明，维护者会关闭本 issue');
   lines.push('');
   lines.push('<sub>由 daily-check-workflow TDK 重复检查自动生成。</sub>');
   return lines.join('\n');
 }
 
-// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
-// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
-async function precheckExistingIssue(project) {
-  const parsed = parseOwnerRepo(project.repo);
-  if (!parsed) {
-    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
-  }
-  let existing;
-  try {
-    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
-  } catch (err) {
-    if (hasToken()) {
-      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
-    }
-    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
-  }
-  if (existing.length) {
-    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
-    return { block: true, canSubmit: false, notes: [`已存在未关闭的 TDK 重复 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
-  }
-  if (!hasToken()) {
-    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
-  }
-  return { block: false, canSubmit: true, notes: [] };
-}
+// 扫描前查重与写回逻辑已收敛到 lib/atomgit.mjs 的 precheckExistingIssues/reconcileIssue（各维度共用）；
+// 非强制：已有未关闭 issue 即跳过扫描（宁漏勿重）；--force：照常扫描，有问题更新原 issue，无问题评论 /close。
 
 for (const project of targets) {
   let entry;
@@ -436,7 +418,8 @@ for (const project of targets) {
       duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])), missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
     };
   } else if (submitIssues) {
-    const pre = await precheckExistingIssue(project);
+    // 查重：--force 时已有未关闭 issue 不拦截扫描，existing 带回供写回环节更新/关闭
+    const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: 'TDK 重复', force });
     pre.notes.forEach((n) => console.log(`[tdk-dup] ${project.id}: ${n}`));
     if (pre.block) {
       results.push({
@@ -455,6 +438,7 @@ for (const project of targets) {
     }
     console.log(`\n[tdk-dup] ===== ${project.id} =====`);
     entry = await checkProject(project);
+    const target = parseOwnerRepo(project.repo);
     if (hasAnyIssue(entry)) {
       const fullFileName = `${entry.projectId}-full.md`;
       const briefFileName = `${entry.projectId}-brief.md`;
@@ -465,18 +449,25 @@ for (const project of targets) {
       }
       const body = issueBodyFor(entry, fullFileName);
       const title = `${ISSUE_TITLE_PREFIX} ${entry.projectName}（${entry.projectId}）：TDK title/description/keywords 存在重复或缺失`;
-      const target = parseOwnerRepo(project.repo);
-      if (dryRun || !target || !pre.canSubmit) {
-        console.log(`\n[tdk-dup] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
-        console.log(body);
-        entry.issueAction = 'dry-run';
-      } else {
-        const created = await createIssue({ ...target, title, body });
-        const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
-        console.log(`[tdk-dup] ${project.id}: ✨ 已创建 issue：${url}`);
-        entry.issueAction = 'created';
-        entry.issueUrl = url;
-      }
+      // 强制模式下查重命中 → 更新原 issue；无原 issue → 新建（均在 reconcileIssue 内分支）
+      const outcome = await reconcileIssue({ target, existing: pre.existing, canWrite: pre.canSubmit, hasIssue: true, title, body, dryRun, logPrefix: `[tdk-dup] ${project.id}` });
+      entry.issueAction = outcome.action;
+      if (outcome.url) entry.issueUrl = outcome.url;
+    } else if (pre.existing.length) {
+      // 强制模式且本次已有效完成扫描（收集到页面并成功抓取至少一页）才允许评论 /close；
+      // urlCount/fetched 为 0 说明抓取失败，不能误判"问题已修复"
+      const outcome = await reconcileIssue({
+        target,
+        existing: pre.existing,
+        canWrite: pre.canSubmit,
+        hasIssue: false,
+        verifiedClean: entry.urlCount > 0 && entry.fetched > 0,
+        closeBody: closeIssueCommentBody('TDK 重复/缺失检查', dateStr),
+        dryRun,
+        logPrefix: `[tdk-dup] ${project.id}`,
+      });
+      if (outcome.action !== 'none') entry.issueAction = outcome.action;
+      if (outcome.url) entry.issueUrl = outcome.url;
     } else {
       console.log(`[tdk-dup] ${project.id}: 未发现重复与缺失，不提 issue`);
     }
@@ -488,13 +479,14 @@ for (const project of targets) {
 }
 
 // ---- Markdown 报告：全部项目检查完成后一次性写入 ----
-const statsPath = await writeStats('tdk-duplicate-stats', { timestamp: startedAt, measure: 'tdk-duplicate', results });
+const statsPath = await writeStats('tdk-duplicate-stats', { timestamp: startedAt, measure: 'tdk-duplicate', mode: submitIssues ? `submit-issues${dryRun ? '-dry-run' : ''}${force ? '-force' : ''}` : 'scan', results });
 const lines = [];
 lines.push('# TDK 重复性检查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查方式：参照 seo-check/scripts/description-check.js 的分组判重逻辑，数据源改为各项目 sitemap 全量页面 URL 逐页请求 HTML（非本地构建产物遍历）`);
 lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}`);
 lines.push(`- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（页面量级大，且多语言/历史版本同页 TDK 同值属预期）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面`);
 lines.push(`- 完整重复组与缺失数据见：scripts/stats/tdk-duplicate-stats.json`);
 lines.push('');
@@ -521,7 +513,11 @@ if (submitIssues) {
   lines.push('');
   lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 `<项目ID>-full.md`）');
   const withIssue = results.filter((r) => !r.skipped && r.urlCount > 0 && hasAnyIssue(r));
-  for (const r of withIssue) lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.projectId}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}` : ''}`);
+  for (const r of withIssue) lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.projectId}-full.md\`${r.issueUrl ? `，issue：${r.issueUrl}（${r.issueAction === 'updated' ? '强制复检仍有问题，已更新原 issue' : '已提单'}）` : ''}`);
+  // 强制复检通过并已评论 /close（或 dry-run 拟关闭）的项目单独列出，避免"本次没问题"的记录被总览淹没
+  for (const r of results.filter((x) => x.issueAction === 'close-commented' || x.issueAction === 'close-dry-run')) {
+    lines.push(`- ${r.projectName}（${r.projectId}）：强制复检未再发现问题，${r.issueAction === 'close-commented' ? '已评论 /close 关闭原 issue' : '将评论 /close 关闭原 issue（dry-run/未写回）'}${r.issueUrl ? `：${r.issueUrl}` : ''}`);
+  }
 } else {
   for (const r of results) lines.push(...detailLines(r));
 }

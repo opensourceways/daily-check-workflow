@@ -3,7 +3,8 @@
 // scheduled-reports/robotstxt/<日期>/report.md；--submit-issues 模式向各项目 AtomGit 仓库提 issue。
 //
 // 用法（详见 measures/01-robots-txt/工具与脚本.md 的参数表与执行流程图）：
-//   node scripts/checks/check-robots.mjs [--site=<项目ID>] [--submit-issues] [--dry-run]
+//   node scripts/checks/check-robots.mjs [--site=<项目ID>] [--submit-issues] [--dry-run] [--force]
+// --force 仅配 --submit-issues：已有未关闭 issue 不跳过扫描，有问题更新原 issue、无问题评论 /close。
 // 环境变量：ATOMGIT_TOKEN（缺省时只扫描不提单）、GITHUB_REPOSITORY/GITHUB_REF_NAME（正文链接）。
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -16,7 +17,7 @@ import {
   pathFormatIssues,
   diffContentSignal,
 } from '../lib/robots.mjs';
-import { hasToken, parseOwnerRepo, findIssuesByTitlePrefix, createIssue } from '../lib/atomgit.mjs';
+import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,9 @@ const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
+// --force 仅在 --submit-issues 下生效：已有未关闭 issue 不再拦截扫描，
+// 复检仍有问题 → 更新原 issue；问题已消除 → 原 issue 评论 /close（对应 workflow 的 force_check 输入）
+const force = process.argv.includes('--force');
 
 const projects = await loadProjects();
 const targets = filterProjects(projects, siteId);
@@ -228,31 +232,8 @@ function hasAnyIssue(r) {
   return !r.skipped && !!r.robotsUrl && (r.hardErrors?.length || 0) > 0;
 }
 
-// 扫描前查重：目标 AtomGit 仓库已有本维度未关闭 issue 则跳过整个"扫描+提 issue"流程。
-// 查询失败时：有 token（生产环境）为防重复提单直接跳过扫描；无 token（本地试跑）继续扫描但跳过提单。
-async function precheckExistingIssue(project) {
-  const parsed = parseOwnerRepo(project.repo);
-  if (!parsed) {
-    return { block: false, canSubmit: false, notes: [`repo 无法解析 owner/repo，无法查重与提单：${project.repo || '未配置'}`] };
-  }
-  let existing;
-  try {
-    existing = await findIssuesByTitlePrefix({ ...parsed, prefix: ISSUE_TITLE_PREFIX, state: 'open' });
-  } catch (err) {
-    if (hasToken()) {
-      return { block: true, canSubmit: false, notes: [`查询已提 issue 失败，为避免重复提单本次跳过扫描：${err.message}`] };
-    }
-    return { block: false, canSubmit: false, notes: [`无 ATOMGIT_TOKEN 且查询已提 issue 失败（${err.message}），本次仅扫描不提单`] };
-  }
-  if (existing.length) {
-    const urls = existing.map((i) => i.html_url || `${parsed.owner}/${parsed.repo}#${i.number}`).join('、');
-    return { block: true, canSubmit: false, notes: [`已存在未关闭的 robots.txt 规范 issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
-  }
-  if (!hasToken()) {
-    return { block: false, canSubmit: false, notes: ['未设置 ATOMGIT_TOKEN，本次查重通过但不提单'] };
-  }
-  return { block: false, canSubmit: true, notes: [] };
-}
+// 扫描前查重与写回逻辑收敛在 lib/atomgit.mjs（precheckExistingIssues / reconcileIssue），各维度共用：
+// 非强制模式查重命中即 block 跳过；--force 强制执行时不拦截，有问题更新原 issue，无问题评论 /close。
 
 /** 当日汇总报告在 GitHub 上的 blob 链接（issue 正文尾部引用），分支跟随 Actions 运行时 */
 function summaryUrl() {
@@ -306,6 +287,7 @@ function issueBodyFor(r) {
   lines.push('');
   lines.push('- 按问题清单修复 robots.txt（缺失字段补全、取值改到规范值、不可访问链接改为有效地址）');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某条属预期（误报），请在 issue 评论说明，维护者会关闭本 issue');
   lines.push('');
   lines.push(`> 当日全量检查汇总报告：[${reportName}](${summaryUrl()})`);
@@ -329,7 +311,7 @@ for (const project of targets) {
     results.push(await scanProject(project));
     continue;
   }
-  const pre = await precheckExistingIssue(project);
+  const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: 'robots.txt 规范', force });
   pre.notes.forEach((n) => console.log(`[robots] ${project.id}: ${n}`));
   if (pre.block) {
     results.push(skippedEntry(project, pre.notes));
@@ -337,22 +319,35 @@ for (const project of targets) {
   }
   console.log(`\n[robots] ===== ${project.id} =====`);
   const entry = await scanProject(project);
+  const target = parseOwnerRepo(project.repo);
   if (hasAnyIssue(entry)) {
-    const title = issueTitleFor(entry);
-    const body = issueBodyFor(entry);
-    const target = parseOwnerRepo(project.repo);
-    // dry-run / 无 token / owner:repo 解析失败 → 仅打印正文，行为等同
-    if (dryRun || !target || !pre.canSubmit) {
-      console.log(`\n[robots] ${project.id} ${dryRun ? '[dry-run] ' : ''}将提交 issue：${title}`);
-      console.log(body);
-      entry.issueAction = 'dry-run';
-    } else {
-      const created = await createIssue({ ...target, title, body });
-      const url = created?.html_url || `https://atomgit.com/${target.owner}/${target.repo}/issues/${created?.number}`;
-      console.log(`[robots] ${project.id}: ✨ 已创建 issue：${url}`);
-      entry.issueAction = 'created';
-      entry.issueUrl = url;
-    }
+    // 有问题：强制模式下查重命中 → 更新原 issue；否则新建（分支在 reconcileIssue 内）
+    const outcome = await reconcileIssue({
+      target,
+      existing: pre.existing,
+      canWrite: pre.canSubmit,
+      hasIssue: true,
+      title: issueTitleFor(entry),
+      body: issueBodyFor(entry),
+      dryRun,
+      logPrefix: `[robots] ${project.id}`,
+    });
+    entry.issueAction = outcome.action;
+    if (outcome.url) entry.issueUrl = outcome.url;
+  } else if (pre.existing.length) {
+    // 无问题且已有未关闭 issue（仅强制模式会走到）：主域 robots.txt 抓取成功才算有效复检，才评论 /close
+    const outcome = await reconcileIssue({
+      target,
+      existing: pre.existing,
+      canWrite: pre.canSubmit,
+      hasIssue: false,
+      verifiedClean: !!entry.checks?.accessible,
+      closeBody: closeIssueCommentBody('robots.txt 规范检查', dateStr),
+      dryRun,
+      logPrefix: `[robots] ${project.id}`,
+    });
+    if (outcome.action !== 'none') entry.issueAction = outcome.action;
+    if (outcome.url) entry.issueUrl = outcome.url;
   } else {
     console.log(`[robots] ${project.id}: 无硬性错误，不提 issue${entry.warnings.length ? `（有 ${entry.warnings.length} 条告警，见报告）` : ''}`);
   }
@@ -361,7 +356,7 @@ for (const project of targets) {
 
 // ---- stats + Markdown 报告 ----
 
-const report = { timestamp: startedAt, measure: 'robots-txt', results };
+const report = { timestamp: startedAt, measure: 'robots-txt', mode: submitIssues ? `submit-issues${dryRun ? '-dry-run' : ''}${force ? '-force' : ''}` : 'scan', results };
 const statsPath = await writeStats('robots-stats', report);
 
 // 链接结果渲染成报告行 / 表格单元格
@@ -379,7 +374,7 @@ function fmtLinkCell(links) {
 /** 汇总报告中单项目的完整明细小节（### 标题 + 检查结果 + 错误/告警 + robots 原文） */
 function detailLines(r) {
   const lines = [];
-  lines.push(`### ${r.projectName}（${r.projectId}） — ${r.verdict}${r.issueUrl ? `，[issue](${r.issueUrl})` : r.issueAction === 'dry-run' ? '（dry-run 未提交）' : ''}`);
+  lines.push(`### ${r.projectName}（${r.projectId}） — ${r.verdict}${r.issueUrl ? `，[issue](${r.issueUrl})` : r.issueAction === 'dry-run' ? '（dry-run 未提交）' : r.issueAction === 'print-only' ? '（未提单：无 token 或查重降级）' : ''}`);
   lines.push('');
   if (r.skipped) {
     for (const n of r.notes || []) lines.push(`- ${n}`);
@@ -429,7 +424,7 @@ lines.push('# robots.txt 规范检查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
 lines.push(`- 检查范围：projects.config.json 中 ${results.length} 个项目${results.some((r) => r.skipped) ? `（查重跳过：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}；配置了 robotsAliasUrl 的项目额外检查主域/alias 一致性（当前：${results.filter((r) => r.alias).map((r) => r.projectId).join('、') || '无'}）`);
-lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}）` : '常规检查'}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}`);
 lines.push('- 规范来源：archive/SEO标准及覆盖情况.md（robots.txt 字段表），measures/01-robots-txt/规范.md');
 lines.push(`- 检查项：User-agent（必选）、allow/disallow（至少其一、路径以 / 开头）、sitemap（必选，含链接可访问性）、Content-Signal（必选，规范值 ${EXPECTED_CS_TEXT}，期望值配置于 scripts/config/check-rules.json）、LLM-Policy（必选，指向 llms.txt 且可访问）、禁整站判定、主域/alias 内容一致性、跨域引用告警`);
 lines.push('- 特殊约定：Sitemap/LLM-Policy 的 host 与 robots.txt 所在 host 不一致时计告警（跨主机 Sitemap 声明可能不被搜索引擎识别），不计硬性错误；"引用目录须以 / 结尾"的目录语义判定不在脚本范围，见 measures/01-robots-txt/检测方式.md');
@@ -474,6 +469,10 @@ const skipped = results.filter((r) => r.skipped);
 if (bad.length) lines.push(`- 硬性不符合：${bad.map((r) => `${r.projectId}（${r.hardErrors[0]}${r.hardErrors.length > 1 ? ` 等 ${r.hardErrors.length} 项` : ''}）`).join('；')}，需优先整改。`);
 if (warn.length) lines.push(`- 存在告警：${warn.map((r) => r.projectId).join('、')}，主要是主域/alias 不一致或主域跨域引用 Sitemap/LLM-Policy，是否整改人工定夺。`);
 if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
+const reopened = results.filter((r) => r.issueAction === 'updated');
+if (reopened.length) lines.push(`- 强制复检仍有问题，已更新原 issue：${reopened.map((r) => r.projectId).join('、')}。`);
+const closedList = results.filter((r) => r.issueAction === 'close-commented' || r.issueAction === 'close-dry-run');
+if (closedList.length) lines.push(`- 强制复检问题已消除，${dryRun ? '将' : '已'}评论 /close 关闭原 issue：${closedList.map((r) => r.projectId).join('、')}。`);
 if (!bad.length && !warn.length && !skipped.length) lines.push('- 全部项目 robots.txt 符合规范。');
 lines.push('');
 lines.push(`> 注：本报告由 scripts/checks/check-robots.mjs 自动生成（同批次数据见 scripts/stats/robots-stats.json）。Content-Signal 期望值取自 scripts/config/check-rules.json；"引用目录须以 / 结尾"、disallow 误伤等业务判断仍需人工，见 measures/01-robots-txt/检测方式.md。${submitIssues && !dryRun ? '硬性不符合项目已按 --submit-issues 流程提 issue（告警与 robotsUrl 未配置不提单）。' : ''}`);
