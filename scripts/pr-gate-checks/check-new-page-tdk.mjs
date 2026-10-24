@@ -4,17 +4,20 @@
 //  1) 取待检项目最新一次 git commit 的全部改动文件（普通/合并提交统一按"与第一父提交 HEAD^1 对比"，
 //     初始提交无父则直接 show），只保留状态为 A（新增）且整路径匹配 repoInfo.pageEntryPattern（JS 正则）
 //     的文件，记为新增页面；无新增页面直接通过。
-//  2) 每个新增页面按 **TDK** 与 **JSON-LD** 两个维度分别判定，单维度满足以下任一条即通过：
-//     a) 归档检查：该维度的归档目录（TDK=repoInfo.tdkArchiveDir，JSON-LD=repoInfo.jsonldArchiveDir）下
-//        存在 <页面路径>/index.json。页面路径推导见 toPageKey，与 openEuler-portal .geo 归档组织一致
-//        （如 app/zh/foo/bar.md → zh/foo/bar，app/zh/index.md → zh）；
-//     b) 源码检查（按 project.stack 分情况）：
-//       - TDK：vitepress → md frontmatter 顶层配置非空 title 且 description；
-//               nuxt → useSeoMeta / useHead 调用实参（跨调用并集）含 title: 与 description: 配置键；
-//       - JSON-LD：vitepress → frontmatter 块内声明 script[type="application/ld+json"]（按 MIME 串判定）；
-//               nuxt → 同样两个 composable 的调用实参内涉及 application/ld+json；
-//       - 其他 stack 或文件类型与 stack 不符：无源码级检查，仅依赖归档。
-//     两条件都不满足 → 该维度记一条硬性错误（一页最多两条）。
+//  2) 每个新增页面按 **TDK** 与 **JSON-LD** 两个维度分别判定：
+//     - TDK 细化到 title / description 两个字段：字段级"并集"判定——某字段只要归档文件或页面源码
+//       任一处非空配置即视为覆盖（与 portal config.ts setTdk"归档覆盖 + frontmatter 兜底"的渲染
+//       行为一致）；title、description 未全覆盖 → 报缺哪些字段。
+//       归档侧：读 ${repoInfo.tdkArchiveDir}/<页面路径>/index.json（toPageKey 推导规则见下），
+//       解析 JSON 并检查 title / description 是否非空字符串；文件缺失/解析失败按"字段缺失"处理并在
+//       报错里说明原因。
+//       源码侧（按 project.stack）：vitepress → md frontmatter 顶层非空 title / description；
+//       nuxt → useSeoMeta / useHead 调用实参（跨调用并集）内的 title: / description: 配置键。
+//     - JSON-LD 维度维持整条判定：归档 ${repoInfo.jsonldArchiveDir}/<页面路径>/index.json 存在，
+//       或源码内出现 application/ld+json 声明（vitepress 看 frontmatter 的 script[type=...]，
+//       nuxt 看两个 composable 调用实参）。
+//     - 其他 stack 或文件类型与 stack 不符：无源码级检查，仅依赖归档。
+//   维度不满足 → 该维度一条硬性错误（一页最多两条）。
 //
 // 退出码：存在硬性错误 → 1（拦截 PR）；全部通过 / 无新增页面 / packageName 未登记 → 0。
 // 自包含设计：同 check-robots.mjs——复制出仓库后只能 import node 内置模块与 ./gate-utils.mjs。
@@ -32,6 +35,10 @@ import { fail, findProjectRoot, findConfigPath, identifyProject } from './gate-u
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const TAG = '[pr-gate:tdk]';
 const DIMENSIONS = ['TDK', 'JSON-LD'];
+// TDK 细化到字段粒度：归档 JSON 与源码都按这两个键判定"是否配置"
+const TDK_FIELDS = ['title', 'description'];
+// 报错文案里对源码渠道的称呼（按 stack）
+const SRC_LABEL = { vitepress: 'frontmatter', nuxt: 'useSeoMeta/useHead' };
 
 // ---- 输入解析：项目根 / 配置文件 / 项目匹配（公共管道见 gate-utils.mjs） ----
 
@@ -56,7 +63,7 @@ try {
   fail(TAG, `repoInfo.pageEntryPattern 不是合法正则：${repoInfo.pageEntryPattern}（${e.message}）`);
 }
 
-// 维度 → 归档目录配置键；两个目录都未配置且 stack 不支持源码检查时，错误文案引用此键名提示补配置
+// 维度 → 归档目录配置键；两渠道都不可用时错误文案引用此键名提示补配置
 const ARCHIVE_DIR_OF = { TDK: repoInfo.tdkArchiveDir, 'JSON-LD': repoInfo.jsonldArchiveDir };
 
 // ---- 步骤 1：最新一次 commit 的新增页面 ----
@@ -120,11 +127,30 @@ function toPageKey(file) {
   return k;
 }
 
-/** 归档存在性：目录未配置返回 null（该维度归档路径 N/A）；否则返回 {rel 期望相对路径, exists 是否存在} */
-function archiveCheck(archiveDir, key) {
+/** 归档目标：目录未配置返回 null（该维度归档渠道 N/A）；否则 {rel 期望相对路径, exists 是否存在} */
+function archiveTarget(archiveDir, key) {
   if (!archiveDir) return null;
   const rel = posix.join(archiveDir, key, 'index.json');
   return { rel, exists: existsSync(resolve(projectRoot, rel)) };
+}
+
+/**
+ * TDK 归档内容核查（字段粒度）：文件存在时读并解析 index.json，title / description 按
+ * "非空字符串"判配置；不存在/解析失败/目录未配置分别对应：fields 全 false + note 说明原因 / 整体 null。
+ * 返回 null（无归档渠道）或 { rel, fields: {title, description}, note 附加原因（正常读到时为空串） }。
+ */
+async function tdkArchiveFields(target) {
+  if (!target) return null;
+  const fields = { title: false, description: false };
+  if (!target.exists) return { rel: target.rel, fields, note: `归档 ${target.rel} 不存在` };
+  let data;
+  try {
+    data = JSON.parse(await readFile(resolve(projectRoot, target.rel), 'utf8'));
+  } catch (e) {
+    return { rel: target.rel, fields, note: `归档 ${target.rel} 解析失败（${e.message}）` };
+  }
+  for (const f of TDK_FIELDS) fields[f] = typeof data?.[f] === 'string' && data[f].trim() !== '';
+  return { rel: target.rel, fields, note: '' };
 }
 
 /** 提取文件顶部 frontmatter 块文本（--- 包裹）；不存在返回 null */
@@ -134,24 +160,25 @@ function frontmatterBlock(text) {
 }
 
 /**
- * vitepress TDK：frontmatter 顶层 title / description（仅认顶格键，嵌套同名不算；
- * 值去引号后非空才算配置）。返回 ''（通过）或不通过原因。
+ * vitepress TDK（字段级）：frontmatter 顶层 title / description（仅认顶格键，嵌套同名不算；
+ * 值去引号后非空才算配置）。返回 { fields, note }——note 仅在前置条件不成立时给整体原因。
  */
-function fmTdkWhy(block) {
-  if (!block) return 'frontmatter 缺失（文件未以 --- 开头）';
-  const missing = [];
-  for (const field of ['title', 'description']) {
-    let value = '';
+function fmTdkFields(block) {
+  const fields = { title: false, description: false };
+  if (!block) return { fields, note: 'frontmatter 缺失（文件未以 --- 开头）' };
+  for (const f of TDK_FIELDS) {
     for (const line of block.split(/\r?\n/)) {
-      if (!line.startsWith(`${field}:`)) continue;
-      value = line.slice(field.length + 1).trim();
+      if (!line.startsWith(`${f}:`)) continue;
+      let value = line.slice(f.length + 1).trim();
       const quoted = value.match(/^(["'])([\s\S]*)\1$/);
       if (quoted) value = quoted[2].trim();
-      if (value) break;
+      if (value) {
+        fields[f] = true;
+        break;
+      }
     }
-    if (!value) missing.push(field);
   }
-  return missing.length ? `frontmatter 缺 ${missing.join('、')}` : '';
+  return { fields, note: '' };
 }
 
 /**
@@ -205,12 +232,16 @@ function nuxtCallArgs(text) {
   return out;
 }
 
-/** nuxt TDK：各调用实参并集内须出现 title: 与 description: 配置键（跨调用分散写法也认）。'' 或原因 */
-function nuxtTdkWhy(argsAll) {
-  if (!argsAll.length) return '未发现 useSeoMeta / useHead 调用';
+/**
+ * nuxt TDK（字段级）：各调用实参并集内按字段测 title: / description: 配置键
+ * （跨调用分散写法也认；ogTitle:/titleTemplate: 之类不会被误判为字段）。返回 { fields, note }。
+ */
+function nuxtTdkFields(argsAll) {
+  const fields = { title: false, description: false };
+  if (!argsAll.length) return { fields, note: '未发现 useSeoMeta / useHead 调用' };
   const joined = argsAll.join('\n');
-  const missing = ['title', 'description'].filter((f) => !new RegExp(`["']?${f}["']?\\s*:`).test(joined));
-  return missing.length ? `useSeoMeta/useHead 调用缺 ${missing.join('、')}` : '';
+  for (const f of TDK_FIELDS) fields[f] = new RegExp(`["']?${f}["']?\\s*:`).test(joined);
+  return { fields, note: '' };
 }
 
 /** nuxt JSON-LD：调用实参并集内是否涉及 application/ld+json（script 声明）。'' 或原因 */
@@ -226,10 +257,10 @@ const SOURCE_OK_NOTE = {
 };
 
 /**
- * 按 stack 与文件类型分派源码检查，返回 { TDK: ''|原因, 'JSON-LD': ''|原因 }；
+ * 按 stack 与文件类型分派源码检查，返回 { tdk: {fields, note}, jsonld: ''|原因 }；
  * stack 未知或文件类型与 stack 不符时返回 null（该页面无源码级检查，仅依赖归档）。
  */
-async function sourceWhys(file) {
+async function sourceChecks(file) {
   const ext = posix.extname(file);
   const isVitepressMd = project.stack === 'vitepress' && ext === '.md';
   const isNuxtVue = project.stack === 'nuxt' && ext === '.vue';
@@ -242,10 +273,10 @@ async function sourceWhys(file) {
   }
   if (isVitepressMd) {
     const block = frontmatterBlock(text);
-    return { TDK: fmTdkWhy(block), 'JSON-LD': fmJsonldWhy(block) };
+    return { tdk: fmTdkFields(block), jsonld: fmJsonldWhy(block) };
   }
   const argsAll = nuxtCallArgs(text);
-  return { TDK: nuxtTdkWhy(argsAll), 'JSON-LD': nuxtJsonldWhy(argsAll) };
+  return { tdk: nuxtTdkFields(argsAll), jsonld: nuxtJsonldWhy(argsAll) };
 }
 
 const errors = [];
@@ -254,34 +285,49 @@ const passed = [];
 
 for (const file of newPages) {
   const key = toPageKey(file);
-  const archives = {};
-  for (const dim of DIMENSIONS) archives[dim] = archiveCheck(ARCHIVE_DIR_OF[dim], key);
+  const ext = posix.extname(file) || '(无扩展名)';
+  const targets = {};
+  for (const dim of DIMENSIONS) targets[dim] = archiveTarget(ARCHIVE_DIR_OF[dim], key);
+  const src = await sourceChecks(file);
 
-  // 归档已齐备的维度不需要源码检查；仍有维度缺归档时才读文件做源码级判定（全部齐备则跳过读取）
-  const needSource = DIMENSIONS.some((dim) => !archives[dim] || !archives[dim].exists);
-  const whys = needSource ? await sourceWhys(file) : null;
-
-  for (const dim of DIMENSIONS) {
-    const arc = archives[dim];
-    if (arc && arc.exists) {
-      passed.push({ file, dimension: dim, via: `归档 ${arc.rel}` });
-      continue;
-    }
-    const why = whys ? whys[dim] : null;
-    if (why === '') {
-      passed.push({ file, dimension: dim, via: SOURCE_OK_NOTE[project.stack][dim] });
-      continue;
-    }
-    // 两条路径都不满足 → 该维度一条硬性错误；归档与源码同时 N/A 属配置缺口，单独措辞提醒补配置
-    if (arc === null && why === null) {
-      errors.push(`${file}：无法检查 ${dim}——对应归档目录（repoInfo.${dim === 'TDK' ? 'tdkArchiveDir' : 'jsonldArchiveDir'}）未配置，且 stack "${project.stack || '(未配置)'}"（或文件类型 ${posix.extname(file) || '(无扩展名)'}）不支持源码级检查，请补配置或在页面内配置`);
-      continue;
-    }
+  // ---- TDK：字段级并集（归档字段 ∪ 源码字段），title / description 各自判定 ----
+  const tdkArc = await tdkArchiveFields(targets.TDK);
+  const tdkCovered = (f) => Boolean(tdkArc?.fields[f] || src?.tdk.fields[f]);
+  const tdkMissing = TDK_FIELDS.filter((f) => !tdkCovered(f));
+  if (!tdkMissing.length) {
+    // 通过来源说明：归档全齐 / 源码全齐 / 两边合并覆盖
+    const via =
+      TDK_FIELDS.every((f) => tdkArc?.fields[f])
+        ? `归档 ${tdkArc.rel}`
+        : TDK_FIELDS.every((f) => src?.tdk.fields[f])
+          ? `${SRC_LABEL[project.stack] ?? '源码'} title/description 已配置`
+          : `归档 ${tdkArc?.rel} + ${SRC_LABEL[project.stack] ?? '源码'} 合并覆盖`;
+    passed.push({ file, dimension: 'TDK', via });
+  } else if (!tdkArc && !src) {
+    errors.push(`${file}：无法检查 TDK——repoInfo.tdkArchiveDir 未配置，且 stack "${project.stack || '(未配置)'}"（或文件类型 ${ext}）不支持源码级检查，请补配置或在页面内配置`);
+  } else {
+    const m = tdkMissing.join('、');
     const parts = [];
-    if (arc) parts.push(`归档 ${arc.rel} 不存在`);
-    if (why) parts.push(why);
-    else parts.push(`stack "${project.stack || '未配置'}" 对 ${posix.extname(file) || '该'}文件不做 ${dim} 源码检查`);
-    errors.push(`${file}：新增页面缺 ${dim}（${parts.join('，且 ')}）`);
+    if (tdkArc) parts.push(tdkArc.note || `归档 ${tdkArc.rel} 无 ${m}`);
+    else parts.push('未配置 tdkArchiveDir');
+    if (src) parts.push(src.tdk.note || `${SRC_LABEL[project.stack]} 无 ${TDK_FIELDS.filter((f) => !src.tdk.fields[f]).join('、')}`);
+    else parts.push(`stack "${project.stack || '未配置'}" 对 ${ext} 文件不做 TDK 源码检查`);
+    errors.push(`${file}：新增页面 TDK 缺 ${m}（${parts.join('，且 ')}）`);
+  }
+
+  // ---- JSON-LD：整条判定（归档文件存在 ∪ 源码出现 ld+json 声明） ----
+  const arcLd = targets['JSON-LD'];
+  if (arcLd && arcLd.exists) {
+    passed.push({ file, dimension: 'JSON-LD', via: `归档 ${arcLd.rel}` });
+  } else if (src && src.jsonld === '') {
+    passed.push({ file, dimension: 'JSON-LD', via: SOURCE_OK_NOTE[project.stack]['JSON-LD'] });
+  } else if (!arcLd && !src) {
+    errors.push(`${file}：无法检查 JSON-LD——repoInfo.jsonldArchiveDir 未配置，且 stack "${project.stack || '(未配置)'}"（或文件类型 ${ext}）不支持源码级检查，请补配置或在页面内配置`);
+  } else {
+    const parts = [];
+    parts.push(arcLd ? `归档 ${arcLd.rel} 不存在` : '未配置 jsonldArchiveDir');
+    parts.push(src ? src.jsonld : `stack "${project.stack || '未配置'}" 对 ${ext} 文件不做 JSON-LD 源码检查`);
+    errors.push(`${file}：新增页面缺 JSON-LD（${parts.join('，且 ')}）`);
   }
 }
 
