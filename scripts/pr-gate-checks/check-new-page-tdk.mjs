@@ -85,14 +85,24 @@ function listAddedFiles() {
   const head = git(['rev-parse', '--verify', 'HEAD']);
   if (head.code !== 0) fail(TAG, `无法读取 git HEAD（${projectRoot} 不是 git 仓库或尚无提交）`);
   const parents = git(['rev-list', '--parents', '-n', '1', 'HEAD']).out.split(/\s+/).slice(1);
-  let res;
   if (parents.length === 0) {
-    res = git(['show', '--no-color', '--format=', '--name-status', 'HEAD']);
-  } else {
-    res = git(['diff', '--no-color', '--name-status', 'HEAD^1', 'HEAD']);
-    if (res.code !== 0) res = git(['show', '--no-color', '--format=', '--name-status', 'HEAD']);
+    // 浅克隆（如 CI depth=1）里 HEAD 会被嫁接成"无父提交"，git show 把全仓文件列为 A 造成海量误报；
+    // 用 --is-shallow-repository 区分"真初始提交"与"浅历史"，后者直接提示补深度而非全量检查
+    const isShallow = git(['rev-parse', '--is-shallow-repository']).out === 'true';
+    if (isShallow) fail(TAG, '仓库为浅克隆且最新提交的父对象缺失，无法确定本次改动范围；请 CI 检出 fetch-depth ≥ 2，或先执行 git fetch --deepen 2');
+    // 初始提交：无父可比对，git show 把全部文件列为 A，正好符合"全为新增"
+    return { sha: head.out, ...parseNameStatus(git(['show', '--no-color', '--format=', '--name-status', 'HEAD'])) };
   }
+  // 普通/合并提交统一与第一父 HEAD^1 对比——合并提交把分支带来的新文件同样计为 A；
+  // 极端场景（如浅克隆但父对象恰好可用时 --deepen 失败）兜底退回 git show，仍失败给出 fetch-depth 提示
+  let res = git(['diff', '--no-color', '--name-status', 'HEAD^1', 'HEAD']);
+  if (res.code !== 0) res = git(['show', '--no-color', '--format=', '--name-status', 'HEAD']);
   if (res.code !== 0) fail(TAG, `读取最新提交改动失败：${res.err}（CI 检出需 fetch-depth ≥ 2）`);
+  return { sha: head.out, ...parseNameStatus(res) };
+}
+
+/** 解析 git name-status 输出，筛出状态 A（新增）的路径 */
+function parseNameStatus(res) {
   const added = [];
   for (const line of res.out.split('\n')) {
     if (!line.trim()) continue;
@@ -100,7 +110,7 @@ function listAddedFiles() {
     const [status, file] = line.split('\t');
     if (status[0] === 'A' && file) added.push(file);
   }
-  return { sha: head.out, added };
+  return { added };
 }
 
 const { sha, added } = listAddedFiles();
