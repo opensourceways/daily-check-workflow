@@ -47,6 +47,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
     │   ├── atomgit.mjs  # AtomGit API v5（提 issue 查重/建单，供 --submit-issues 模式）
     │   └── report.mjs   # 统计输出
     ├── checks/          # 检查脚本
+    ├── pr-gate-checks/  # PR 门禁静态文件检查（自包含，可复制到待检项目根运行）
     ├── stats/           # 输出目录（JSON）
     ├── pr-summary.md    # PR 汇总
     └── README.md
@@ -77,6 +78,10 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 - **JSON-LD 规范**：`scripts/checks/check-jsonld.mjs` + `../.github/workflows/json-ld-check.yml`（每日 06:00 UTC），前缀 `[GEO JSON-LD]`；采样首页+`check-rules.json` samplePages+llms.txt 前 2 条内容页；触发提单=P0 级硬性错误（语法/@context/P0 三件套/Google 必填属性/占位符；重复块、面包屑项、inLanguage、@id 覆盖率等计告警不提单）
 
 其他维度接入时照此模式复制；细则约定（前缀查重、双报告、汇总去重、链接分支、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
+
+## PR 门禁检查（pr-gate-checks/）
+
+与定时检查（抓线上 + 提 issue）互补的一套**本地静态文件**检查：门禁步骤将 `scripts/pr-gate-checks/` 连同 `projects.config.json` 复制到待检项目根，执行 `node pr-gate-checks/check-robots.mjs`；用项目根 `package.json` 的 `name` 匹配 `repoInfo.packageName` 确定待检项目，再按 `repoInfo` 登记的路径检查（robots.txt 位于 `${repoInfo.publicDir}/robots.txt`）。只读本地文件、不联网、不提单，硬性错误退出码 1 拦截 PR；packageName 未登记（项目未接入）时跳过放行（退出码 0）。已接入：robots.txt 字段合规（check-robots.mjs）、最新提交新增页面的 TDK / JSON-LD 配置（check-new-page-tdk.mjs，按 `pageEntryPattern` 正则筛新增页面，两维度各自判定：归档 `tdkArchiveDir`/`jsonldArchiveDir` 或源码 frontmatter / useSeoMeta/useHead 任一满足即通过）。公共管道在 `gate-utils.mjs`，细则见目录内 README。
 
 ## 配置
 

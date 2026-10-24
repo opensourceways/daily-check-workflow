@@ -11,7 +11,15 @@
       "robotsAliasUrl": "https://www.openeuler.openatom.cn/robots.txt",
       "sitemapUrl": "https://www.openeuler.org/sitemap.xml",
       "sitemapAliasUrl": "https://www.openeuler.openatom.cn/sitemap.xml",
-      "llmsUrl": "https://www.openeuler.org/llms.txt"
+      "llmsUrl": "https://www.openeuler.org/llms.txt",
+      "repoInfo": {
+        "packageName": "openeuler-portal",
+        "publicDir": "app/.vitepress/public",
+        "tdkArchiveDir": ".geo/tdks",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "srcDir": "app",
+        "pageEntryPattern": "^app/(?:zh|en)/.*\\.md$"
+      }
     },
     {
       "id": "openEuler-docs",
@@ -45,7 +53,15 @@
       "stack": "vitepress",
       "robotsUrl": "https://opengauss.org/robots.txt",
       "sitemapUrl": "https://opengauss.org/sitemap.xml",
-      "llmsUrl": "https://opengauss.org/llms.txt"
+      "llmsUrl": "https://opengauss.org/llms.txt",
+      "repoInfo": {
+        "packageName": "opengauss",
+        "publicDir": "app/.vitepress/public",
+        "tdkArchiveDir": ".geo/tdks",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "srcDir": "app",
+        "pageEntryPattern": "^app/(?:zh|en)/.*\\.md$"
+      }
     },
     {
       "id": "openGauss-docs",
