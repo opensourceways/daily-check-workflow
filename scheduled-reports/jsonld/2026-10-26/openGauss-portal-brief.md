@@ -1,6 +1,6 @@
 # JSON-LD 检查简短报告 · openGauss 官网（openGauss-portal）
 
-- 检查时间：2026-10-26T08:03:43.838Z
+- 检查时间：2026-10-26T08:29:58.834Z
 - 采样入口：https://opengauss.org
 - 结论：❌
 
@@ -10,10 +10,9 @@
 - 全站出现的 `@type`：Organization、SoftwareApplication、WebPage、WebSite、BreadcrumbList、CollectionPage、ItemList、Service、HowTo、TechArticle、Event、NewsArticle、ItemPage、Article、LearningResource 等 18 种
 - P0 三件套（告警级）：✅ 全站齐备；Google 必填属性缺失（告警级）：266 处
 
-### 问题清单（2 类硬性不符合）
+### 问题清单（1 类硬性不符合）
 
-- ❌ JSON 语法错误块 56 个（涉及 56 个页面，如 https://opengauss.org/zh/download/life-cycle/、https://opengauss.org/zh/honor/、https://opengauss.org/zh/summit/summit2024/）
-- ❌ 占位符取值 6 处（TODO/待填/占位等，禁止上线）
+- ❌ JSON 语法错误块 56 个（涉及 56 个页面，如 https://opengauss.org/zh/download/life-cycle/ 、https://opengauss.org/zh/honor/ 、https://opengauss.org/zh/summit/summit2024/ ）
 
 ### 告警（3 条）
 
