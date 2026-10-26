@@ -1,24 +1,24 @@
 # GEO 整改看板
 
 > 由 `generate-dashboard.mjs` 自动生成，请勿手动编辑。
-> 生成时间：2026-10-13T03:33:00.274Z
+> 生成时间：2026-10-26T07:26:52.735Z
 >
 > 矩阵状态优先取自各措施的 `进展.md`（人工维护），自动化检测结果作为补充标注。
 
 ## 措施 × 项目合规矩阵
 
-| 项目 | robots.txt | llms.txt | sitemap | JSON-LD | TDK | a标签语义 | 标签结构 | 图片alt |
-|------|------|------|------|------|------|------|------|------|
-| openEuler 官网 | ✅️ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 | 🟡 |
-| openEuler 文档 | ✅️ | 🟡 | ✅ | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
-| openGauss 官网 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 |
-| openGauss 文档 | ✅ | 🟡 | ✅ | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
-| MindSpore 官网 | ✅ | ✅ | 🟡 | 🟡 | ✅ | ✅ | 🟡 | 🟡 |
-| MindSpore 文档 | ✅ | ✅ | 🟡 | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
-| openUBMC 官网 | ✅ | ✅ | 🟡 | ✅ | 🟡 | 🟡 | 🟡 | 🟡 |
-| openUBMC 文档 | ✅ | ✅️ | ✅ | ✅ | 🟡 | ✅ | 🟡 | 🟡 |
-| UnifiedBus | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 | 🟡 |
-| HiFloat | ✅ | ✅️ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| 项目 | robots.txt | llms.txt | sitemap | JSON-LD | TDK | a标签语义 | 标签结构 | 图片alt | 综合 |
+|------|------|------|------|------|------|------|------|------|------|
+| openEuler 官网 | 🟡⚡⚠️ | 🟡 | ✅ | 🟡 | ✅ | ⚠️ | ❌ | ❌ | ⚠️ (2/8) |
+| openEuler 文档 | 🟡⚡⚠️ | ⚠️ | ⚠️⚡✅ | 🟡 | 🟡⚡✅ | ❌ | ❌ | ❌ | ❌ (0/8) |
+| openGauss 官网 | ✅ | ✅ | ✅ | 🟡 | ✅ | ⚠️ | ❌ | ❌ | 🟡 (4/8) |
+| openGauss 文档 | ✅ | ⚠️ | ⚠️⚡✅ | 🟡⚡❌ | 🟡⚡✅ | ❌ | ❌ | ❌ | ⚠️ (1/8) |
+| MindSpore 官网 | ✅ | 🟡 | ⚠️⚡🟡 | 🟡 | ✅ | ⚠️ | ❌ | ❌ | ⚠️ (2/8) |
+| MindSpore 文档 | ❌ | ❌ | ⚠️ | ❌ | 🟡⚡✅ | ⚠️ | ❌ | ❌ | ❌ (0/8) |
+| openUBMC 官网 | ✅ | ✅ | ✅⚡🟡 | 🟡 | ✅⚡❌ | ⚠️ | ❌ | ❌ | 🟡 (4/8) |
+| openUBMC 文档 | ❌ | ⚠️ | ✅ | 🟡 | 🟡⚡✅ | ⚠️ | ❌ | ❌ | ⚠️ (1/8) |
+| UnifiedBus | ⚠️⚡✅ | 🟡 | ✅⚡🟡 | 🟡 | ✅⚡❌ | ❌ | ❌ | ❌ | ⚠️ (2/8) |
+| HiFloat | 🟡⚡✅ | ⚠️⚡🟡 | ✅ | 🟡 | ⚠️⚡❌ | ❌ | ❌ | ❌ | ⚠️ (1/8) |
 
 ## 状态说明
 
@@ -29,61 +29,8 @@
 | ⚠️ | 有问题：已实施但存在缺陷 |
 | ❌ | 未开始：尚未实施 |
 | ⏳ | 待排查：尚未建立基线 |
-
-## 项目详情
-
-**openEuler**
-
-- **a标签**：首页友情链接部分，纯图片链接缺少alt
-- **标签结构**：顶部导航不是`<header>`元素
-- **图片 alt**：首页banner、友情链接部分缺少alt
-
-**openEuler 文档**
-
-- **llms.txt**：体积过大待拆分
-- **TDK**：文档的准确的description待补充
-- **标签结构**：具体文档的标签结构无法由我们保证效果
-- **图片 alt**：文档内的img alt待补充
-
-**openGauss**
-
-- **图片 alt**：首页banner缺少 alt，其他部分页面存在img缺少alt
-
-**openGauss 文档**
-
-- **llms.txt**：体积过大待拆分
-- **TDK**：文档的准确的description待补充
-- **标签结构**：具体文档的标签结构无法由我们保证效果
-- **图片 alt**：文档内的img alt待补充
-
-**MindSpore**
-
-- **sitemap**：部分动态路由页面的lastmod缺少
-- **JSON-LD**：首页缺JSON-LD，待发版
-- **标签结构**：部分页面标题顺序不符合规范
-- **图片 alt**：部分页面img缺少alt
-
-**MindSpore 文档**
-
-- **sitemap**：lastmod，所有文档数量过多
-- **TDK**：文档的准确的description待补充
-- **标签结构**：具体文档的标签结构无法由我们保证效果
-- **图片 alt**：具体文档的img alt无法由我们保证效果
-
-**openUBMC官网**
-
-- **sitemap**：部分动态路由页面的lastmod缺少
-- **TDK**：下载页面的title非SSG渲染，待排查
-- **a标签**：首页友情链接部分，纯图片链接缺少alt
-- **图片 alt**：部分页面img缺少alt
-
-**openUBMC 文档**
-
-- **TDK**：文档的准确的description待补充
-- **标签结构**：具体文档的标签结构无法由我们保证效果
-- **图片 alt**：具体文档的img alt无法由我们保证效果
-
-**HiFloat**
+| ✅⚡🟡 | 进展标记已完成，但自动化检测发现问题 |
+| 🟡⚡✅ | 进展标记部分完成，自动化检测通过 |
 
 ## Issue / PR 统计
 
@@ -95,11 +42,11 @@
 
 | 措施 | 检测脚本 | stats 文件 | 上次运行 |
 |------|----------|------------|----------|
-| robots.txt | `check-robots.mjs` | robots-stats.json | ✅ 2026-10-13T03:32:36.882Z |
-| llms.txt | `check-llms-txt.mjs` | llms-txt-stats.json | ⏳ 未运行 |
-| sitemap | `check-sitemap.mjs` | sitemap-stats.json | ⏳ 未运行 |
-| JSON-LD | `check-jsonld.mjs` | jsonld-stats.json | ⏳ 未运行 |
-| TDK | `check-tdk.mjs` | tdk-stats.json | ⏳ 未运行 |
+| robots.txt | `check-robots.mjs` | robots-stats.json | ✅ 2026-10-23T10:06:55.016Z |
+| llms.txt | `check-llms-txt.mjs` | llms-txt-stats.json | ✅ 2026-10-23T08:10:36.693Z |
+| sitemap | `check-sitemap.mjs` | sitemap-stats.json | ✅ 2026-10-23T10:06:54.973Z |
+| JSON-LD | `check-tdk-jsonld.mjs --dims=jsonld` | jsonld-stats.json | ✅ 2026-10-23T08:10:35.360Z |
+| TDK | `check-tdk.mjs` | tdk-stats.json | ✅ 2026-10-23T10:06:53.114Z |
 | a标签语义 | `check-a-tag.mjs` | a-tag-stats.json | ⏳ 未运行 |
 | 标签结构 | `check-tag-structure.mjs` | tag-structure-stats.json | ⏳ 未运行 |
 | 图片alt | `check-image-alt.mjs` | image-alt-stats.json | ⏳ 未运行 |

@@ -201,5 +201,5 @@ node scripts/validate-jsonld.mjs --url https://www.example.com/docs/install
 ## 完成后动作
 
 1. 更新本仓库 `measures/04-json-ld/进展.md` 与 `各项目差异点.md`
-2. 运行 `node scripts/checks/check-jsonld.mjs --site=<项目ID>` 确认 P0 三件套与必填属性通过
+2. 运行 `node scripts/checks/check-tdk-jsonld.mjs --dims=jsonld --site=<项目ID>` 确认无硬性错误（P0 三件套与必填属性现为告警级，按报告人工定夺）
 3. 若新增 Organization logo/sameAs 信息，同步 TDK 措施的站点信息源，保持一致

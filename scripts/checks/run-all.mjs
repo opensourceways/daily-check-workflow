@@ -1,11 +1,11 @@
 import { loadProjects } from '../lib/config.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 
+// 重成本的全量抓取检查（TDK 重复 + JSON-LD 合并脚本 check-tdk-jsonld.mjs）不进 run-all，按需单独跑或走周一 Action
 const scripts = [
   { name: 'robots-txt', file: 'check-robots.mjs' },
   { name: 'llms-txt', file: 'check-llms-txt.mjs' },
   { name: 'sitemap', file: 'check-sitemap.mjs' },
-  { name: 'json-ld', file: 'check-jsonld.mjs' },
   { name: 'tdk', file: 'check-tdk.mjs' },
   { name: 'a-tag-semantics', file: 'check-a-tag.mjs' },
   { name: 'tag-structure-semantics', file: 'check-tag-structure.mjs' },

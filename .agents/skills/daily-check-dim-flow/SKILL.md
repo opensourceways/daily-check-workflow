@@ -21,18 +21,18 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 | 维度 | 脚本 | workflow | 前缀 | cron (UTC) | 报告形态 |
 |------|------|----------|------|------------|----------|
-| TDK 重复（模板） | check-tdk-duplicate.mjs | tdk-duplicate-check.yml | `[GEO TDK Duplicate]` | 周一 03:30 | 双报告 brief/full |
+| TDK 重复（模板） | check-tdk-jsonld.mjs --dims=tdk | tdk-jsonld-check.yml（与 JSON-LD 共用抓取） | `[GEO TDK Duplicate]` | 周一 03:30 | 双报告 brief/full |
 | robots.txt 规范 | check-robots.mjs | robots-txt-check.yml | `[GEO Robots.txt]` | 每日 04:00 | **单一版正文**（无 brief/full） |
 | Sitemap 属性规范 | sitemap-spec-check.mjs | sitemap-spec-check.yml | `[GEO Sitemap]` | 每日 04:30 | 双报告 brief/full |
 | llms.txt 规范 | check-llms-txt.mjs | llms-txt-check.yml | `[GEO llms.txt]` | 每日 05:00 | 双报告 brief/full |
 | HTML 语义（a标签/结构/alt） | semantic-spec-check.mjs | html-semantic-check.yml | `[GEO HTML Semantic]` | 周三 05:30 | 双报告 brief/full |
-| JSON-LD 规范 | check-jsonld.mjs | json-ld-check.yml | `[GEO JSON-LD]` | 每日 06:00 | 双报告 brief/full |
+| JSON-LD 规范 | check-tdk-jsonld.mjs --dims=jsonld | tdk-jsonld-check.yml（与 TDK 合并执行，原每日 json-ld-check.yml 已删） | `[GEO JSON-LD]` | 周一 03:30（原每日 06:00） | 双报告 brief/full |
 
 ## 模板参考实现（TDK 重复维度）
 
-- `scripts/checks/check-tdk-duplicate.mjs` —— 完整流程模板
+- `scripts/checks/check-tdk-jsonld.mjs` —— 完整流程模板（2026-10 由 check-tdk-duplicate.mjs 与 check-jsonld.mjs 合并：sitemap 全量逐页抓取，`--dims=tdk,jsonld` 两维度共用同一份 HTML；查重/写回仍按维度独立。单维度分析器在 `scripts/lib/jsonld.mjs`，共用抓取在 `scripts/lib/crawl.mjs`）
 - `scripts/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）+ 提单流程公共实现（`precheckExistingIssues` 查重 / `reconcileIssue` 新建·更新·/close 写回 / `closeIssueCommentBody`）
-- `.github/workflows/tdk-duplicate-check.yml` —— Action 编排模板
+- `.github/workflows/tdk-jsonld-check.yml` —— Action 编排模板
 - `measures/05-tdk/检测方式.md`、`工具与脚本.md` —— 文档写法参照
 
 ## 检查脚本约定
@@ -64,11 +64,11 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 5. **强制执行模式（`--force`，仅配 `--submit-issues`；workflow 手动 dispatch 的 `force_check` 输入）**：供"修复 PR 已合并但想立即复核/关闭 issue"的场景。查重命中不再 block，照常扫描，扫描后由 `reconcileIssue` 按结果写回**原未关闭 issue**（不新建）：
    - 仍有问题 → `PATCH /repos/{owner}/{repo}/issues/{number}` 更新第一个 open issue 的标题与正文（`issueAction='updated'`；同前缀多个 open issue 只更新第一个并打日志提示）。
    - 无问题 → `closeIssueCommentBody()` 生成评论正文（说明行 + 空行 + 独占一行的 `/close`），对**每个** open issue POST 评论（`issueAction='close-commented'`）。
-   - **verifiedClean 护栏（必传）**：只有"检查对象确实抓取成功、本次扫描有效完成"才允许评论 /close；抓取失败/未收集到数据时判不了"已修复"，只打日志不动原 issue，防止误关。各维度取值——tdk=`urlCount>0&&fetched>0`、robots/llms/jsonld=`checks.accessible`、sitemap=`accessible===true`、semantic=至少一个抽样页 accessible。
+    - **verifiedClean 护栏（必传）**：只有"检查对象确实抓取成功、本次扫描有效完成"才允许评论 /close；抓取失败/未收集到数据时判不了"已修复"，只打日志不动原 issue，防止误关。各维度取值——tdk=`urlCount>0&&fetched>0`、jsonld=`checks.fetched>0`（2026-10 全量化后；原 `checks.accessible` 采样口径作废）、robots/llms=`checks.accessible`、sitemap=`accessible===true`、semantic=至少一个抽样页 accessible。
    - dry-run / 无 token → 仅打印"将更新 issue #N / 将评论 /close"，不写回；`--force` 单独传（不带 `--submit-issues`）无效果。
    - 报告口径：`运行模式`行追加 `--force 强制执行`；提单模式下 full 清单行标注"强制复检仍有问题，已更新原 issue"，/close 项目单列一行；stats `mode` 追加 `-force` 后缀。
 
-## GitHub Action 模板（复制 tdk-duplicate-check.yml 改名字）
+## GitHub Action 模板（复制 tdk-jsonld-check.yml 改名字）
 
 - `on`: `schedule` cron（**cron 只在默认分支 main 生效**，结构已合入 main，定时任务已启用）+ `workflow_dispatch` inputs：`site`（可空）、`dry_run`（boolean）、`force_check`（boolean，强制执行：跳过查重拦截，有问题更新原 issue、无问题评论 /close；run 步骤按 `${{ inputs.force_check }}` 追加 `--force`）。
 - `permissions: contents: write`（要把 brief/full/汇总报告 commit 回本仓库，issue 链接才能解析）；`concurrency: group: <dim>-check`。

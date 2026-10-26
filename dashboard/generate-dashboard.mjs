@@ -12,7 +12,7 @@ const MEASURES = [
   { id: '01-robots-txt', name: 'robots.txt', statsFile: 'robots-stats.json', script: 'check-robots.mjs' },
   { id: '02-llms-txt', name: 'llms.txt', statsFile: 'llms-txt-stats.json', script: 'check-llms-txt.mjs' },
   { id: '03-sitemap', name: 'sitemap', statsFile: 'sitemap-stats.json', script: 'check-sitemap.mjs' },
-  { id: '04-json-ld', name: 'JSON-LD', statsFile: 'jsonld-stats.json', script: 'check-jsonld.mjs' },
+  { id: '04-json-ld', name: 'JSON-LD', statsFile: 'jsonld-stats.json', script: 'check-tdk-jsonld.mjs --dims=jsonld' },
   { id: '05-tdk', name: 'TDK', statsFile: 'tdk-stats.json', script: 'check-tdk.mjs' },
   { id: '06-a-tag-semantics', name: 'a标签语义', statsFile: 'a-tag-stats.json', script: 'check-a-tag.mjs' },
   { id: '07-tag-structure-semantics', name: '标签结构', statsFile: 'tag-structure-stats.json', script: 'check-tag-structure.mjs' },
@@ -93,12 +93,9 @@ function assessMeasure(measureId, result) {
     case '03-sitemap':
       return c.accessible && (c.locNonAbsolute || 0) === 0 && (c.lastmodMissing || 0) === 0 ? '✅' : c.accessible ? '🟡' : '❌';
     case '04-json-ld':
-      // ✅ 需同时满足:有块、P0 三件套齐全、必填属性完整、@context 合法、无重复注入
-      return c.jsonLdCount > 0 && c.p0Missing.length === 0 && (c.requiredMissingCount || 0) === 0 && (c.contextErrorCount || 0) === 0 && (c.duplicateBlockCount || 0) === 0
-        ? '✅'
-        : c.jsonLdCount > 0
-          ? '🟡'
-          : '❌';
+      // 合并全量检查（check-tdk-jsonld --dims=jsonld）：✅=无硬性错误且无告警；⚠️（含降级的三件套/必填告警）计 🟡；跳过项不评
+      if (result.skipped) return null;
+      return result.verdict === '✅' ? '✅' : result.verdict === '❌' ? '❌' : '🟡';
     case '05-tdk':
       return c.titlePresent && c.descriptionPresent ? '✅' : c.titlePresent ? '🟡' : '❌';
     case '06-a-tag-semantics':
