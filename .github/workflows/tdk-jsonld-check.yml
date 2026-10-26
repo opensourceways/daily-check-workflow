@@ -78,7 +78,12 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scheduled-reports/tdk scheduled-reports/jsonld
+          # 维度可单选（--dims=tdk/jsonld），本次未跑的维度目录可能在工作区不存在，
+          # 直接 git add 会 fatal: pathspec did not match any files；git add --ignore-errors 也挡不住该错误。
+          # Actions 默认 bash -e：须用 if 而非 "[ -e ] && git add" 短路写法。
+          for d in scheduled-reports/tdk scheduled-reports/jsonld; do
+            if [ -e "$d" ]; then git add "$d"; fi
+          done
           if git diff --cached --quiet; then
             echo "no report changes"
           else

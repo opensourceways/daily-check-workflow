@@ -72,6 +72,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 - `on`: `schedule` cron（**cron 只在默认分支 main 生效**，结构已合入 main，定时任务已启用）+ `workflow_dispatch` inputs：`site`（可空）、`dry_run`（boolean）、`force_check`（boolean，强制执行：跳过查重拦截，有问题更新原 issue、无问题评论 /close；run 步骤按 `${{ inputs.force_check }}` 追加 `--force`）。
 - `permissions: contents: write`（要把 brief/full/汇总报告 commit 回本仓库，issue 链接才能解析）；`concurrency: group: <dim>-check`。
+- commit 步骤 `git add` 的目录**必须先判断存在**：`for d in ...; do if [ -e "$d" ]; then git add "$d"; fi; done`——维度可单选（如 tdk-jsonld 的 `--dims=jsonld`）或该维度目录从未在分支上提交过时，直接 `git add <缺失目录>` 会 `fatal: pathspec did not match any files` 使步骤失败（`git add --ignore-errors` 也挡不住，实测 exit 128）；且 Actions 默认 `bash -e`，勿用 `[ -e ] && git add` 短路写法（条件为假时该命令行 exit 1 会中断整步）。
 - Job：`runs-on: ubuntu-latest`（纯网络抓取够用；只有需要构建被检项目的检查才用 self-hosted `portal-x86`）；setup-node 20；
   步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
 
