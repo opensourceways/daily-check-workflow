@@ -228,7 +228,7 @@ function tdkDetailLines(r) {
       lines.push('');
       lines.push(`##### [重复 ${g.count} 次] ${g.value}`);
       lines.push('');
-      for (const u of g.urls) lines.push(`- ${u}`);
+      for (const u of g.urls) lines.push(`- ${su(u)}`);
     }
   }
   const m = r.missing;
@@ -250,8 +250,8 @@ function tdkDetailLines(r) {
       lines.push('');
       lines.push(`##### ${field} 缺失（${count} 页）`);
       lines.push('');
-      for (const u of fm.noElement) lines.push(`- ${u}（元素缺失）`);
-      for (const u of fm.empty) lines.push(`- ${u}（元素存在但内容为空）`);
+      for (const u of fm.noElement) lines.push(`- ${su(u)}（元素缺失）`);
+      for (const u of fm.empty) lines.push(`- ${su(u)}（元素存在但内容为空）`);
     }
   }
   return lines;
@@ -268,7 +268,7 @@ function tdkBriefLines(r) {
     for (const g of d.list.slice(0, 3)) {
       const value = g.value.length > 80 ? `${g.value.slice(0, 80)}…` : g.value;
       lines.push(`- [重复 ${g.count} 次] \`${value}\``);
-      for (const u of g.urls.slice(0, 5)) lines.push(`  - ${u}`);
+      for (const u of g.urls.slice(0, 5)) lines.push(`  - ${su(u)}`);
       if (g.urls.length > 5) lines.push(`  - …其余 ${g.urls.length - 5} 个见完全版报告`);
     }
     if (d.list.length > 3) lines.push(`- …其余 ${d.list.length - 3} 组见完全版报告`);
@@ -284,8 +284,8 @@ function tdkBriefLines(r) {
     lines.push(`**TDK 缺失**：共 ${missingTotal(r)} 页 —— ${parts.join('；')}`);
     const items = [];
     for (const f of FIELDS) {
-      for (const u of m[f].noElement) items.push(`- ${u}（${f} 元素缺失）`);
-      for (const u of m[f].empty) items.push(`- ${u}（${f} 内容为空）`);
+      for (const u of m[f].noElement) items.push(`- ${su(u)}（${f} 元素缺失）`);
+      for (const u of m[f].empty) items.push(`- ${su(u)}（${f} 内容为空）`);
     }
     lines.push(...items.slice(0, 5));
     if (items.length > 5) lines.push(`- …其余 ${items.length - 5} 条见完全版报告`);
@@ -393,14 +393,14 @@ function hasAnyIssueJsonld(r) {
 // 完全版明细列表统一截断上限：全量扫描后明细可达数千条，md 只展开前 N 条，其余注明省略（完整数据在 stats JSON）
 const DETAIL_CAP = 300;
 
+// URL 嵌入 md 文本时结尾补一个空格：避免 linkify 把紧随其后的中文/标点一并渲染进链接
+const su = (u) => `${u} `;
+
 function pushCapped(lines, header, items, render) {
+  if (!items.length) return;
   lines.push('');
   lines.push(header);
   lines.push('');
-  if (!items.length) {
-    lines.push('无');
-    return;
-  }
   const shown = items.slice(0, DETAIL_CAP);
   for (const it of shown) lines.push(render(it));
   if (items.length > shown.length) lines.push(`- …其余 ${items.length - shown.length} 条未展示（完整数据见 scripts/stats/jsonld-stats.json）`);
@@ -428,31 +428,31 @@ function jsonldBriefLines(r) {
   return lines;
 }
 
+// 完全版明细：只输出有问题的项；硬性错误（问题清单+逐页明细）一律排在告警之前
 function jsonldDetailLines(r) {
   const c = r.checks;
   const lines = [];
   lines.push('### 项目信息');
   lines.push('');
   lines.push(`- 项目：${r.projectName}（${r.projectId}）`);
-  lines.push(`- 采样入口：${r.domain}；sitemap 页面 ${c.urlCount} 个，成功抓取 ${c.fetched} 个，失败 ${c.failedCount} 个`);
+  lines.push(`- 采样入口：${su(r.domain)}；sitemap 页面 ${c.urlCount} 个，成功抓取 ${c.fetched} 个，失败 ${c.failedCount} 个`);
   lines.push(`- 结论：${r.verdict}（硬性错误 ${r.hardErrors.length} 类 / 告警 ${r.warnings.length} 条）`);
   lines.push('');
   lines.push(r.hardErrors.length ? `### 问题清单（全部 ${r.hardErrors.length} 类硬性不符合）` : '### 问题清单（无硬性不符合）');
   lines.push('');
   for (const e of r.hardErrors) lines.push(`- ❌ ${e}`);
+  if (c.invalidCount > 0) pushCapped(lines, `### JSON 语法错误块所在页面（共 ${c.invalidPages?.length ?? 0} 页 ${c.invalidCount} 块）`, c.invalidPages || [], (p) => `- ❌ ${su(p)}`);
+  if (c.contextErrorCount > 0) pushCapped(lines, `### @context 异常（全部 ${c.contextErrorCount} 处）`, c.contextErrors || [], (e) => `- ❌ ${su(e.page)}：${e.detail}`);
+  if (c.placeholderCount > 0) pushCapped(lines, `### 占位符取值（全部 ${c.placeholderCount} 处，禁止上线）`, c.placeholderHits || [], (h) => `- ❌ ${su(h.page)} · \`${h.prop}\`：${h.value}`);
   if (r.warnings.length) {
     lines.push('');
-    lines.push(`### 告警（全部 ${r.warnings.length} 条）`);
+    lines.push(`### 告警（全部 ${r.warnings.length} 条，不触发提单，是否整改人工定夺）`);
     lines.push('');
     for (const w of r.warnings) lines.push(`- ⚠️ ${w}`);
   }
-  if (c.fetched > 0) {
+  if (c.p0Missing.length) {
     lines.push('');
-    lines.push(`### 含合法块的页面（${c.pagesWithBlocks.length}/${c.fetched} 个抓取成功页面）`);
-    lines.push('');
-    const withBlocks = (c.perPage || []).filter((p) => p.jsonLdBlocks > 0);
-    for (const p of withBlocks.slice(0, 100)) lines.push(`- ${p.page}：${p.jsonLdBlocks} 块（${(p.types || []).join('、') || '无带类型节点'}）`);
-    if (withBlocks.length > 100) lines.push(`- …其余 ${withBlocks.length - 100} 页未展示（完整数据见 scripts/stats/jsonld-stats.json）`);
+    lines.push(`### P0 三件套（告警级）：全站未出现 ${c.p0Missing.join(' / ')}；三件套为 Organization/WebSite/BreadcrumbList，建议在首页模板统一注入`);
   }
   if ((c.requiredMissing || []).length) {
     const grouped = new Map();
@@ -467,18 +467,11 @@ function jsonldDetailLines(r) {
     lines.push('| 缺失项（type.prop） | 处数 | 涉及页面（前 20 个） |');
     lines.push('| --- | --- | --- |');
     const sorted = [...grouped.entries()].sort((a, b) => b[1].length - a[1].length);
-    for (const [k, pages] of sorted) lines.push(`| ${k} | ${pages.length} | ${pages.slice(0, 20).map((p) => `<${p}>`).join(' ')}${pages.length > 20 ? ' 等' : ''} |`);
+    for (const [k, pages] of sorted) lines.push(`| ${k} | ${pages.length} | ${pages.slice(0, 20).map((p) => su(p)).join('')}${pages.length > 20 ? ' 等' : ''} |`);
   }
-  if (c.p0Missing.length) {
-    lines.push('');
-    lines.push(`### P0 三件套（告警级）：全站未出现 ${c.p0Missing.join(' / ')}；三件套为 Organization/WebSite/BreadcrumbList，建议在首页模板统一注入`);
-  }
-  pushCapped(lines, `### 结构与推荐项问题（全部 ${c.nestedIssues?.length ?? 0} 处）`, c.nestedIssues || [], (n) => `- ⚠️ ${n.page} · ${n.type}：${n.issue}`);
-  pushCapped(lines, `### 占位符取值（全部 ${c.placeholderCount} 处，禁止上线）`, c.placeholderHits || [], (h) => `- ❌ ${h.page} · \`${h.prop}\`：${h.value}`);
-  pushCapped(lines, `### @context 异常（全部 ${c.contextErrorCount} 处）`, c.contextErrors || [], (e) => `- ❌ ${e.page}：${e.detail}`);
-  if (c.invalidCount > 0) pushCapped(lines, `### JSON 语法错误块所在页面（共 ${c.invalidPages?.length ?? 0} 页 ${c.invalidCount} 块）`, c.invalidPages || [], (p) => `- ❌ ${p}`);
-  if (c.duplicateBlockCount > 0) pushCapped(lines, `### 同页语义重复块（${c.duplicateBlockCount} 处，涉及 ${c.pagesWithDuplicates.length} 页）`, c.pagesWithDuplicates || [], (p) => `- ⚠️ ${p}`);
-  if (c.failedCount > 0) pushCapped(lines, `### 抓取失败页面（${c.failedCount} 个，不计入判定）`, c.failed || r.failed || [], (f) => `- ${f.url} → ${f.status}`);
+  if (c.nestedIssues?.length) pushCapped(lines, `### 结构与推荐项问题（全部 ${c.nestedIssues.length} 处）`, c.nestedIssues, (n) => `- ⚠️ ${su(n.page)} · ${n.type}：${n.issue}`);
+  if (c.duplicateBlockCount > 0) pushCapped(lines, `### 同页语义重复块（${c.duplicateBlockCount} 处，涉及 ${c.pagesWithDuplicates.length} 页）`, c.pagesWithDuplicates || [], (p) => `- ⚠️ ${su(p)}`);
+  if (c.failedCount > 0) pushCapped(lines, `### 抓取失败页面（${c.failedCount} 个，不计入判定）`, r.failed || [], (f) => `- ${su(f.url)}→ ${f.status}`);
   return lines;
 }
 
@@ -489,7 +482,7 @@ function jsonldIssueBodyFor(r, fullFileName) {
   lines.push(`**项目**：${r.projectName}（${r.projectId}）`);
   lines.push(`**采样入口**：${r.domain}`);
   lines.push('');
-  lines.push('> 分级说明（2026-10 起）：仅"站点不可达 / 整站无合法块 / JSON 语法错误 / @context 异常 / 占位符"为 P0 硬性错误并触发本 issue；P0 三件套缺失与 Google 必填属性缺失已降级为告警，列于下方供参考，不因此提单。');
+  lines.push('> 分级说明（2026-10 起）：仅"站点不可达 / 整站无合法块 / JSON 语法错误 / `@context` 异常"为 P0 硬性错误并触发本 issue；P0 三件套缺失与 Google 必填属性缺失已降级为告警，列于下方供参考，不因此提单；占位符检查停用中（误伤待重新设计）。');
   lines.push('');
   lines.push(...jsonldBriefLines(r));
   lines.push('');
@@ -502,13 +495,13 @@ function jsonldIssueBodyFor(r, fullFileName) {
   lines.push('### 规范要点');
   lines.push('');
   lines.push('- `application/ld+json` 必须由 SSG/SSR 输出在最终 HTML 中，`JSON.parse` 可通过，`@context` 固定 `https://schema.org`');
-  lines.push('- 取值只来自页面可见内容或真实事实，禁止编造，禁止占位符（TODO/待填/xxx）');
+  lines.push('- 取值只来自页面可见内容或真实事实，禁止编造，禁止占位符（TODO/待填/xxx；自动检查停用中，需人工把关）');
   lines.push('- 全站 P0 三件套（Organization/WebSite/BreadcrumbList）与各类型 Google 必填属性：现为告警级，建议按完全版清单逐步补全');
   lines.push('- 同一页面避免语义完全重复的块（模板+插件双重注入是常见根因）');
   lines.push('');
   lines.push('### 处理说明');
   lines.push('');
-  lines.push('- 按问题清单修复 JSON-LD 注入（修语法/@context、移除占位符）后合并 PR 并关闭本 issue');
+  lines.push('- 按问题清单修复 JSON-LD 注入（修语法/@context/整站补合法块）后合并 PR 并关闭本 issue');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复提单（若同轮 TDK 维度另有未关闭 issue，共用抓取仍会照常进行，但本维度不再产出结论）');
   lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某条属预期（误报，如全站确实不适用某检查），请在 issue 评论说明，维护者会关闭本 issue');
@@ -658,13 +651,13 @@ if (DO_JSONLD) {
   if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
   lines.push('- 检查策略（2026-10 起）：不再采样——按各项目 sitemap 全量展开页面 URL 逐页抓取（与 TDK 重复维度共用同一份 HTML 抓取，脚本 check-tdk-jsonld.mjs）；默认跳过 docs 大站（--skip= 传空覆盖）；抓取失败页面单列不计入判定');
   lines.push('- 规范来源：measures/04-json-ld/规范.md');
-  lines.push('- 检查项：硬性=JSON 语法、`@context`、占位符、整站无合法块、站点/sitemap 不可达；告警=P0 三件套覆盖（Organization/WebSite/BreadcrumbList，已降级）、各类型 Google 必填属性（已降级）、同页重复块、面包屑项完整性、headline ≤110、publisher/Organization logo 形态、inLanguage、`@id` 覆盖率');
+  lines.push('- 检查项：硬性=JSON 语法、`@context`、整站无合法块、站点/sitemap 不可达（占位符检查 2026-10 起停用：英文业务文案含 todo/tbd 等词误伤，待重新设计）；告警=P0 三件套覆盖（Organization/WebSite/BreadcrumbList，已降级）、各类型 Google 必填属性（已降级）、同页重复块、面包屑项完整性、headline ≤110、publisher/Organization logo 形态、inLanguage、`@id` 覆盖率');
   lines.push('- 特殊约定：提单触发仅上述硬性项（P0 三件套与 Google 必填属性缺失自 2026-10 起仅计告警）；每维度独立查重（前缀 `[GEO JSON-LD]`），未关闭 issue 期间不重复扫描提单');
   lines.push('- 机器可读结果：scripts/stats/jsonld-stats.json');
   lines.push('');
   lines.push('## 总览');
   lines.push('');
-  lines.push('| 项目 | sitemap 页面/抓取 | 合法块 | 语法错误 | @context 异常 | 占位符 | P0 三件套（告警） | 必填缺失（告警） | 其他告警 | 结论 |');
+  lines.push('| 项目 | sitemap 页面/抓取 | 合法块 | 语法错误 | @context 异常 | 占位符（停用） | P0 三件套（告警） | 必填缺失（告警） | 其他告警 | 结论 |');
   lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   for (const r of jsonldResults) {
     if (r.skipped) {

@@ -22,7 +22,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
 | check-sitemap.mjs | sitemap 快速统计（旧版轻量） | scripts/stats/sitemap-stats.json |
 | sitemap-spec-check.mjs | sitemap 属性规范检查（index 递归、newVersions/domainAlias 约定、xhtml:link 全集核实；`--submit-issues` 支持提单，前缀 `[GEO Sitemap]`） | scheduled-reports/sitemap/`<date>`/ + scripts/stats/sitemap-spec-stats.json |
 | check-tdk.mjs | TDK | scripts/stats/tdk-stats.json |
-| check-tdk-jsonld.mjs | **TDK 重复 + JSON-LD 规范合并全量检查**（2026-10 由 check-tdk-duplicate.mjs 与 check-jsonld.mjs 合并：sitemap 全量展开页面 URL，每页只抓一次 HTML 两维度共用，`--dims=tdk,jsonld` 可选维度；TDK=非空值分组判重+逐页缺失；JSON-LD=硬性（语法/@context/占位符/整站无合法块/站点不可达）+告警（P0 三件套与 Google 必填属性——2026-10 降级、重复块、结构推荐项、@id 覆盖率）；`--submit-issues` 支持提单，是"检查+提 issue"流程的模板实现，两维度前缀/查重/双报告各自独立） | scheduled-reports/tdk/`<date>`/ + scheduled-reports/jsonld/`<date>`/ + scripts/stats/tdk-duplicate-stats.json + scripts/stats/jsonld-stats.json |
+| check-tdk-jsonld.mjs | **TDK 重复 + JSON-LD 规范合并全量检查**（2026-10 由 check-tdk-duplicate.mjs 与 check-jsonld.mjs 合并：sitemap 全量展开页面 URL，每页只抓一次 HTML 两维度共用，`--dims=tdk,jsonld` 可选维度；TDK=非空值分组判重+逐页缺失；JSON-LD=硬性（语法/@context/整站无合法块/站点不可达；占位符停用中）+告警（P0 三件套与 Google 必填属性——2026-10 降级、重复块、结构推荐项、@id 覆盖率）；`--submit-issues` 支持提单，是"检查+提 issue"流程的模板实现，两维度前缀/查重/双报告各自独立） | scheduled-reports/tdk/`<date>`/ + scheduled-reports/jsonld/`<date>`/ + scripts/stats/tdk-duplicate-stats.json + scripts/stats/jsonld-stats.json |
 | check-a-tag.mjs | a 标签语义 | scripts/stats/a-tag-stats.json |
 | check-tag-structure.mjs | 标签结构语义化 | scripts/stats/tag-structure-stats.json |
 | check-image-alt.mjs | 图片 alt 语义 | scripts/stats/image-alt-stats.json |
@@ -77,7 +77,7 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 - **robots.txt 规范**：`scripts/checks/check-robots.mjs` + `../.github/workflows/robots-txt-check.yml`（每日 04:00 UTC），前缀 `[GEO Robots.txt]`；因单项目报告很短，**不做简短/完全双报告**，issue 正文直接嵌入完整明细（当日汇总报告仍入库并在 issue 尾部附链接）；触发提单=硬性错误（告警与 robotsUrl 未配置不提单）
 - **HTML 语义化**：`scripts/checks/semantic-spec-check.mjs` + `../.github/workflows/html-semantic-check.yml`（每周三 05:30 UTC），前缀 `[GEO HTML Semantic]`；按 measures/10「检查细节」抽样页面检查（门户=首页+sitemap 抽 4 栏目页，文档=/zh/、/en/ 首页，默认跳过 MindSpore-docs）；触发提单=存在 error 级问题（仅 warn 不提）；"多个同时可见的 header/footer/main"存在 class 控制显隐的已知误报场景，issue 正文已附复核说明
 - **llms.txt 规范**：`scripts/checks/check-llms-txt.mjs` + `../.github/workflows/llms-txt-check.yml`（每日 05:00 UTC），前缀 `[GEO llms.txt]`；触发提单=P0 级硬性错误（P1/P2 计告警不提单；robots LLM-Policy 联动缺失仅告警，提单归 robots.txt 维度，避免同根因跨维度重复提单）；llmsUrl 未配置的项目记 ❌ 但不查重、不提单
-- **JSON-LD 规范**：`scripts/checks/check-tdk-jsonld.mjs --dims=jsonld` + `../.github/workflows/tdk-jsonld-check.yml`（每周一 03:30 UTC，与 TDK 重复共用同一份抓取；原每日 06:00 采样制已废除），前缀 `[GEO JSON-LD]`；按 sitemap 全量页面检查（默认跳过 docs 大站，`--skip=` 传空全查）；触发提单=硬性错误（语法/@context/占位符/整站无合法块/站点不可达）；P0 三件套与 Google 必填属性自 2026-10 起降为告警（连同重复块、面包屑项、inLanguage、@id 覆盖率），不提单
+- **JSON-LD 规范**：`scripts/checks/check-tdk-jsonld.mjs --dims=jsonld` + `../.github/workflows/tdk-jsonld-check.yml`（每周一 03:30 UTC，与 TDK 重复共用同一份抓取；原每日 06:00 采样制已废除），前缀 `[GEO JSON-LD]`；按 sitemap 全量页面检查（默认跳过 docs 大站，`--skip=` 传空全查）；触发提单=硬性错误（语法/@context/整站无合法块/站点不可达；占位符检查 2026-10-26 起停用——正则误伤真实英文文案，待收窄恢复）；P0 三件套与 Google 必填属性自 2026-10 起降为告警（连同重复块、面包屑项、inLanguage、@id 覆盖率），不提单
 
 其他维度接入时照此模式复制（直接复用 lib 的 `precheckExistingIssues`+`reconcileIssue`，即自带查重跳过与 `--force` 强制执行写回）；细则约定（前缀查重、双报告、汇总去重、链接分支、强制执行更新/关闭、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
 

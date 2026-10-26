@@ -1,6 +1,7 @@
 // JSON-LD 页面级分析器与分级判定（自 check-jsonld.mjs 抽出，供合并脚本 check-tdk-jsonld.mjs 在共用抓取的 HTML 上消费）。
-// 分级约定（2026-10 重构）：硬性错误=语法错误/@context 异常/占位符/整站无合法块/站点不可达；
-// P0 三件套与 Google 必填属性已降级为告警（随全量扫描噪音大，不再触发提单）。
+// 分级约定（2026-10 重构）：硬性错误=语法错误/@context 异常/整站无合法块/站点不可达；
+// P0 三件套与 Google 必填属性已降级为告警（随全量扫描噪音大，不再触发提单）；
+// 占位符检查停用中（英文业务文案含 todo/tbd 等词误伤，PLACEHOLDER_RE 待重新设计后再启用）。
 import { extractJsonLd } from './html.mjs';
 
 export const P0_TYPES = ['Organization', 'WebSite', 'BreadcrumbList'];
@@ -176,7 +177,8 @@ export function createJsonLdAnalyzer() {
           nodeTotal++;
           if (node['@id']) nodesWithId++;
           validateNode(node, page, types, requiredMissing, nestedIssues);
-          scanPlaceholders(node, node['@type'], placeholderHits, page);
+          // 占位符检查停用（2026-10，误伤待重新设计）：placeholderHits 恒为空，恢复时取消注释即可
+          // scanPlaceholders(node, node['@type'], placeholderHits, page);
           pageTypes.add(Array.isArray(node['@type']) ? node['@type'].join('/') : node['@type']);
         }
       }
@@ -208,7 +210,7 @@ export function createJsonLdAnalyzer() {
   };
 }
 
-// 错误/告警分级：硬性错误（提单触发）=站点不可达/无合法块/语法错误/@context 异常/占位符；
+// 错误/告警分级：硬性错误（提单触发）=站点不可达/无合法块/语法错误/@context 异常（占位符停用中）；
 // 告警（不提单）=P0 三件套缺失、Google 必填属性缺失（2026-10 自 P0 降级）、重复块、结构推荐项、@id 覆盖率。
 export function classifyJsonLd(c) {
   const errs = [];
@@ -219,9 +221,10 @@ export function classifyJsonLd(c) {
     errs.push(`sitemap 共 ${c.urlCount} 个页面全部抓取失败，无法检查 JSON-LD`);
   } else {
     if (c.jsonLdCount === 0) errs.push(`全站抓取到的 ${c.fetched} 个页面均未发现合法 JSON-LD 块`);
-    if (c.invalidCount > 0) errs.push(`JSON 语法错误块 ${c.invalidCount} 个（涉及 ${c.invalidPages.length} 个页面，如 ${c.invalidPages.slice(0, 3).join('、')}）`);
+    if (c.invalidCount > 0) errs.push(`JSON 语法错误块 ${c.invalidCount} 个（涉及 ${c.invalidPages.length} 个页面，如 ${c.invalidPages.slice(0, 3).map((u) => `${u} `).join('、')}）`);
     if (c.contextErrorCount > 0) errs.push(`@context 异常块 ${c.contextErrorCount} 个（应固定为 https://schema.org）`);
-    if (c.placeholderCount > 0) errs.push(`占位符取值 ${c.placeholderCount} 处（TODO/待填/占位等，禁止上线）`);
+    // 占位符检查停用（2026-10）：placeholderCount 恒为 0，恢复扫描后取消注释即可重新作为硬性错误
+    // if (c.placeholderCount > 0) errs.push(`占位符取值 ${c.placeholderCount} 处（TODO/待填/占位等，禁止上线）`);
     if (c.p0Missing.length) warns.push(`P0 三件套缺失：${c.p0Missing.join(' / ')}（全站抓取页面未出现该类型；已降级为告警级，人工定夺，不触发提单）`);
     if (c.requiredMissingCount > 0) {
       const grouped = new Map();
