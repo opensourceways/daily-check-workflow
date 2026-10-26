@@ -1,6 +1,6 @@
 # JSON-LD 检查简短报告 · openGauss 官网（openGauss-portal）
 
-- 检查时间：2026-10-26T08:29:58.834Z
+- 检查时间：2026-10-26T09:07:26.808Z
 - 采样入口：https://opengauss.org
 - 结论：❌
 

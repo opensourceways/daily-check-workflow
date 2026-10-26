@@ -1,6 +1,6 @@
 # JSON-LD 检查完全版报告 · openGauss 官网（openGauss-portal）
 
-- 检查时间：2026-10-26T08:29:58.834Z
+- 检查时间：2026-10-26T09:07:26.808Z
 
 ### 项目信息
 
@@ -18,19 +18,19 @@
 - ❌ https://opengauss.org/zh/honor/ 
 - ❌ https://opengauss.org/zh/summit/summit2024/ 
 - ❌ https://opengauss.org/zh/summit/summit2025/ 
-- ❌ https://opengauss.org/en/sig/RISC-V.html 
 - ❌ https://opengauss.org/zh/sig/RISC-V.html 
 - ❌ https://opengauss.org/zh/sig/StorageEngine.html 
+- ❌ https://opengauss.org/en/sig/RISC-V.html 
 - ❌ https://opengauss.org/en/sig/StorageEngine.html 
 - ❌ https://opengauss.org/en/sig/oGRAC.html 
 - ❌ https://opengauss.org/zh/sig/oGRAC.html 
 - ❌ https://opengauss.org/en/sig/SecurityTechnology.html 
 - ❌ https://opengauss.org/zh/sig/SecurityTechnology.html 
 - ❌ https://opengauss.org/en/sig/GIS.html 
-- ❌ https://opengauss.org/zh/sig/GIS.html 
 - ❌ https://opengauss.org/en/sig/Plugin.html 
-- ❌ https://opengauss.org/zh/sig/Plugin.html 
 - ❌ https://opengauss.org/en/sig/Tools.html 
+- ❌ https://opengauss.org/zh/sig/Plugin.html 
+- ❌ https://opengauss.org/zh/sig/GIS.html 
 - ❌ https://opengauss.org/zh/sig/Tools.html 
 - ❌ https://opengauss.org/en/sig/Embedded.html 
 - ❌ https://opengauss.org/zh/sig/Embedded.html 
@@ -39,9 +39,9 @@
 - ❌ https://opengauss.org/en/sig/Connectors.html 
 - ❌ https://opengauss.org/zh/sig/Connectors.html 
 - ❌ https://opengauss.org/en/sig/ReleaseManagement.html 
+- ❌ https://opengauss.org/en/sig/AI.html 
 - ❌ https://opengauss.org/zh/sig/ReleaseManagement.html 
 - ❌ https://opengauss.org/zh/sig/AI.html 
-- ❌ https://opengauss.org/en/sig/AI.html 
 - ❌ https://opengauss.org/en/sig/IoT.html 
 - ❌ https://opengauss.org/zh/sig/IoT.html 
 - ❌ https://opengauss.org/en/sig/QA.html 
@@ -51,9 +51,9 @@
 - ❌ https://opengauss.org/en/sig/Infra.html 
 - ❌ https://opengauss.org/zh/sig/Infra.html 
 - ❌ https://opengauss.org/en/sig/DCF.html 
-- ❌ https://opengauss.org/en/sig/KnowledgeGraph.html 
 - ❌ https://opengauss.org/zh/sig/DCF.html 
 - ❌ https://opengauss.org/zh/sig/KnowledgeGraph.html 
+- ❌ https://opengauss.org/en/sig/KnowledgeGraph.html 
 - ❌ https://opengauss.org/en/sig/OPS.html 
 - ❌ https://opengauss.org/zh/sig/OPS.html 
 - ❌ https://opengauss.org/en/sig/CloudNative.html 
@@ -61,11 +61,11 @@
 - ❌ https://opengauss.org/en/sig/Graph.html 
 - ❌ https://opengauss.org/zh/sig/Graph.html 
 - ❌ https://opengauss.org/en/sig/Blockchain.html 
-- ❌ https://opengauss.org/en/sig/SQLEngine.html 
 - ❌ https://opengauss.org/zh/sig/Blockchain.html 
-- ❌ https://opengauss.org/en/sig/Certification.html 
+- ❌ https://opengauss.org/en/sig/SQLEngine.html 
 - ❌ https://opengauss.org/zh/sig/SQLEngine.html 
 - ❌ https://opengauss.org/zh/sig/Certification.html 
+- ❌ https://opengauss.org/en/sig/Certification.html 
 - ❌ https://opengauss.org/en/sig/Security.html 
 - ❌ https://opengauss.org/zh/sig/Security.html 
 - ❌ https://opengauss.org/en/sig/OM.html 
@@ -84,7 +84,7 @@
 | TechArticle.image | 126 | https://opengauss.org/en/download/life-cycle/ https://opengauss.org/en/user-practice/bigbusiness/caizhengting/ https://opengauss.org/zh/user-practice/bigbusiness/caizhengting/ https://opengauss.org/en/user-practice/bigbusiness/qixiangju/ https://opengauss.org/zh/user-practice/bigbusiness/qixiangju/ https://opengauss.org/en/user-practice/bigbusiness/tianjinshichangjianduwei/ https://opengauss.org/zh/user-practice/bigbusiness/tianjinshichangjianduwei/ https://opengauss.org/en/user-practice/bigbusiness/xiaofeiyun/ https://opengauss.org/zh/user-practice/bigbusiness/xiaofeiyun/ https://opengauss.org/en/user-practice/bigbusiness/yangguangwang/ https://opengauss.org/zh/user-practice/bigbusiness/yangguangwang/ https://opengauss.org/en/user-practice/carrier/chinatower/ https://opengauss.org/zh/user-practice/carrier/chinatower/ https://opengauss.org/en/user-practice/carrier/chinaunicom/ https://opengauss.org/zh/user-practice/carrier/chinaunicom/ https://opengauss.org/en/user-practice/carrier/fujianyidong/ https://opengauss.org/zh/user-practice/carrier/fujianyidong/ https://opengauss.org/en/user-practice/carrier/guangdongyidong/ https://opengauss.org/zh/user-practice/carrier/guangdongyidong/ https://opengauss.org/en/user-practice/carrier/hebeiyidong/  等 |
 | TechArticle.datePublished | 126 | https://opengauss.org/en/download/life-cycle/ https://opengauss.org/en/user-practice/bigbusiness/caizhengting/ https://opengauss.org/zh/user-practice/bigbusiness/caizhengting/ https://opengauss.org/en/user-practice/bigbusiness/qixiangju/ https://opengauss.org/zh/user-practice/bigbusiness/qixiangju/ https://opengauss.org/en/user-practice/bigbusiness/tianjinshichangjianduwei/ https://opengauss.org/zh/user-practice/bigbusiness/tianjinshichangjianduwei/ https://opengauss.org/en/user-practice/bigbusiness/xiaofeiyun/ https://opengauss.org/zh/user-practice/bigbusiness/xiaofeiyun/ https://opengauss.org/en/user-practice/bigbusiness/yangguangwang/ https://opengauss.org/zh/user-practice/bigbusiness/yangguangwang/ https://opengauss.org/en/user-practice/carrier/chinatower/ https://opengauss.org/zh/user-practice/carrier/chinatower/ https://opengauss.org/en/user-practice/carrier/chinaunicom/ https://opengauss.org/zh/user-practice/carrier/chinaunicom/ https://opengauss.org/en/user-practice/carrier/fujianyidong/ https://opengauss.org/zh/user-practice/carrier/fujianyidong/ https://opengauss.org/en/user-practice/carrier/guangdongyidong/ https://opengauss.org/zh/user-practice/carrier/guangdongyidong/ https://opengauss.org/en/user-practice/carrier/hebeiyidong/  等 |
 | WebPage.url | 5 | https://opengauss.org/zh/certification/ https://opengauss.org/zh/download/archive/ https://opengauss.org/zh/compatibility/ https://opengauss.org/zh/team-up/form/ https://opengauss.org/zh/team-up/  |
-| Event.location | 4 | https://opengauss.org/zh/events/2021-08-16/meetup.html https://opengauss.org/zh/summit/devday2022/ https://opengauss.org/zh/summit/summit2022/ https://opengauss.org/zh/summit/summit2023/  |
+| Event.location | 4 | https://opengauss.org/zh/events/2021-08-16/meetup.html https://opengauss.org/zh/summit/devday2022/ https://opengauss.org/zh/summit/summit2023/ https://opengauss.org/zh/summit/summit2022/  |
 | SoftwareApplication.operatingSystem | 3 | https://opengauss.org/zh/about-us/ https://opengauss.org/zh/download/ https://opengauss.org/zh/  |
 | Article.image | 1 | https://opengauss.org/en/vulnerability-management/  |
 | Article.datePublished | 1 | https://opengauss.org/en/vulnerability-management/  |
@@ -106,10 +106,10 @@
 - ⚠️ https://opengauss.org/en/download/life-cycle/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/member/detail/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/zh/member/detail/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
-- ⚠️ https://opengauss.org/zh/member/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/en/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/zh/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/zh/  · WebSite：缺少 inLanguage(中文站应为 zh-CN)
+- ⚠️ https://opengauss.org/zh/member/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/en/online-communication/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/zh/online-communication/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
 - ⚠️ https://opengauss.org/en/security-advisories/detail/  · Organization：缺少 logo(推荐 ≥112px、ImageObject、绝对 URL)
@@ -135,8 +135,8 @@
 - ⚠️ https://opengauss.org/en/user-practice/carrier/guangdongyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/guangdongyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/hebeiyidong/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/carrier/hebeiyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/jiangsuyidong/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/carrier/hebeiyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/jiangsuyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/jiangxiyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/jiangxiyidong/  · TechArticle：publisher 缺少 logo
@@ -147,12 +147,12 @@
 - ⚠️ https://opengauss.org/en/user-practice/carrier/yidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/yidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/yidong2/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/carrier/yidong2/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/zhejiangyidong/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/carrier/yidong2/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/zhejiangyidong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/carrier/zhongguoliantong/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/dbv/enmotech/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/carrier/zhongguoliantong/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/dbv/enmotech/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/dbv/enmotech/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/dbv/shentongdata/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/dbv/shentongdata/  · TechArticle：publisher 缺少 logo
@@ -161,19 +161,19 @@
 - ⚠️ https://opengauss.org/en/user-practice/education/beidayanjiushengyuan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/education/beidayanjiushengyuan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/education/fudan/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/energy/guojiadianwang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/education/fudan/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/energy/guojiadianwang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/energy/guojiadianwang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/energy/guojianengyuan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/energy/guojianengyuan/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/energy/guowanghenan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/energy/guowanghenan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/energy/szzhonghaiyou/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/energy/szzhonghaiyou/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/energy/guowanghenan/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/bohai/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/energy/szzhonghaiyou/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/bohai/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/finance/changchenghuaxiyinhang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/changchenghuaxiyinhang/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/finance/changchenghuaxiyinhang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/chengdebank/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/chengdebank/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/chengdebank2/  · TechArticle：publisher 缺少 logo
@@ -181,8 +181,8 @@
 - ⚠️ https://opengauss.org/en/user-practice/finance/guilinbank/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/guilinbank/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/haerbing/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/finance/haerbing/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/hezhong/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/finance/haerbing/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/hezhong/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/hmccb/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/hmccb/  · TechArticle：publisher 缺少 logo
@@ -202,10 +202,10 @@
 - ⚠️ https://opengauss.org/zh/user-practice/finance/xingyebank/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/xingyecollectionsystem/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/xingyecollectionsystem/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/finance/xingyemanagesystem/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/zh/user-practice/finance/xingyemanagesystem/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/xingyepaymentsystem/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/xingyepaymentsystem/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/zh/user-practice/finance/xingyemanagesystem/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/finance/xingyemanagesystem/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/youzheng/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/finance/youzheng/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/finance/zhonghua/  · TechArticle：publisher 缺少 logo
@@ -216,8 +216,8 @@
 - ⚠️ https://opengauss.org/zh/user-practice/manufacture/biyadi/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/manufacture/chuangwei/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/manufacture/chuangwei/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/manufacture/dfmc/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/manufacture/dfmc/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/manufacture/dfmc/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/manufacture/xinpian/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/manufacture/xinpian/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/medical/nanjingweijianwei/  · TechArticle：publisher 缺少 logo
@@ -230,8 +230,8 @@
 - ⚠️ https://opengauss.org/en/user-practice/others/qixiangju/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/others/smartx/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/others/smartx/  · TechArticle：publisher 缺少 logo
-- ⚠️ https://opengauss.org/en/user-practice/others/xxzw/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/others/xiaofeiyun/  · TechArticle：publisher 缺少 logo
+- ⚠️ https://opengauss.org/en/user-practice/others/xxzw/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/zh/user-practice/others/xxzw/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/others/yangguangwang/  · TechArticle：publisher 缺少 logo
 - ⚠️ https://opengauss.org/en/user-practice/others/zabbix/  · TechArticle：publisher 缺少 logo
