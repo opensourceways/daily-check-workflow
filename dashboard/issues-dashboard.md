@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-10-27T08:21:44.663Z
+> 生成时间：2026-10-27T08:45:04.959Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -10,15 +10,15 @@
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
 | openEuler 官网（openEuler-portal） | 2 | 0 | 2 |
-| openEuler 文档（openEuler-docs） | 4 | 0 | 4 |
-| openGauss 官网（openGauss-portal） | 4 | 0 | 4 |
-| openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 5 | 0 | 5 |
+| openEuler 文档（openEuler-docs） | 3 | 0 | 3 |
+| openGauss 官网（openGauss-portal） | 1 | 0 | 1 |
+| openGauss 文档（openGauss-docs） | 3 | 0 | 3 |
+| MindSpore 官网（MindSpore-portal） | 2 | 0 | 2 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
 | openUBMC 官网（openUBMC-portal） | 12 | 0 | 12 |
 | openUBMC 文档（openUBMC-docs） | 2 | 0 | 2 |
 | UnifiedBus（UnifiedBus） | 1 | 1 | 0 |
-| HiFloat（HiFloat） | 15 | 0 | 15 |
+| HiFloat（HiFloat） | 3 | 0 | 3 |
 
 ## openEuler 官网（openEuler-portal）
 
@@ -31,7 +31,6 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#37](https://atomgit.com/openeuler/docs-website/issues/37) openeuler/docs-website: [ssr-rendering] 1项检查未通过 | open（未关闭） | — | 2026-07-04 | 2026-08-07 |
 | JSON-LD | [#78](https://atomgit.com/openeuler/docs-website/issues/78) openEuler 文档（openEuler-docs）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | llms.txt | [#77](https://atomgit.com/openeuler/docs-website/issues/77) openEuler 文档（openEuler-docs）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | Sitemap | [#76](https://atomgit.com/openeuler/docs-website/issues/76) openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
@@ -40,16 +39,12 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#367](https://atomgit.com/opengauss/website/issues/367) opengauss/website: [url-access] 162项检查未通过 | open（未关闭） | — | 2026-09-01 | 2026-10-22 |
-| Daily Check | [#404](https://atomgit.com/opengauss/website/issues/404) opengauss/website: [sitemap-schema] 4项检查未通过 | open（未关闭） | — | 2026-10-01 | 2026-10-22 |
-| Daily Check | [#442](https://atomgit.com/opengauss/website/issues/442) opengauss/website: [ssr-rendering] 4项检查未通过 | open（未关闭） | — | 2026-10-21 | 2026-10-22 |
 | JSON-LD | [#448](https://atomgit.com/opengauss/website/issues/448) openGauss 官网（openGauss-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
 
 ## openGauss 文档（openGauss-docs）
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#14](https://atomgit.com/opengauss/docs-website/issues/14) opengauss/docs-website: [ssr-rendering] 1项检查未通过 | open（未关闭） | — | 2026-07-04 | 2026-10-13 |
 | JSON-LD | [#37](https://atomgit.com/opengauss/docs-website/issues/37) openGauss 文档（openGauss-docs）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | llms.txt | [#36](https://atomgit.com/opengauss/docs-website/issues/36) openGauss 文档（openGauss-docs）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | Sitemap | [#35](https://atomgit.com/opengauss/docs-website/issues/35) openGauss 文档（openGauss-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
@@ -58,9 +53,6 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#186](https://atomgit.com/mindspore/mindspore-portal/issues/186) mindspore/mindspore-portal: [sitemap-tdk] 5项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
-| Daily Check | [#187](https://atomgit.com/mindspore/mindspore-portal/issues/187) mindspore/mindspore-portal: [sitemap-schema] 52项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
-| Daily Check | [#188](https://atomgit.com/mindspore/mindspore-portal/issues/188) mindspore/mindspore-portal: [url-access] 4项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
 | JSON-LD | [#298](https://atomgit.com/mindspore/mindspore-portal/issues/298) MindSpore 官网（MindSpore-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
 
@@ -75,7 +67,7 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#151](https://atomgit.com/openUBMC/website/issues/151) openUBMC/website: [sitemap-schema] 27项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
+| Daily Check | [#151](https://atomgit.com/openUBMC/website/issues/151) openUBMC/website: [sitemap-schema] 27项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-27 |
 | Daily Check | [#152](https://atomgit.com/openUBMC/website/issues/152) openUBMC/website: [sitemap-tdk] 3项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
 | Daily Check | [#153](https://atomgit.com/openUBMC/website/issues/153) openUBMC/website: [url-access] 209项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
 | Daily Check | [#154](https://atomgit.com/openUBMC/website/issues/154) openUBMC/website: [link-anchor-check / 导航栏] 5项检查未通过 | open（未关闭） | — | 2026-08-07 | 2026-10-22 |
@@ -105,18 +97,6 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| Daily Check | [#4](https://atomgit.com/hifloat/hifloat-portal/issues/4) hifloat/hifloat-portal: [sitemap-schema] 43项检查未通过 | open（未关闭） | — | 2026-08-08 | 2026-10-22 |
-| Daily Check | [#5](https://atomgit.com/hifloat/hifloat-portal/issues/5) hifloat/hifloat-portal: [sitemap-tdk] 10项检查未通过 | open（未关闭） | — | 2026-08-08 | 2026-10-22 |
-| Daily Check | [#6](https://atomgit.com/hifloat/hifloat-portal/issues/6) hifloat/hifloat-portal: [sitemap-priority] 1项检查未通过 | open（未关闭） | — | 2026-08-08 | 2026-10-22 |
-| Daily Check | [#7](https://atomgit.com/hifloat/hifloat-portal/issues/7) hifloat/hifloat-portal: [url-access] 2项检查未通过 | open（未关闭） | — | 2026-08-08 | 2026-10-22 |
-| Daily Check | [#8](https://atomgit.com/hifloat/hifloat-portal/issues/8) hifloat/hifloat-portal: [ssr-rendering] 1项检查未通过 | open（未关闭） | — | 2026-08-09 | 2026-10-22 |
-| Daily Check | [#10](https://atomgit.com/hifloat/hifloat-portal/issues/10) hifloat/hifloat-portal: [link-anchor-check / 导航栏] 1项检查未通过 | open（未关闭） | — | 2026-08-10 | 2026-10-22 |
-| Daily Check | [#11](https://atomgit.com/hifloat/hifloat-portal/issues/11) hifloat/hifloat-portal: [link-anchor-check / 轮播图] 1项检查未通过 | open（未关闭） | — | 2026-08-10 | 2026-10-22 |
-| Daily Check | [#12](https://atomgit.com/hifloat/hifloat-portal/issues/12) hifloat/hifloat-portal: [link-anchor-check / 按钮组] 2项检查未通过 | open（未关闭） | — | 2026-08-10 | 2026-10-22 |
-| Daily Check | [#13](https://atomgit.com/hifloat/hifloat-portal/issues/13) hifloat/hifloat-portal: [link-anchor-check / 卡片列表] 1项检查未通过 | open（未关闭） | — | 2026-08-10 | 2026-10-22 |
-| Daily Check | [#28](https://atomgit.com/hifloat/hifloat-portal/issues/28) hifloat/hifloat-portal: [robots-txt] 1项检查未通过 | open（未关闭） | — | 2026-10-11 | 2026-10-22 |
-| Daily Check | [#29](https://atomgit.com/hifloat/hifloat-portal/issues/29) hifloat/hifloat-portal: [sitemap-access] 1项检查未通过 | open（未关闭） | — | 2026-10-11 | 2026-10-22 |
-| Daily Check | [#30](https://atomgit.com/hifloat/hifloat-portal/issues/30) hifloat/hifloat-portal: [llms-txt] 2项检查未通过 | open（未关闭） | — | 2026-10-11 | 2026-10-22 |
 | JSON-LD | [#46](https://atomgit.com/hifloat/hifloat-portal/issues/46) HiFloat（HiFloat）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | llms.txt | [#45](https://atomgit.com/hifloat/hifloat-portal/issues/45) HiFloat（HiFloat）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | Sitemap | [#44](https://atomgit.com/hifloat/hifloat-portal/issues/44) HiFloat（HiFloat）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
