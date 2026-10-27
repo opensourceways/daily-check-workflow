@@ -26,7 +26,7 @@
 2. **逐页按 TDK、JSON-LD 两个维度分别判定**（任一满足即通过，都不满足该维度报一条硬性错误）：
    - **TDK 细化到 title / description 字段级并集**：某字段只要"归档内容"或"页面源码"任一处非空配置即视为覆盖（与 portal `config.ts` setTdk"归档覆盖 + frontmatter 兜底"的渲染行为一致），未全覆盖则报缺哪些字段。归档侧读 `${repoInfo.tdkArchiveDir}/<页面路径>/index.json` 并解析 JSON（文件缺失/解析失败/字段为空串都按未配置处理，报错注明原因）；
    - **JSON-LD 维持整条判定**：`${repoInfo.jsonldArchiveDir}/<页面路径>/index.json` 存在，或源码内出现 `application/ld+json` 声明；
-   - 页面路径 = 文件路径去掉 `repoInfo.srcDir` 前缀、`index.*` 取其上级目录、其余去扩展名（`app/zh/foo/bar.md → zh/foo/bar`，`app/zh/index.md → zh`，与 portal `.geo` 归档组织一致）；
+   - 页面路径 = 文件路径去掉 `repoInfo.srcDir` 前缀（**srcDir 同为 JS 正则源串**，如 nuxt 升级迁移期的 `packages/website/(?:app/)?pages` 同时兼容 `pages/` 与 `app/pages/` 两种落位、归档键不随迁移漂移；普通目录路径本身即合法正则）、`index.*` 取其上级目录、其余去扩展名（`app/zh/foo/bar.md → zh/foo/bar`，`app/zh/index.md → zh`，与 portal `.geo` 归档组织一致）；
    - 源码检查按 `project.stack` 分情况：vitepress → md frontmatter 顶层 `title`/`description` 非空、`head` 内声明 `script[type="application/ld+json"]`（按 MIME 串判定）；nuxt → `useSeoMeta`/`useHead` 调用实参（跨调用并集）含 `title:`/`description:` 及 `application/ld+json`；其他 stack 无源码级检查、仅依赖归档。
 3. 维度对应归档目录未配置时该渠道记 N/A（nuxt 类项目常态）；若同时源码检查也不可用，报"无法检查"错误提醒补配置。
 

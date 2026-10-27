@@ -87,7 +87,15 @@
       "stack": "nuxt",
       "robotsUrl": "https://www.mindspore.cn/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
-      "llmsUrl": "https://www.mindspore.cn/llms.txt"
+      "llmsUrl": "https://www.mindspore.cn/llms.txt",
+      "repoInfo": {
+        "packageName": "mindspore-portal",
+        "publicDir": "packages/website/public",
+        "tdkArchiveDir": ".geo/tdk",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "srcDir": "packages/website/(?:app/)?pages",
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/.*\\.vue$"
+      }
     },
     {
       "id": "MindSpore-docs",
@@ -110,10 +118,10 @@
       "repoInfo": {
         "packageName": "nuxt-app",
         "publicDir": "packages/website/public",
-        "srcDir": "packages/website/pages",
+        "srcDir": "packages/website/(?:app/)?pages",
         "tdkArchiveDir": ".geo/tdk",
         "jsonldArchiveDir": ".geo/jsonld",
-        "pageEntryPattern": "^packages/website/pages/(?:zh|en)/.*\\.vue$"
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$"
       }
     },
     {
@@ -133,7 +141,15 @@
       "stack": "vitepress",
       "robotsUrl": "https://www.unifiedbus.com/robots.txt",
       "sitemapUrl": "https://www.unifiedbus.com/sitemap.xml",
-      "llmsUrl": "https://www.unifiedbus.com/llms.txt"
+      "llmsUrl": "https://www.unifiedbus.com/llms.txt",
+      "repoInfo": {
+        "packageName": "unifiedbus-portal",
+        "publicDir": "packages/website/public",
+        "srcDir": "packages/website/(?:app/)?pages",
+        "tdkArchiveDir": ".geo/tdk",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$"
+      }
     },
     {
       "id": "HiFloat",
@@ -143,7 +159,15 @@
       "stack": "vitepress",
       "robotsUrl": "https://hifloat.gccorg.com/robots.txt",
       "sitemapUrl": "https://hifloat.gccorg.com/sitemap.xml",
-      "llmsUrl": "https://hifloat.gccorg.com/llms.txt"
+      "llmsUrl": "https://hifloat.gccorg.com/llms.txt",
+      "repoInfo": {
+        "packageName": "hifloat-portal",
+        "publicDir": "public",
+        "srcDir": "app/pages",
+        "tdkArchiveDir": ".geo/tdk",
+        "jsonldArchiveDir": ".geo/jsonld",
+        "pageEntryPattern": "^app/pages/(?:zh|en)/.*\\.vue$"
+      }
     }
   ]
 }

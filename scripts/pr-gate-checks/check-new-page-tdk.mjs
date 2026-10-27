@@ -63,6 +63,19 @@ try {
   fail(TAG, `repoInfo.pageEntryPattern 不是合法正则：${repoInfo.pageEntryPattern}（${e.message}）`);
 }
 
+// srcDir 同样是 JS 正则源串（普通目录路径本身即合法正则，如 app / app/pages；nuxt 框架升级迁移期
+// 允许可选段写法，如 packages/website/(?:app/)?pages 同时命中迁移前后两种路径，避免归档键漂移误拦 PR）。
+// 编译为"锚定开头 + 结尾补 /"的剥前缀正则；未配置则不剥前缀。
+let srcDirRe = null;
+if (repoInfo.srcDir) {
+  const dir = repoInfo.srcDir.endsWith('/') ? repoInfo.srcDir.slice(0, -1) : repoInfo.srcDir;
+  try {
+    srcDirRe = new RegExp(`^(?:${dir})/`);
+  } catch (e) {
+    fail(TAG, `repoInfo.srcDir 不是合法正则：${repoInfo.srcDir}（${e.message}）`);
+  }
+}
+
 // 维度 → 归档目录配置键；两渠道都不可用时错误文案引用此键名提示补配置
 const ARCHIVE_DIR_OF = { TDK: repoInfo.tdkArchiveDir, 'JSON-LD': repoInfo.jsonldArchiveDir };
 
@@ -119,16 +132,17 @@ const newPages = added.filter((f) => pageRe.test(f));
 // ---- 步骤 2：逐页面、逐维度核查 ----
 
 /**
- * 页面文件路径（相对项目根，/ 分隔）→ 归档查找键：去 repoInfo.srcDir 前缀 → index.md / index.vue
+ * 页面文件路径（相对项目根，/ 分隔）→ 归档查找键：去 repoInfo.srcDir 前缀（srcDir 按 JS 正则匹配，
+ * 命中即剥掉整段匹配 + 尾斜杠，未命中保持原样；如 nuxt 升级迁移期 packages/website/(?:app/)?pages
+ * 同时兼容 pages/ 与 app/pages/ 两种落位）→ index.md / index.vue
  * 取其上级目录（整文件名即 index.* 时为空串，对应归档根）→ 其余去扩展名。
  * 与 portal 侧 config.ts 的 lookupKey 规则等价（如 app/zh/foo/bar.md → zh/foo/bar）。
  */
 function toPageKey(file) {
   let k = file;
-  const srcDir = repoInfo.srcDir;
-  if (srcDir) {
-    const prefix = srcDir.endsWith('/') ? srcDir : `${srcDir}/`;
-    if (k.startsWith(prefix)) k = k.slice(prefix.length);
+  if (srcDirRe) {
+    const m = k.match(srcDirRe);
+    if (m) k = k.slice(m[0].length);
   }
   // 分组捕获 "目录/" 前缀（含斜杠，去尾斜杠后即目录路径）；(.*\/)? 空组则整文件名必须为 index.*
   const idx = k.match(/^(.*\/)?index\.[^/]+$/);
