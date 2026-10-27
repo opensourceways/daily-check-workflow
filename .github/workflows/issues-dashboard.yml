@@ -1,0 +1,57 @@
+name: GEO Issues Dashboard
+
+on:
+  schedule:
+    # 每日 06:00 UTC（北京时间 14:00）刷新 issue 看板
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "只采集指定项目 (projects.config.json 里的 id，留空则全量；单项目时其余分区沿用上次看板)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: issues-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect GEO issues
+        env:
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.site }}" ]; then
+            ARGS="$ARGS --site=${{ inputs.site }}"
+          fi
+          node scripts/checks/collect-issues-dashboard.mjs $ARGS
+
+      - name: Commit dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -e "dashboard/issues-dashboard.md" ]; then
+            git add dashboard/issues-dashboard.md
+          fi
+          if git diff --cached --quiet; then
+            echo "no dashboard changes"
+          else
+            git commit -m "docs(dashboard): refresh GEO issues dashboard"
+            git pull --rebase
+            git push
+          fi

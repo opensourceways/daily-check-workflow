@@ -28,6 +28,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
 | check-image-alt.mjs | 图片 alt 语义 | scripts/stats/image-alt-stats.json |
 | semantic-spec-check.mjs | HTML 语义化规范抽查（以 measures/10「检查细节」为核心 + 06/07/08 附加项；`--submit-issues` 支持提单，前缀 `[GEO HTML Semantic]`，brief/full 双报告） | scheduled-reports/semantic/`<date>`/ + scripts/stats/semantic-spec-stats.json |
 | fetch-prs.mjs | 各仓库 issue/PR 汇总 | scripts/stats/pr-summary.json |
+| collect-issues-dashboard.mjs | GEO issue 看板采集：拉取各项目 AtomGit 仓库未关闭 `[GEO *]` issue 及关联 PR 状态，全量重生成看板（已关闭/移除的 issue 自动从记录去掉）；由 issues-dashboard.yml 每日执行；`--site=ID` 单项目模式保留其余分区 | dashboard/issues-dashboard.md + scripts/stats/issues-dashboard.json |
 | run-all.mjs | 一键执行全部检查 | scripts/stats/run-all-summary.json |
 
 ## 目录结构

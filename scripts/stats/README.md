@@ -10,4 +10,5 @@
 - tag-structure-stats.json
 - image-alt-stats.json
 - pr-summary.json
+- issues-dashboard.json
 - run-all-summary.json

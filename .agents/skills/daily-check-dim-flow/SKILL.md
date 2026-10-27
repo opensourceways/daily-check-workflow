@@ -27,6 +27,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 | llms.txt 规范 | check-llms-txt.mjs | llms-txt-check.yml | `[GEO llms.txt]` | 每日 05:00 | 双报告 brief/full |
 | HTML 语义（a标签/结构/alt） | semantic-spec-check.mjs | html-semantic-check.yml | `[GEO HTML Semantic]` | 周三 05:30 | 双报告 brief/full |
 | JSON-LD 规范 | check-tdk-jsonld.mjs --dims=jsonld | tdk-jsonld-check.yml（与 TDK 合并执行，原每日 json-ld-check.yml 已删） | `[GEO JSON-LD]` | 周一 03:30（原每日 06:00） | 双报告 brief/full |
+| Issue 看板（非检查维度，只读汇总不提单） | collect-issues-dashboard.mjs | issues-dashboard.yml | 采集所有 `[GEO *]` 前缀 | 每日 06:00 | dashboard/issues-dashboard.md（未关闭 issue 状态 + 关联 PR，每次全量重生成，已关闭的自动移除） |
 
 ## 模板参考实现（TDK 重复维度）
 

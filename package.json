@@ -18,6 +18,7 @@
     "check:image-alt": "node scripts/checks/check-image-alt.mjs",
     "check:semantic": "node scripts/checks/semantic-spec-check.mjs",
     "dashboard": "node dashboard/generate-dashboard.mjs",
+    "issues-dashboard": "node scripts/checks/collect-issues-dashboard.mjs",
     "pr-summary": "node scripts/checks/fetch-prs.mjs"
   },
   "engines": {

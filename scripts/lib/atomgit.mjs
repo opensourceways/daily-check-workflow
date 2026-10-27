@@ -73,6 +73,12 @@ export async function listIssues({ owner, repo, state = 'open' }) {
   return Array.isArray(data) ? data : [];
 }
 
+// GET /repos/{owner}/{repo}/pulls?state=...  PR 列表（同为 repo-scoped），供 issue 看板判断"是否关联 PR"
+export async function listPullRequests({ owner, repo, state = 'open' }) {
+  const data = await request(`/repos/${owner}/${repo}/pulls`, { params: { state, per_page: 100 } });
+  return Array.isArray(data) ? data : [];
+}
+
 // 按标题前缀查找(用于查重);返回匹配 issue 数组
 export async function findIssuesByTitlePrefix({ owner, repo, prefix, state = 'open' }) {
   const list = await listIssues({ owner, repo, state });

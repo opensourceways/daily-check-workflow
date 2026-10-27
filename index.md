@@ -7,6 +7,7 @@
 本项目用于统筹各社区/项目的 GEO 整改措施，包含规范定义、进展追踪、差异分析、自动化检查与人工复盘。
 
 - 📊 [整体看板](dashboard/dashboard.md)（脚本自动生成，`node dashboard/generate-dashboard.mjs` 更新）
+- 🧾 [GEO Issue 看板](dashboard/issues-dashboard.md)（各项目未关闭 `[GEO *]` issue 状态与关联 PR，Action 每日自动刷新）
 - 👥 [分工表](分工表.md)（各措施 × 各项目 责任人矩阵 + 整体措施分工）
 - 🗂 [项目清单](projects.md) / [项目配置](projects.config.json)
 - 🛠 [自动化检查脚本](scripts/README.md)
