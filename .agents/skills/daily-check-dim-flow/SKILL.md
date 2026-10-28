@@ -10,9 +10,9 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 ## 仓库结构
 
-- `projects.config.json`：项目清单。关键字段：`id`、`name`、`repo`（gitcode URL，可解析出 AtomGit owner/repo）、`domain/domainAlias`、`sitemapUrl/sitemapAliasUrl`、`robotsUrl/robotsAliasUrl`（robots 维度：仅两者齐备的项目做主域/alias 一致性检查）、`llmsUrl`、`newVersions`（docs 站版本过滤）。
-- `scripts/lib/`：`config.mjs`（loadProjects/filterProjects）、`http.mjs`（fetchText）、`sitemap.mjs`（parseSitemap，含 index 子 sitemap）、`html.mjs`（extractTitle/extractMeta，引号感知）、`robots.mjs`（parseRobots 分组 + 禁整站/路径格式/Content-Signal 比对）、`report.mjs`（writeStats/now）、`atomgit.mjs`（API 客户端 + parseOwnerRepo）。
-- `scripts/config/check-rules.json`：可调规则（含 `robots.contentSignalExpected` 期望值；改规范口径只改这里，勿改脚本）。
+- `projects.config.json`：项目清单。关键字段：`id`、`name`、`repo`（gitcode URL，可解析出 AtomGit owner/repo）、`domain/domainAlias`、`sitemapUrl/sitemapAliasUrl`、`robotsUrl/robotsAliasUrl`（robots 维度：仅两者齐备的项目做主域/alias 一致性检查）、`llmsUrl`、`newVersions`（docs 站版本过滤）、`linkScan`（失效链接维度：`branch`/`urlPrefix`/`excludeFiles`/`excludeDomains`/`excludeUrls`，仅配置的 4 个 portal 项目扫描）。
+- `scripts/lib/`：`config.mjs`（loadProjects/filterProjects）、`http.mjs`（fetchText）、`sitemap.mjs`（parseSitemap，含 index 子 sitemap）、`html.mjs`（extractTitle/extractMeta，引号感知）、`robots.mjs`（parseRobots 分组 + 禁整站/路径格式/Content-Signal 比对）、`report.mjs`（writeStats/now）、`atomgit.mjs`（API 客户端 + parseOwnerRepo）、`link-scan.mjs`（死链检测支撑：clone 源码仓 + URL 提取/清洗/变量过滤 + HEAD/GET 并发探测，check-links 专用）。
+- `scripts/config/check-rules.json`：可调规则（含 `robots.contentSignalExpected` 期望值、`links` 死链探测参数 `workers/timeoutSeconds/delaySeconds`；改规范口径只改这里，勿改脚本）。
 - `scripts/checks/check-<dim>-*.mjs` / `<dim>-spec-check.mjs`：维度脚本；根 `package.json` 加 `check:<x>` 短命令。
 - 产物三件套：`scheduled-reports/<dim>/<YYYY-MM-DD>/`（给人看的 md 报告，按日期分目录、目录内文件名不带维度/日期前缀，进 git，由 Action 回写）、`scripts/stats/<dim>-stats.json`（给机器，不进 git 也勿依赖同日多次跑）、控制台日志。`manual-review/issues/` 仅存历史平铺报告与人工核查快照（2026-10-13 及以前），不再新增。
 - `measures/<NN-dim>/`：规范五件套（规范/检测方式/工具与脚本/各项目差异点/进展），每接入一个维度要同步更新"检测方式.md"和"工具与脚本.md"（后者**只描述本仓库问题扫描脚本**：`## <脚本名> 参数` 表与 `## <脚本名> 执行流程` mermaid 图，模板见 measures/03-sitemap 与 measures/01-robots-txt；讲"项目侧怎么落地/生成"的内容放可选的"实现方式.md"，见 measures/02-llms-txt 与 measures/04-json-ld）。
@@ -28,6 +28,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 | HTML 语义（a标签/结构/alt） | semantic-spec-check.mjs | html-semantic-check.yml | `[GEO HTML Semantic]` | 周三 05:30 | 双报告 brief/full |
 | JSON-LD 规范 | check-tdk-jsonld.mjs --dims=jsonld | tdk-jsonld-check.yml（与 TDK 合并执行，原每日 json-ld-check.yml 已删） | `[GEO JSON-LD]` | 周一 03:30（原每日 06:00） | 双报告 brief/full |
 | Issue 看板（非检查维度，只读汇总不提单） | collect-issues-dashboard.mjs | issues-dashboard.yml | 采集所有 `[GEO *]` 前缀 | 每日 06:00 | dashboard/issues-dashboard.md（未关闭 issue 状态 + 关联 PR，每次全量重生成，已关闭的自动移除） |
+| 失效链接（死链） | check-links.mjs | link-check.yml | `[GEO Link Check]` | 周一 06:30 | 双报告 brief/full |
 
 ## 模板参考实现（TDK 重复维度）
 
@@ -39,7 +40,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 ## 检查脚本约定
 
 1. CLI 参数（`process.argv` 手工解析，无依赖）：`--site=ID`、`--conc=10`、`--max=N`（试跑截断）、`--skip=a,b`（默认跳过清单，传空覆盖）、`--submit-issues`、`--dry-run`、`--force`（仅配 `--submit-issues`，见"强制执行模式"）。轻量维度（如 robots，每项目仅 1~8 个 URL）可不实现 `--skip`/`--max`；未配置该维度关键字段（如 `robotsUrl`）的项目照常扫描记录但不查重、不提单。
-2. 数据源 = 对项目 `sitemapUrl` 全量展开（index 递归；有 `newVersions` 的 docs 站只取匹配版本子 sitemap，约定见 sitemap-spec-check）后**逐页实时 fetch HTML**，不发仓库构建产物；robots/llms 类单文件维度直接 GET 目标文件。
+2. 数据源 = 对项目 `sitemapUrl` 全量展开（index 递归；有 `newVersions` 的 docs 站只取匹配版本子 sitemap，约定见 sitemap-spec-check）后**逐页实时 fetch HTML**，不发仓库构建产物；robots/llms 类单文件维度直接 GET 目标文件；失效链接维度（check-links）特殊——**clone 源码仓扫描源码**（repo 的 AtomGit 同名镜像 + `linkScan.branch` 浅克隆，gitcode 匿名 git 传输 401 不可用；仅对配置了 `linkScan` 的项目扫描，clone 失败只记报告不提单）。
 3. 抓取：超时 20s + 2 次重试 + UA `geo-workflow-checker/1.0`；`mapLimit` 并发（默认 10）。失败页单列清单，不计入判重。
 4. **缺失与判重分开**：提取函数返回 null（元素不存在）/ ''（元素存在但空），两者都不进判重分组，而是逐页记入独立的"缺失检查"小节（区分 `noElement`/`empty`），孤立缺失（仅 1 页）也会报告；判重只对有非空取值的页面分组。
 5. 写文件：**全部跑完一次性 `writeFile`**（勿流式/勿 partial——已试过，复杂且无法中途查看，已回退）。报告 UTF-8；markdown 中若引用 HTML 片段（如 `<meta name="description">`）一律用反引号包裹，否则被渲染吞掉；**表格行必须与表头列数一致，跳过/未配置分支也要输出 `|…|` 表格行而非 `- ` 列表项**（曾因此断裂总览表）。
@@ -75,7 +76,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 - `permissions: contents: write`（要把 brief/full/汇总报告 commit 回本仓库，issue 链接才能解析）；`concurrency: group: <dim>-check`。
 - commit 步骤 `git add` 的目录**必须先判断存在**：`for d in ...; do if [ -e "$d" ]; then git add "$d"; fi; done`——维度可单选（如 tdk-jsonld 的 `--dims=jsonld`）或该维度目录从未在分支上提交过时，直接 `git add <缺失目录>` 会 `fatal: pathspec did not match any files` 使步骤失败（`git add --ignore-errors` 也挡不住，实测 exit 128）；且 Actions 默认 `bash -e`，勿用 `[ -e ] && git add` 短路写法（条件为假时该命令行 exit 1 会中断整步）。
 - Job：`runs-on: ubuntu-latest`（纯网络抓取够用；只有需要构建被检项目的检查才用 self-hosted `portal-x86`）；setup-node 20；
-  步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
+  步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`；例外：link-check 用独立 secret `ATOMGIT_LINKS_TOKEN` 映射到同名 env，以独立账号提单，见 measures/11-broken-link/工具与脚本.md）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
 
 ## AtomGit API 要点（v5，base https://api.atomgit.com）
 

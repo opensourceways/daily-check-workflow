@@ -7,5 +7,10 @@
   "p0SchemaTypes": ["Organization", "BreadcrumbList", "WebSite"],
   "robots": {
     "contentSignalExpected": { "ai-train": "yes", "search": "yes", "ai-input": "yes" }
+  },
+  "links": {
+    "workers": 5,
+    "timeoutSeconds": 15,
+    "delaySeconds": 0.5
   }
 }

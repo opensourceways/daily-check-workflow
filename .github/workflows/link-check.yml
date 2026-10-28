@@ -1,0 +1,79 @@
+name: Link Check
+
+on:
+  schedule:
+    # 每周一 06:30 UTC（北京时间 14:30）。死链扫描为重成本维度（clone 源码仓 + 全量链接探测），
+    # 错开周一 03:30 的 TDK/JSON-LD 全量抓取（最长 2h）与每日 04:00~05:00 的轻量维度、06:00 看板
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "只检查指定项目 (projects.config.json 里的 id，留空则全量；仅扫描配置了 linkScan 的项目)"
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run（仅扫描与打印 issue 正文，不写 brief/full、不提 issue；汇总报告仍会生成并 commit）"
+        required: false
+        type: boolean
+        default: false
+      force_check:
+        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭）"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: link-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run broken link check
+        env:
+          # 失效链接维度用独立账号提单：secret 名与其他维度的 ATOMGIT_TOKEN 区分，
+          # 脚本侧仍读 ATOMGIT_TOKEN 环境变量（atomgit.mjs 公共实现不改）。
+          # 该 secret 未配置时为空 token → 各项目自动降级为"只扫描、查重失败不提单"，不会误用其他账号提单。
+          # 注意：该账号需能读 4 个目标仓库（查重列 issue + clone 受限镜像仓 + 提 issue）。
+          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_LINKS_TOKEN }}
+        run: |
+          ARGS="--submit-issues"
+          if [ -n "${{ inputs.site }}" ]; then
+            ARGS="$ARGS --site=${{ inputs.site }}"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "${{ inputs.force_check }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          node scripts/checks/check-links.mjs $ARGS
+
+      - name: Commit reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 首次运行/dry-run 时 scheduled-reports/links 可能不存在，先判断再 add（防 pathspec fatal）
+          if [ -e "scheduled-reports/links" ]; then
+            git add scheduled-reports/links
+          fi
+          if git diff --cached --quiet; then
+            echo "no report changes"
+          else
+            git commit -m "chore(links): weekly broken link check reports"
+            git pull --rebase
+            git push
+          fi

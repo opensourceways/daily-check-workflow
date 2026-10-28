@@ -12,6 +12,13 @@
       "sitemapUrl": "https://www.openeuler.org/sitemap.xml",
       "sitemapAliasUrl": "https://www.openeuler.openatom.cn/sitemap.xml",
       "llmsUrl": "https://www.openeuler.org/llms.txt",
+      "linkScan": {
+        "branch": "master",
+        "urlPrefix": "/zh",
+        "excludeFiles": ["app/vite.config.js"],
+        "excludeDomains": ["localhost", "127.0.0.1", "0.0.0.0"],
+        "excludeUrls": []
+      },
       "repoInfo": {
         "packageName": "openeuler-portal",
         "publicDir": "app/.vitepress/public",
@@ -54,6 +61,13 @@
       "robotsUrl": "https://opengauss.org/robots.txt",
       "sitemapUrl": "https://opengauss.org/sitemap.xml",
       "llmsUrl": "https://opengauss.org/llms.txt",
+      "linkScan": {
+        "branch": "v2",
+        "urlPrefix": "/zh",
+        "excludeFiles": ["app/vite.config.js"],
+        "excludeDomains": ["localhost", "127.0.0.1", "0.0.0.0"],
+        "excludeUrls": []
+      },
       "repoInfo": {
         "packageName": "opengauss",
         "publicDir": "app/.vitepress/public",
@@ -88,6 +102,13 @@
       "robotsUrl": "https://www.mindspore.cn/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
       "llmsUrl": "https://www.mindspore.cn/llms.txt",
+      "linkScan": {
+        "branch": "master",
+        "urlPrefix": "",
+        "excludeFiles": ["app/vite.config.js"],
+        "excludeDomains": ["localhost", "127.0.0.1", "0.0.0.0"],
+        "excludeUrls": []
+      },
       "repoInfo": {
         "packageName": "mindspore-portal",
         "publicDir": "packages/website/public",
@@ -115,6 +136,13 @@
       "robotsUrl": "https://www.openubmc.cn/robots.txt",
       "sitemapUrl": "https://www.openubmc.cn/sitemap.xml",
       "llmsUrl": "https://www.openubmc.cn/llms.txt",
+      "linkScan": {
+        "branch": "main",
+        "urlPrefix": "/zh",
+        "excludeFiles": ["packages/website/nuxt.config.ts"],
+        "excludeDomains": ["localhost", "127.0.0.1", "0.0.0.0"],
+        "excludeUrls": ["https://nvd.nist.gov/vuln/detail/"]
+      },
       "repoInfo": {
         "packageName": "nuxt-app",
         "publicDir": "packages/website/public",
