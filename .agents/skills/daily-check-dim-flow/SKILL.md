@@ -76,7 +76,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 - `permissions: contents: write`（要把 brief/full/汇总报告 commit 回本仓库，issue 链接才能解析）；`concurrency: group: <dim>-check`。
 - commit 步骤 `git add` 的目录**必须先判断存在**：`for d in ...; do if [ -e "$d" ]; then git add "$d"; fi; done`——维度可单选（如 tdk-jsonld 的 `--dims=jsonld`）或该维度目录从未在分支上提交过时，直接 `git add <缺失目录>` 会 `fatal: pathspec did not match any files` 使步骤失败（`git add --ignore-errors` 也挡不住，实测 exit 128）；且 Actions 默认 `bash -e`，勿用 `[ -e ] && git add` 短路写法（条件为假时该命令行 exit 1 会中断整步）。
 - Job：`runs-on: ubuntu-latest`（纯网络抓取够用；只有需要构建被检项目的检查才用 self-hosted `portal-x86`）；setup-node 20；
-  步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`；例外：link-check 用独立 secret `ATOMGIT_LINKS_TOKEN` 映射到同名 env，以独立账号提单，见 measures/11-broken-link/工具与脚本.md）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
+  步骤 = 跑脚本（env `ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}`；例外：link-check 用独立 secret `HSJ_ATOMGIT_TOKEN`（HSJ 账号）映射到同名 env 提单，见 measures/11-broken-link/工具与脚本.md）→ `git add scheduled-reports/<dim>` → 有变更才 commit + `git pull --rebase` + push（identity 用 github-actions[bot]）。
 
 ## AtomGit API 要点（v5，base https://api.atomgit.com）
 

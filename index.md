@@ -8,8 +8,9 @@
 
 - 📊 [整体看板](dashboard/dashboard.md)（脚本自动生成，`node dashboard/generate-dashboard.mjs` 更新）
 - 🧾 [GEO Issue 看板](dashboard/issues-dashboard.md)（各项目未关闭 `[GEO *]` issue 状态与关联 PR，Action 每日自动刷新）
+- 🧑‍💻 [开发者 Issue 闭环看板](dashboard/developer-issues-dashboard.md)（按责任人聚合的 issue 闭环率 / 首次响应 / 闭环时长，Action 每 12 小时自动刷新）
 - 👥 [分工表](分工表.md)（各措施 × 各项目 责任人矩阵 + 整体措施分工）
-- 🗂 [项目清单](projects.md) / [项目配置](projects.config.json)
+- 🗂 [项目清单](projects.md) / [项目配置](projects.config.json) / [服务清单](scripts/config/services.json)（服务名·责任人·仓库）/ [责任人平台 ID 映射](scripts/config/developers.json)
 - 🛠 [自动化检查脚本](scripts/README.md)
 - 🔍 [人工检查问题](manual-review/issues/) / [复盘记录](manual-review/retrospectives/)
 - 📦 [历史归档](archive/)

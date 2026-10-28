@@ -44,11 +44,11 @@ jobs:
 
       - name: Run broken link check
         env:
-          # 失效链接维度用独立账号提单：secret 名与其他维度的 ATOMGIT_TOKEN 区分，
+          # 死链维度提单/读仓用 HSJ 账号令牌（HSJ_ATOMGIT_TOKEN），
           # 脚本侧仍读 ATOMGIT_TOKEN 环境变量（atomgit.mjs 公共实现不改）。
           # 该 secret 未配置时为空 token → 各项目自动降级为"只扫描、查重失败不提单"，不会误用其他账号提单。
           # 注意：该账号需能读 4 个目标仓库（查重列 issue + clone 受限镜像仓 + 提 issue）。
-          ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_LINKS_TOKEN }}
+          ATOMGIT_TOKEN: ${{ secrets.HSJ_ATOMGIT_TOKEN }}
         run: |
           ARGS="--submit-issues"
           if [ -n "${{ inputs.site }}" ]; then

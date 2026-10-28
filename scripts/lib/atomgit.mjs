@@ -67,9 +67,18 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 }
 
-// GET /repos/{owner}/{repo}/issues?state=...  列表为 repo-scoped 路径
-export async function listIssues({ owner, repo, state = 'open' }) {
-  const data = await request(`/repos/${owner}/${repo}/issues`, { params: { state, per_page: 100 } });
+// GET /repos/{owner}/{repo}/issues?state=...  列表为 repo-scoped 路径。
+// page 从 1 起(默认首页,兼容既有调用方)；列表按创建时间倒序返回(最新在前)，
+// 调用方做统计窗口口径时可据此早停翻页。number 字段为字符串。
+export async function listIssues({ owner, repo, state = 'open', page = 1 }) {
+  const data = await request(`/repos/${owner}/${repo}/issues`, { params: { state, per_page: 100, page } });
+  return Array.isArray(data) ? data : [];
+}
+
+// GET /repos/{owner}/{repo}/issues/{number}/comments  issue 评论列表(实测倒序返回,调用方按 created_at 自取最早)。
+// 供开发者 issue 闭环看板判定「首次响应」。
+export async function listIssueComments({ owner, repo, issue_number }) {
+  const data = await request(`/repos/${owner}/${repo}/issues/${issue_number}/comments`, { params: { per_page: 100 } });
   return Array.isArray(data) ? data : [];
 }
 

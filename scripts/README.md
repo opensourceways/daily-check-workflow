@@ -30,6 +30,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
 | check-links.mjs | 失效链接（死链）检测：clone 各项目 AtomGit 镜像源码仓（浅克隆）→ 扫描源码文件提取 URL → 唯一去重后 HEAD/GET 并发探测；`--submit-issues` 支持提单，前缀 `[GEO Link Check]`，brief/full 双报告 | scheduled-reports/links/`<date>`/ + scripts/stats/link-stats.json |
 | fetch-prs.mjs | 各仓库 issue/PR 汇总 | scripts/stats/pr-summary.json |
 | collect-issues-dashboard.mjs | GEO issue 看板采集：拉取各项目 AtomGit 仓库未关闭 `[GEO *]` issue 及关联 PR 状态，全量重生成看板（已关闭/移除的 issue 自动从记录去掉）；由 issues-dashboard.yml 每日执行；`--site=ID` 单项目模式保留其余分区 | dashboard/issues-dashboard.md + scripts/stats/issues-dashboard.json |
+| collect-developer-issues.mjs | **开发者 issue 闭环看板采集**（与 GEO 看板相互独立，面向全部 issue）：按 scripts/config/services.json 的服务/责任人清单拉取统计窗口内创建的全部 issue（github.com 仓库走 GitHub API，gitcode/gitee/atomgit 仓库走 AtomGit 同名镜像），计算闭环率 / 首次响应 / 闭环时长三项 SLA 并按责任人聚合全量重生成看板；由 developer-issues-dashboard.yml 定时执行（默认每 12 小时）；`--since=YYYY-MM-DD` / `--developer=姓名` / `--service=id` 过滤 | dashboard/developer-issues-dashboard.md + scripts/stats/developer-issues.json |
 | run-all.mjs | 一键执行全部检查 | scripts/stats/run-all-summary.json |
 
 ## 目录结构
@@ -37,7 +38,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
 ```
 （仓库根，Node 项目根：package.json / pnpm-lock.yaml / projects.config.json）
 └── scripts/
-    ├── config/          # 检查规则配置（check-rules.json）
+    ├── config/          # 检查规则与看板配置（check-rules.json / issue-sla.json / services.json / developers.json）
     ├── lib/             # 公共库
     │   ├── config.mjs   # 读取 projects.config.json
     │   ├── http.mjs     # fetch 封装
@@ -47,6 +48,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
     │   ├── html.mjs     # HTML 解析工具（title/meta/ld+json/links/imgs）
     │   ├── jsonld.mjs   # JSON-LD 页面级分析器与硬性/告警分级（check-tdk-jsonld 的 jsonld 维度）
     │   ├── gitcode.mjs  # GitCode/AtomGit API
+    │   ├── github.mjs   # GitHub REST API（issue 列表/评论，开发者 issue 闭环看板用）
     │   ├── atomgit.mjs  # AtomGit API v5 + 提单流程公共实现（查重 precheckExistingIssues、新建/更新/评论 /close 写回 reconcileIssue，供 --submit-issues/--force 模式）
     │   ├── link-scan.mjs # 死链检测支撑库：clone 源码仓（AtomGit 镜像，浅克隆+重试）→ 源码 URL 提取/清洗/变量过滤 → HEAD/GET 并发探测（check-links 用）
     │   └── report.mjs   # 统计输出
@@ -94,8 +96,33 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 项目信息统一在 `../projects.config.json` 中维护，脚本自动读取。
 新增项目只需修改该配置文件，无需改动脚本。
 
+开发者 issue 闭环看板另有三份配置（均在 `config/` 下）：
+
+- `config/services.json`：服务清单（服务名 / 责任人 / 仓库，源自 项目信息.xlsx；同仓库多处登记已合并）
+- `config/developers.json`：责任人 → github / atomgit 平台账号映射（看板展示 @账号 + 首次响应归因；留空降级为任意非创建者评论）
+- `config/issue-sla.json`：统计窗口起始日（since，北京时间当日 00:00）与 SLA 阈值（闭环率 ≥80% / 首次响应 ≤24h / 闭环 ≤120h）
+
 ## 看板
 
 ```bash
 node dashboard/generate-dashboard.mjs   # 从 stats 汇聚生成看板
 ```
+
+## 开发者 issue 闭环看板
+
+与 GEO Issue 看板（仅 `[GEO *]` 前缀）相互独立：面向**全部 issue** 的开发者闭环考核，统计统计窗口内创建的 issue，按责任人（config/services.json 的 owners，多责任人服务计入每位）聚合三项 SLA：
+
+- **闭环率**：已闭环 / 窗口内总数，目标 ≥80%
+- **首次响应**：issue 创建者之外的首条评论（机器人账号排除）；责任人平台账号已配置时仅统计责任人的首条回复（归因模式），未配置降级为任意非创建者评论；目标 ≤24h
+- **闭环时长**：创建 → 闭环（AtomGit finished_at / GitHub closed_at），目标 ≤120h
+
+采集平台：github.com 仓库走 GitHub API（`GITHUB_TOKEN`，Action 经 repo secret `HSJ_GITHUB_TOKEN` 注入；opensourceways 私有仓需该 PAT 有组织读权限，未配置时这些仓标采集失败）；gitcode / gitee / atomgit 仓库统一按 AtomGit 同 owner/repo 镜像采集（`ATOMGIT_TOKEN`，Action 经 repo secret `HSJ_ATOMGIT_TOKEN` 注入，私有仓必需；AtomGit 404 = 源仓库无镜像，看板标采集失败）。
+
+```bash
+node scripts/checks/collect-developer-issues.mjs                     # 全量采集并生成看板
+node scripts/checks/collect-developer-issues.mjs --since=2026-10-20   # 临时覆盖窗口起点
+node scripts/checks/collect-developer-issues.mjs --developer=刘勇      # 只采集某责任人名下服务
+node scripts/checks/collect-developer-issues.mjs --service=atomgit/openeuler/openEuler-portal  # 单服务调试
+```
+
+Action：`../.github/workflows/developer-issues-dashboard.yml`（默认每 12 小时，北京时间 08:00 / 20:00；调整频率只改 cron 一行，文件内有示例注释；也可 workflow_dispatch 手动触发并临时指定 since）。

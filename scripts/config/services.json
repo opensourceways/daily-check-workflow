@@ -1,0 +1,591 @@
+{
+  "meta": {
+    "source": "项目信息.xlsx（2026-10-28 提取）",
+    "platformRule": "github.com 仓库走 GitHub API 采集；gitcode.com / gitee.com / atomgit.com 仓库统一按 AtomGit API 同 owner/repo 镜像采集（沿用本仓库既有约定）",
+    "note": "xlsx 更新后需手动同步本文件；三个关键信息为 serviceName（服务名）/ owners（责任人，可多人）/ repo（仓库信息），其余字段为采集派生。同 platform/owner/repo 的重复登记已合并（groups 汇总）"
+  },
+  "services": [
+    {
+      "id": "atomgit/openeuler/openEuler-portal",
+      "name": "openEuler 官网",
+      "serviceName": "官网",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "黄世俊"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openeuler/openEuler-portal",
+        "platform": "atomgit",
+        "owner": "openeuler",
+        "repo": "openEuler-portal"
+      }
+    },
+    {
+      "id": "atomgit/openeuler/docs-website",
+      "name": "openEuler 文档",
+      "serviceName": "文档",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "黄泽麟"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openeuler/docs-website",
+        "platform": "atomgit",
+        "owner": "openeuler",
+        "repo": "docs-website"
+      }
+    },
+    {
+      "id": "atomgit/openeuler/quick-issue",
+      "name": "openEuler Quick Issue",
+      "serviceName": "Quick Issue",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openeuler/quick-issue",
+        "platform": "atomgit",
+        "owner": "openeuler",
+        "repo": "quick-issue"
+      }
+    },
+    {
+      "id": "atomgit/openeuler/easy-software",
+      "name": "openEuler 软件中心",
+      "serviceName": "软件中心",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "黄世俊"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openeuler/easy-software",
+        "platform": "atomgit",
+        "owner": "openeuler",
+        "repo": "easy-software"
+      }
+    },
+    {
+      "id": "github/opensourceways/message-manager-website",
+      "name": "openEuler 消息中心",
+      "serviceName": "消息中心",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "张峻玮"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/message-manager-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "message-manager-website"
+      }
+    },
+    {
+      "id": "atomgit/openeuler/opendesign-datastat",
+      "name": "openEuler 贡献看板",
+      "serviceName": "贡献看板",
+      "groups": [
+        "openEuler",
+        "基础设施服务"
+      ],
+      "owners": [
+        "张峻玮"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openeuler/opendesign-datastat",
+        "platform": "atomgit",
+        "owner": "openeuler",
+        "repo": "opendesign-datastat"
+      }
+    },
+    {
+      "id": "github/opensourceways/certification-website",
+      "name": "openEuler 兼容性测评",
+      "serviceName": "兼容性测评",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/certification-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "certification-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/software-package-website",
+      "name": "openEuler 软件包贡献",
+      "serviceName": "软件包贡献",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "龚壮邦"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/software-package-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "software-package-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/lfs-website",
+      "name": "openEuler lfs大文件服务",
+      "serviceName": "lfs大文件服务",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/lfs-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "lfs-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/oneid-workbench-website",
+      "name": "openEuler 个人中心",
+      "serviceName": "个人中心",
+      "groups": [
+        "openEuler",
+        "基础设施服务"
+      ],
+      "owners": [
+        "周琪"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/oneid-workbench-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "oneid-workbench-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/easywhisperx-website",
+      "name": "openEuler 会议转文字服务",
+      "serviceName": "会议转文字服务",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/easywhisperx-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "easywhisperx-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/vscode-doc-tools",
+      "name": "openEuler 文档插件",
+      "serviceName": "文档插件",
+      "groups": [
+        "openEuler"
+      ],
+      "owners": [
+        "黄泽麟"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/vscode-doc-tools",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "vscode-doc-tools"
+      }
+    },
+    {
+      "id": "atomgit/opengauss/website",
+      "name": "openGauss 官网",
+      "serviceName": "官网",
+      "groups": [
+        "openGauss"
+      ],
+      "owners": [
+        "张峻玮"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/opengauss/website",
+        "platform": "atomgit",
+        "owner": "opengauss",
+        "repo": "website"
+      }
+    },
+    {
+      "id": "atomgit/opengauss/docs-website",
+      "name": "openGauss 文档",
+      "serviceName": "文档",
+      "groups": [
+        "openGauss"
+      ],
+      "owners": [
+        "黄泽麟"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/opengauss/docs-website",
+        "platform": "atomgit",
+        "owner": "opengauss",
+        "repo": "docs-website"
+      }
+    },
+    {
+      "id": "atomgit/opengauss/blog",
+      "name": "openGauss 博客",
+      "serviceName": "博客",
+      "groups": [
+        "openGauss"
+      ],
+      "owners": [
+        "张峻玮"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/opengauss/blog",
+        "platform": "atomgit",
+        "owner": "opengauss",
+        "repo": "blog"
+      }
+    },
+    {
+      "id": "atomgit/mindspore/mindspore-portal",
+      "name": "MindSpore 官网",
+      "serviceName": "官网",
+      "groups": [
+        "MindSpore"
+      ],
+      "owners": [
+        "黄泽麟"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/mindspore/mindspore-portal",
+        "platform": "atomgit",
+        "owner": "mindspore",
+        "repo": "mindspore-portal"
+      }
+    },
+    {
+      "id": "atomgit/mindspore/website-docs",
+      "name": "MindSpore 文档",
+      "serviceName": "文档",
+      "groups": [
+        "MindSpore"
+      ],
+      "owners": [
+        "黄泽麟"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/mindspore/website-docs",
+        "platform": "atomgit",
+        "owner": "mindspore",
+        "repo": "website-docs"
+      }
+    },
+    {
+      "id": "atomgit/openUBMC/website",
+      "name": "openUBMC 官网",
+      "serviceName": "官网",
+      "groups": [
+        "openUBMC"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openUBMC/website",
+        "platform": "atomgit",
+        "owner": "openUBMC",
+        "repo": "website"
+      }
+    },
+    {
+      "id": "atomgit/openUBMC/docs-website",
+      "name": "openUBMC 文档",
+      "serviceName": "文档",
+      "groups": [
+        "openUBMC"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/openUBMC/docs-website",
+        "platform": "atomgit",
+        "owner": "openUBMC",
+        "repo": "docs-website"
+      }
+    },
+    {
+      "id": "atomgit/unifiedbus/UnifiedBus-portal",
+      "name": "UnifiedBus 官网",
+      "serviceName": "官网",
+      "groups": [
+        "UnifiedBus"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/unifiedbus/UnifiedBus-portal",
+        "platform": "atomgit",
+        "owner": "unifiedbus",
+        "repo": "UnifiedBus-portal"
+      }
+    },
+    {
+      "id": "atomgit/unifiedbus/resources",
+      "name": "UnifiedBus 资源",
+      "serviceName": "资源",
+      "groups": [
+        "UnifiedBus"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://gitcode.com/unifiedbus/resources",
+        "platform": "atomgit",
+        "owner": "unifiedbus",
+        "repo": "resources"
+      }
+    },
+    {
+      "id": "atomgit/modelers/merlin-website",
+      "name": "openMind 官网",
+      "serviceName": "官网",
+      "groups": [
+        "openMind"
+      ],
+      "owners": [
+        "黄泽麟",
+        "贾森森",
+        "李胜波"
+      ],
+      "repo": {
+        "url": "https://gitee.com/modelers/merlin-website",
+        "platform": "atomgit",
+        "owner": "modelers",
+        "repo": "merlin-website"
+      }
+    },
+    {
+      "id": "atomgit/modelers/merlin-docs",
+      "name": "openMind 文档",
+      "serviceName": "文档",
+      "groups": [
+        "openMind"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://gitee.com/modelers/merlin-docs",
+        "platform": "atomgit",
+        "owner": "modelers",
+        "repo": "merlin-docs"
+      }
+    },
+    {
+      "id": "atomgit/modelers/merlin-blogs",
+      "name": "openMind 博客",
+      "serviceName": "博客",
+      "groups": [
+        "openMind"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://gitee.com/modelers/merlin-blogs",
+        "platform": "atomgit",
+        "owner": "modelers",
+        "repo": "merlin-blogs"
+      }
+    },
+    {
+      "id": "atomgit/hifloat/hifloat-portal",
+      "name": "HiFloat 官网",
+      "serviceName": "官网",
+      "groups": [
+        "HiFloat"
+      ],
+      "owners": [
+        "吴培聪"
+      ],
+      "repo": {
+        "url": "https://atomgit.com/hifloat/hifloat-portal",
+        "platform": "atomgit",
+        "owner": "hifloat",
+        "repo": "hifloat-portal"
+      }
+    },
+    {
+      "id": "atomgit/hifloat/resources",
+      "name": "HiFloat 资源",
+      "serviceName": "资源",
+      "groups": [
+        "HiFloat"
+      ],
+      "owners": [
+        "吴培聪"
+      ],
+      "repo": {
+        "url": "https://atomgit.com/hifloat/resources",
+        "platform": "atomgit",
+        "owner": "hifloat",
+        "repo": "resources"
+      }
+    },
+    {
+      "id": "atomgit/hifloat/docs-website",
+      "name": "HiFloat 文档",
+      "serviceName": "文档",
+      "groups": [
+        "HiFloat"
+      ],
+      "owners": [
+        "吴培聪"
+      ],
+      "repo": {
+        "url": "https://atomgit.com/hifloat/docs-website",
+        "platform": "atomgit",
+        "owner": "hifloat",
+        "repo": "docs-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/app-cla-webui",
+      "name": "基础设施服务 CLA服务",
+      "serviceName": "CLA服务",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "刘勇"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/app-cla-webui",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "app-cla-webui"
+      }
+    },
+    {
+      "id": "github/opensourceways/meeting-website",
+      "name": "基础设施服务 通用会议",
+      "serviceName": "通用会议",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/meeting-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "meeting-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/hwid-website",
+      "name": "基础设施服务 华为账号",
+      "serviceName": "华为账号",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "贾森森"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/hwid-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "hwid-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/datastat-manage-website",
+      "name": "基础设施服务 对内贡献看板",
+      "serviceName": "对内贡献看板",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "张峻玮"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/datastat-manage-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "datastat-manage-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/vLLM-dashboard-website",
+      "name": "基础设施服务 vLLM看板",
+      "serviceName": "vLLM看板",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "李胜波"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/vLLM-dashboard-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "vLLM-dashboard-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/oneid-website",
+      "name": "基础设施服务 账号服务",
+      "serviceName": "账号服务",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "周琪"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/oneid-website",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "oneid-website"
+      }
+    },
+    {
+      "id": "github/opensourceways/discourse-fully",
+      "name": "基础设施服务 论坛",
+      "serviceName": "论坛",
+      "groups": [
+        "基础设施服务"
+      ],
+      "owners": [
+        "周琪"
+      ],
+      "repo": {
+        "url": "https://github.com/opensourceways/discourse-fully",
+        "platform": "github",
+        "owner": "opensourceways",
+        "repo": "discourse-fully"
+      }
+    }
+  ]
+}

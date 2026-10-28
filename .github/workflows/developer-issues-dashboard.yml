@@ -1,0 +1,76 @@
+name: Developer Issues Dashboard
+
+# 开发者 issue 闭环看板：按责任人聚合其名下仓库的 issue（闭环率 ≥80% / 首次响应 ≤24h / 闭环 ≤120h），
+# 全量重生成 dashboard/developer-issues-dashboard.md 并 commit 回本仓库。
+#
+# 配置位置（改这些不用动本文件）：
+#   scripts/config/services.json    服务清单：服务名 / 责任人 / 仓库（源自 项目信息.xlsx）
+#   scripts/config/developers.json  责任人 → github / atomgit 平台账号映射（展示 + 首次响应归因）
+#   scripts/config/issue-sla.json   统计窗口起始日（since）与 SLA 阈值
+#
+# Token（HSJ 账号令牌）：
+#   HSJ_ATOMGIT_TOKEN   读 AtomGit 私有仓 issue（HSJ 账号在 AtomGit 的令牌）
+#   HSJ_GITHUB_TOKEN    HSJ 账号的 GitHub PAT（须有 opensourceways 组织读权限，读同组织私有仓 issue）；
+#                       未配置时 GitHub 侧退化为匿名（仅公共仓可读，opensourceways 多数仓为私有，会标采集失败）
+on:
+  schedule:
+    # 默认每 12 小时一次（UTC 00:00 / 12:00，即北京时间 08:00 / 20:00）。
+    # 调整更新频率只改下面这一行：
+    #   每小时一次      "0 * * * *"
+    #   每天一次        "0 2 * * *"        （北京时间 10:00）
+    #   每半天错峰      "30 1,13 * * *"
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+    inputs:
+      since:
+        description: "统计窗口起始日（YYYY-MM-DD，留空用 issue-sla.json 里的 since）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: developer-issues-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect developer issues
+        env:
+          # GitHub 侧：HSJ 账号 PAT（可读 opensourceways 私有仓）；secret 未配置时为空 token，退化为匿名
+          GITHUB_TOKEN: ${{ secrets.HSJ_GITHUB_TOKEN }}
+          # AtomGit 侧：HSJ 账号令牌，私有仓 issue 读取需要
+          ATOMGIT_TOKEN: ${{ secrets.HSJ_ATOMGIT_TOKEN }}
+        run: |
+          ARGS=""
+          if [ -n "${{ inputs.since }}" ]; then
+            ARGS="$ARGS --since=${{ inputs.since }}"
+          fi
+          node scripts/checks/collect-developer-issues.mjs $ARGS
+
+      - name: Commit dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -e "dashboard/developer-issues-dashboard.md" ]; then
+            git add dashboard/developer-issues-dashboard.md
+          fi
+          if git diff --cached --quiet; then
+            echo "no dashboard changes"
+          else
+            git commit -m "docs(dashboard): refresh developer issue closure dashboard"
+            git pull --rebase
+            git push
+          fi

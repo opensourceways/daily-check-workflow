@@ -1,0 +1,9 @@
+{
+  "since": "2026-10-20",
+  "note": "since = 统计窗口起始日（北京时间当日 00:00 起创建的 issue 计入指标）；CLI --since=YYYY-MM-DD 或 workflow_dispatch 输入可临时覆盖。sla 三项阈值：closureRate = 闭环率下限；firstResponseHours / closureHours = 首次响应与闭环时长的达标上限（小时）",
+  "sla": {
+    "closureRate": 0.8,
+    "firstResponseHours": 24,
+    "closureHours": 120
+  }
+}
