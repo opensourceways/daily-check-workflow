@@ -10,6 +10,8 @@ import { cloneRepo, removeDir, findCodeFiles, extractLinksFromFile, filterExclud
 // 实际从其 AtomGit 同名镜像 clone——gitcode 匿名 git 传输 401，见 lib/link-scan.mjs）
 // → 扫描源码文件提取链接 → 唯一 URL 去重后并发 HTTP 探测 → 有失效链接时生成简短/完全两份 md 报告
 // 并向该项目 AtomGit 仓库提 issue。
+// brief/full 报告是检查产物，dry-run 也生成（dry-run 只跳过提单）——issue 正文（含 dry-run 打印的
+// 预览正文）链接的完全版报告必须真实存在，否则正文里的报告链接指向 404。
 // 提 issue 模式：扫描前先查重（标题前缀匹配），已有未关闭 issue 则跳过该项目整个"扫描+提单"；
 // issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
 // 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
@@ -297,19 +299,20 @@ for (const project of targets) {
     const title = issueTitleFor(entry);
     const fullFileName = `${entry.projectId}-full.md`;
     const body = issueBodyFor(entry, fullFileName);
-    if (!dryRun) {
-      await writeFile(
-        resolve(dir, fullFileName),
-        `# 失效链接检查完全版报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n\n` + detailLines(entry).join('\n') + '\n',
-        'utf8'
-      );
-      await writeFile(
-        resolve(dir, `${entry.projectId}-brief.md`),
-        `# 失效链接检查简短报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}\n- 数据源：${entry.repo}（${entry.branch} 分支）\n- 结论：${entry.verdict}\n\n` + briefLines(entry).join('\n') + '\n',
-        'utf8'
-      );
-      entry.reports = { full: `scheduled-reports/links/${dateStr}/${fullFileName}`, brief: `scheduled-reports/links/${dateStr}/${entry.projectId}-brief.md` };
-    }
+    // brief/full 报告是检查产物，dry-run 同样写（dry-run 只跳过提单）：
+    // issue 正文（dry-run 时为控制台打印的预览正文）里链接的完全版报告必须真实存在，否则指向 404。
+    const modeNote = dryRun ? '\n- 运行模式：dry-run（未提 issue）' : '';
+    await writeFile(
+      resolve(dir, fullFileName),
+      `# 失效链接检查完全版报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}${modeNote}\n\n` + detailLines(entry).join('\n') + '\n',
+      'utf8'
+    );
+    await writeFile(
+      resolve(dir, `${entry.projectId}-brief.md`),
+      `# 失效链接检查简短报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}${modeNote}\n- 数据源：${entry.repo}（${entry.branch} 分支）\n- 结论：${entry.verdict}\n\n` + briefLines(entry).join('\n') + '\n',
+      'utf8'
+    );
+    entry.reports = { full: `scheduled-reports/links/${dateStr}/${fullFileName}`, brief: `scheduled-reports/links/${dateStr}/${entry.projectId}-brief.md` };
     // 强制模式下查重命中 → 更新原 issue；否则新建（分支在 reconcileIssue 内）
     const outcome = await reconcileIssue({ target, existing: pre.existing, canWrite: pre.canSubmit, hasIssue: true, title, body, dryRun, logPrefix: `[links] ${project.id}` });
     entry.issueAction = outcome.action;
@@ -373,7 +376,7 @@ if (submitIssues) {
   lines.push('（提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录下 `<项目ID>-full.md`）');
   lines.push('');
   for (const r of results.filter(hasAnyIssue)) {
-    lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.reports ? r.reports.full : '（dry-run 未写文件）'}\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : r.issueAction === 'print-only' ? '，（未提单：无 token 或查重降级）' : ''}`);
+    lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.reports.full}\`${r.issueUrl ? `，issue：${r.issueUrl}` : r.issueAction === 'dry-run' ? '，（dry-run 未提交）' : r.issueAction === 'print-only' ? '，（未提单：无 token 或查重降级）' : ''}`);
   }
 } else {
   lines.push('## 各项目明细');

@@ -418,6 +418,7 @@ function parseOwnerRepoOnly(repoUrl) {
 }
 
 // clone 到临时目录（--depth=1 浅克隆；openEuler-portal 全量工作区达 5.7GB，浅克隆实测 ~2 分钟/2.2GB）。
+// 一律设 GIT_LFS_SKIP_SMUDGE=1 跳过 LFS 对象下载（见 run 处注释），防镜像仓 LFS 对象缺失拖垮 clone。
 // AtomGit 大包传输偶发 curl 18（连接中断）等瞬时错误：匿名克隆内置最多 3 次重试（2s 退避）；
 // 匿名仍失败且配置了 token（受限仓需认证）时，按「token 作用户名」「oauth2:token」两种凭证再试
 // （AtomGit 为 Gitea 系服务端，token 凭证格式未定死，两种都试；报错信息中会脱敏 token）。
@@ -427,7 +428,13 @@ export function cloneRepo(repoUrl, branch = 'main') {
   const run = (url) =>
     execSync(`git clone --depth=1 --single-branch${branchFlag} "${url}" "${tempDir}"`, {
       stdio: ['ignore', 'ignore', 'pipe'],
-      env: { ...process.env, GIT_TERMINAL_PROMPT: '0' },
+      // GIT_LFS_SKIP_SMUDGE：部分镜像仓以 filter=lfs 跟踪媒体文件（openEuler-portal 的
+      // .gitattributes 含 png/jpg/mov），其 LFS 对象在 AtomGit 上拉不到——匿名 LFS API 401、
+      // 带 token 404 not found，checkout 阶段 smudge 失败会让整个 clone 以
+      // "error: external filter 'git-lfs filter-process' failed" 告终。
+      // 链接扫描只读文本源码（图片本就跳过、mov 也不在扫描扩展名内），跳过 LFS 下载、
+      // 工作区留 LFS 指针文件即可，clone 不再受 LFS 服务端牵连。
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_LFS_SKIP_SMUDGE: '1' },
     });
   const cleanup = () => {
     try {

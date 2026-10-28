@@ -12,7 +12,7 @@ on:
         required: false
         default: ""
       dry_run:
-        description: "Dry run（仅扫描与打印 issue 正文，不写 brief/full、不提 issue；汇总报告仍会生成并 commit）"
+        description: "Dry run（仅扫描与打印 issue 正文，不提 issue；brief/full 与汇总报告仍会生成并 commit）"
         required: false
         type: boolean
         default: false
@@ -63,6 +63,9 @@ jobs:
           node scripts/checks/check-links.mjs $ARGS
 
       - name: Commit reports
+        # 检查步骤即使中途失败也要 commit 报告：此前已提的 issue 正文链接着本仓库的
+        # 完全版报告，跳过 commit 会让 issue 指向 404 文件（取消运行的场合除外）。
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
