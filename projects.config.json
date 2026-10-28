@@ -115,7 +115,8 @@
         "tdkArchiveDir": ".geo/tdk",
         "jsonldArchiveDir": ".geo/jsonld",
         "srcDir": "packages/website/(?:app/)?pages",
-        "pageEntryPattern": "^packages/website/(?:app/)?pages/.*\\.vue$"
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/.*\\.vue$",
+        "pageExcludePattern": "\\["
       }
     },
     {
@@ -149,7 +150,8 @@
         "srcDir": "packages/website/(?:app/)?pages",
         "tdkArchiveDir": ".geo/tdk",
         "jsonldArchiveDir": ".geo/jsonld",
-        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$"
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$",
+        "pageExcludePattern": "\\["
       }
     },
     {
@@ -176,7 +178,8 @@
         "srcDir": "packages/website/(?:app/)?pages",
         "tdkArchiveDir": ".geo/tdk",
         "jsonldArchiveDir": ".geo/jsonld",
-        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$"
+        "pageEntryPattern": "^packages/website/(?:app/)?pages/(?:zh|en)/.*\\.vue$",
+        "pageExcludePattern": "\\["
       }
     },
     {
@@ -194,7 +197,8 @@
         "srcDir": "app/pages",
         "tdkArchiveDir": ".geo/tdk",
         "jsonldArchiveDir": ".geo/jsonld",
-        "pageEntryPattern": "^app/pages/(?:zh|en)/.*\\.vue$"
+        "pageEntryPattern": "^app/pages/(?:zh|en)/.*\\.vue$",
+        "pageExcludePattern": "\\["
       }
     }
   ]

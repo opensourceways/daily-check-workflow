@@ -22,7 +22,7 @@
 
 ## check-new-page-tdk.mjs 检查逻辑
 
-1. **找新增页面**：`git diff --name-status HEAD^1 HEAD`（合并提交同样与第一父对比；初始提交改用 `git show`）取状态为 A 的新增文件，整路径匹配 `repoInfo.pageEntryPattern`（**JS 正则源串**，自带 `^` `$` 锚点，路径分隔符恒为 `/`，如 `^app/(?:zh|en)/.*\.md$`）；无新增页面直接通过。CI 检出需 **fetch-depth ≥ 2**。
+1. **找新增页面**：`git diff --name-status HEAD^1 HEAD`（合并提交同样与第一父对比；初始提交改用 `git show`）取状态为 A 的新增文件，整路径匹配 `repoInfo.pageEntryPattern`（**JS 正则源串**，自带 `^` `$` 锚点，路径分隔符恒为 `/`，如 `^app/(?:zh|en)/.*\.md$`）；再剔除命中可选 `repoInfo.pageExcludePattern`（同为 JS 正则源串，整路径 test）的文件——如 nuxt 动态路由页（路径含 `[param]`/`[...slug]` 段）：归档按具体运行时 URL 键控，占位符键归档不存在、门禁静态判定不了，也不应因此阻塞 PR（日志会列出被排除文件备查）；无新增页面直接通过。CI 检出需 **fetch-depth ≥ 2**。
 2. **逐页按 TDK、JSON-LD 两个维度分别判定**（任一满足即通过，都不满足该维度报一条硬性错误）：
    - **TDK 细化到 title / description 字段级并集**：某字段只要"归档内容"或"页面源码"任一处非空配置即视为覆盖（与 portal `config.ts` setTdk"归档覆盖 + frontmatter 兜底"的渲染行为一致），未全覆盖则报缺哪些字段。归档侧读 `${repoInfo.tdkArchiveDir}/<页面路径>/index.json` 并解析 JSON（文件缺失/解析失败/字段为空串都按未配置处理，报错注明原因）；
    - **JSON-LD 维持整条判定**：`${repoInfo.jsonldArchiveDir}/<页面路径>/index.json` 存在，或源码内出现 `application/ld+json` 声明；

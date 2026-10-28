@@ -3,7 +3,8 @@
 // 逻辑：
 //  1) 取待检项目最新一次 git commit 的全部改动文件（普通/合并提交统一按"与第一父提交 HEAD^1 对比"，
 //     初始提交无父则直接 show），只保留状态为 A（新增）且整路径匹配 repoInfo.pageEntryPattern（JS 正则）
-//     的文件，记为新增页面；无新增页面直接通过。
+//     的文件；再剔除命中可选排除正则 repoInfo.pageExcludePattern 的文件（nuxt 动态路由页 [param] 等，
+//     详见下方编译处注释），记为新增页面；无新增页面直接通过。
 //  2) 每个新增页面按 **TDK** 与 **JSON-LD** 两个维度分别判定：
 //     - TDK 细化到 title / description 两个字段：字段级"并集"判定——某字段只要归档文件或页面源码
 //       任一处非空配置即视为覆盖（与 portal config.ts setTdk"归档覆盖 + frontmatter 兜底"的渲染
@@ -61,6 +62,20 @@ try {
   pageRe = new RegExp(repoInfo.pageEntryPattern);
 } catch (e) {
   fail(TAG, `repoInfo.pageEntryPattern 不是合法正则：${repoInfo.pageEntryPattern}（${e.message}）`);
+}
+
+// pageExcludePattern 可选排除正则源串（整路径 test）：匹配 pageEntryPattern 后再命中它的文件不检查。
+// 主要为 nuxt 动态路由页（路径含 [param]/[...slug] 段）：归档按具体运行时 URL 键控（seo-manifest
+// 构建期把 .geo 编译成 manifest、中间件按实际 to.path 命中），占位符键归档永远不会存在；页面文件
+// 自身也可能不带 useSeoMeta（TDK/JSON-LD 由全局中间件兜底或在数据组件内运行时设置），
+// 静态门禁对这类文件既无法 meaningful 判定，也不应阻塞 PR。
+let pageExcludeRe = null;
+if (repoInfo.pageExcludePattern) {
+  try {
+    pageExcludeRe = new RegExp(repoInfo.pageExcludePattern);
+  } catch (e) {
+    fail(TAG, `repoInfo.pageExcludePattern 不是合法正则：${repoInfo.pageExcludePattern}（${e.message}）`);
+  }
 }
 
 // srcDir 同样是 JS 正则源串（普通目录路径本身即合法正则，如 app / app/pages；nuxt 框架升级迁移期
@@ -127,7 +142,9 @@ function parseNameStatus(res) {
 }
 
 const { sha, added } = listAddedFiles();
-const newPages = added.filter((f) => pageRe.test(f));
+const matchedPages = added.filter((f) => pageRe.test(f));
+const excludedPages = pageExcludeRe ? matchedPages.filter((f) => pageExcludeRe.test(f)) : [];
+const newPages = matchedPages.filter((f) => !pageExcludeRe?.test(f));
 
 // ---- 步骤 2：逐页面、逐维度核查 ----
 
@@ -358,7 +375,7 @@ for (const file of newPages) {
 // ---- 输出 ----
 
 console.log(`${TAG} 待检项目：${project.name}（${project.id}），匹配方式：${matchedBy}（${configPath}）`);
-console.log(`${TAG} 最新提交：${sha.slice(0, 7)}（改动中新增文件 ${added.length} 个，匹配 pageEntryPattern ${newPages.length} 个${newPages.length ? `：${newPages.join('、')}` : ''}）`);
+console.log(`${TAG} 最新提交：${sha.slice(0, 7)}（改动中新增文件 ${added.length} 个，匹配 pageEntryPattern ${matchedPages.length} 个，其中排除 ${excludedPages.length} 个（pageExcludePattern：${excludedPages.join('、') || '无'}），待检 ${newPages.length} 个${newPages.length ? `：${newPages.join('、')}` : ''}）`);
 if (!newPages.length) console.log(`${TAG} ✅ 无新增页面，跳过 TDK / JSON-LD 核查`);
 for (const p of passed) console.log(`${TAG} ✅ [${p.dimension}] ${p.file}（${p.via}）`);
 for (const w of warnings) console.log(`${TAG} ⚠️ ${w}`);

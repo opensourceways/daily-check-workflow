@@ -87,7 +87,7 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 
 ## PR 门禁检查（pr-gate-checks/）
 
-与定时检查（抓线上 + 提 issue）互补的一套**本地静态文件**检查：门禁步骤将 `scripts/pr-gate-checks/` 连同 `projects.config.json` 复制到待检项目根，执行 `node pr-gate-checks/check-robots.mjs`；用项目根 `package.json` 的 `name` 匹配 `repoInfo.packageName` 确定待检项目，再按 `repoInfo` 登记的路径检查（robots.txt 位于 `${repoInfo.publicDir}/robots.txt`）。只读本地文件、不联网、不提单，硬性错误退出码 1 拦截 PR；packageName 未登记（项目未接入）时跳过放行（退出码 0）。已接入：robots.txt 字段合规（check-robots.mjs）、最新提交新增页面的 TDK / JSON-LD 配置（check-new-page-tdk.mjs，按 `pageEntryPattern` 正则筛新增页面，两维度各自判定：归档 `tdkArchiveDir`/`jsonldArchiveDir` 或源码 frontmatter / useSeoMeta/useHead 任一满足即通过）。公共管道在 `gate-utils.mjs`，细则见目录内 README。
+与定时检查（抓线上 + 提 issue）互补的一套**本地静态文件**检查：门禁步骤将 `scripts/pr-gate-checks/` 连同 `projects.config.json` 复制到待检项目根，执行 `node pr-gate-checks/check-robots.mjs`；用项目根 `package.json` 的 `name` 匹配 `repoInfo.packageName` 确定待检项目，再按 `repoInfo` 登记的路径检查（robots.txt 位于 `${repoInfo.publicDir}/robots.txt`）。只读本地文件、不联网、不提单，硬性错误退出码 1 拦截 PR；packageName 未登记（项目未接入）时跳过放行（退出码 0）。已接入：robots.txt 字段合规（check-robots.mjs）、最新提交新增页面的 TDK / JSON-LD 配置（check-new-page-tdk.mjs，按 `pageEntryPattern` 正则筛新增页面、可用 `pageExcludePattern` 排除 nuxt 动态路由页等静态判定不了的文件，两维度各自判定：归档 `tdkArchiveDir`/`jsonldArchiveDir` 或源码 frontmatter / useSeoMeta/useHead 任一满足即通过）。公共管道在 `gate-utils.mjs`，细则见目录内 README。
 
 ## 配置
 
