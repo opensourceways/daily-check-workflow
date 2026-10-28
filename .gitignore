@@ -1,5 +1,0 @@
-node_modules/
-scripts/stats/*.json
-!scripts/stats/README.md
-.DS_Store
-*.log
