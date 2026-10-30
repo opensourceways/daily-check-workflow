@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-10-29T12:04:53.869Z
+> 生成时间：2026-10-30T11:57:21.067Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -13,7 +13,7 @@
 | openEuler 文档（openEuler-docs） | 4 | 0 | 4 |
 | openGauss 官网（openGauss-portal） | 2 | 0 | 2 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 3 | 0 | 3 |
+| MindSpore 官网（MindSpore-portal） | 4 | 0 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
 | openUBMC 官网（openUBMC-portal） | 13 | 0 | 13 |
 | openUBMC 文档（openUBMC-docs） | 3 | 0 | 3 |
@@ -24,7 +24,7 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
+| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-30 |
 | JSON-LD | [#363](https://atomgit.com/openeuler/openEuler-portal/issues/363) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | [!3345](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3345)（进行中） | 2026-10-24 | 2026-10-29 |
 | llms.txt | [#362](https://atomgit.com/openeuler/openEuler-portal/issues/362) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 
@@ -59,6 +59,7 @@
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#305](https://atomgit.com/mindspore/mindspore-portal/issues/305) MindSpore 官网（MindSpore-portal）：抽样页面 HTML 语义化检查发现 199 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#298](https://atomgit.com/mindspore/mindspore-portal/issues/298) MindSpore 官网（MindSpore-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
+| llms.txt | [#314](https://atomgit.com/mindspore/mindspore-portal/issues/314) MindSpore 官网（MindSpore-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-30 | 2026-10-30 |
 | Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
 
 ## MindSpore 文档（MindSpore-docs）
