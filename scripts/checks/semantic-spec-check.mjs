@@ -64,7 +64,8 @@ const ISSUE_META = {
   'a.placeholder': { spec: '06', group: '附加', name: 'href 为 `#` 占位', level: 'error' },
   'a.extNoRel': { spec: '06', group: '附加', name: '外链 target=_blank 缺 rel=noopener', level: 'error' },
   'a.brokenAnchor': { spec: '06', group: '附加', name: '锚点指向不存在的 id', level: 'warn' },
-  's.noNav': { spec: '07', group: '附加', name: '缺 `<nav>` 区块', level: 'warn' },
+  's.navMulti.label': { spec: '07', group: '附加', name: '多个 `<nav>` 时部分缺 `aria-label`/`aria-labelledby`', level: 'error' },
+  's.navMulti.dupValue': { spec: '07', group: '附加', name: '多个 `<nav>` 时同类标注属性值跨 nav 重复', level: 'error' },
   's.clientShell': { spec: '07', group: '附加', name: '页面为客户端渲染壳，静态 HTML 无实质内容', level: 'error' },
   'i.badAlt': { spec: '08', group: '附加', name: '无意义 alt 文本', level: 'error' },
   'i.longAlt': { spec: '08', group: '附加', name: 'alt 超过 125 字符', level: 'warn' },
@@ -311,11 +312,37 @@ function checkPage(rawHtml, pageUrl) {
     }
   }
 
+  const navs = nodes.filter((n) => n.tag === 'nav');
+  if (navs.length > 1) {
+    const labeled = [];
+    for (const nav of navs) {
+      const label = String(nav.attrs['aria-label'] ?? '').trim();
+      const labelledby = String(nav.attrs['aria-labelledby'] ?? '').trim();
+      if (!label && !labelledby) {
+        const emptyAttr = 'aria-label' in nav.attrs || 'aria-labelledby' in nav.attrs;
+        push('s.navMulti.label', { cls: classesOf(nav), note: emptyAttr ? '属性存在但值为空' : '' });
+      } else {
+        labeled.push({ 'aria-label': label, 'aria-labelledby': labelledby, cls: classesOf(nav) });
+      }
+    }
+    for (const attr of ['aria-label', 'aria-labelledby']) {
+      const byVal = new Map();
+      for (const e of labeled) {
+        const v = e[attr];
+        if (!v) continue;
+        if (!byVal.has(v)) byVal.set(v, []);
+        byVal.get(v).push(e.cls);
+      }
+      for (const [v, clsList] of byVal) {
+        if (clsList.length > 1) push('s.navMulti.dupValue', { attr, value: trunc(v, 60), count: clsList.length, classes: clsList.join(' / ') });
+      }
+    }
+  }
+
   const landmarks = {};
   for (const tag of ['header', 'nav', 'main', 'article', 'section', 'aside', 'footer']) {
     landmarks[tag] = nodes.filter((n) => n.tag === tag).length;
   }
-  if (!landmarks.nav) push('s.noNav', {});
 
   const divCount = nodes.filter((n) => n.tag === 'div').length;
   const semanticCount = Object.values(landmarks).reduce((a, b) => a + b, 0);
@@ -412,6 +439,7 @@ const COMMON_HEADER = [
   '- 解析口径：线上静态/SSR HTML 剔除 `<script>`/`<style>`/注释/`<noscript>` 后构建元素树；不含 JS 运行时插入的 DOM',
   '- 可见性判定：仅能静态识别 `aria-hidden`（值非 false）、`hidden`、行内 `style="display:none"`；class/媒体查询控制的显隐无法判定，「多个同时可见」存在误报可能，请打开页面复核',
   '- 顶层判定：`<header>`/`<footer>` 非 Sectioning Content（article/aside/main/section）或 `<nav>` 的后代即顶层候选',
+  '- nav 判定：不要求页面必须有 `<nav>`；存在多个 `<nav>` 时每个须有 `aria-label` 或 `aria-labelledby`（空值视同缺失），且同类属性的值不得跨 nav 重复（`aria-label` 与 `aria-labelledby` 之间互不比较）；仅一个 `<nav>` 时不检查',
 ];
 
 function pageDetailLines(pg) {
@@ -558,7 +586,7 @@ function issueBodyFor(p, s, fullFileName, startedAt) {
   lines.push('');
   lines.push('### 处理说明');
   lines.push('');
-  lines.push('- 修复后（补齐 alt/href/h1、消除自嵌套与多份可见的 header/footer/main、标题不跳级等）合并 PR 并关闭本 issue');
+  lines.push('- 修复后（补齐 alt/href/h1、消除自嵌套与多份可见的 header/footer/main、标题不跳级、多个 nav 各自补 `aria-label`/`aria-labelledby` 且同类值不重复等）合并 PR 并关闭本 issue');
   lines.push('- issue 未关闭期间不会重复扫描该项目，也不会重复提单；关闭后下一轮定时检查会重新扫描');
   lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 「多个同时可见的顶层 header/footer/main」由桌面/移动双份 DOM 触发的属已知误报场景（class/媒体查询控制的显隐无法静态判定），请在 issue 评论说明后由维护者关闭，或在双份元素上补 `aria-hidden`（隐藏份）/保持单份');
