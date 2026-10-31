@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-10-30T11:57:21.067Z
+> 生成时间：2026-10-31T11:31:03.896Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -9,7 +9,7 @@
 
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
-| openEuler 官网（openEuler-portal） | 3 | 1 | 2 |
+| openEuler 官网（openEuler-portal） | 3 | 2 | 1 |
 | openEuler 文档（openEuler-docs） | 4 | 0 | 4 |
 | openGauss 官网（openGauss-portal） | 2 | 0 | 2 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
@@ -24,7 +24,7 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-30 |
+| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | [!3352](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3352)（进行中） | 2026-10-28 | 2026-10-30 |
 | JSON-LD | [#363](https://atomgit.com/openeuler/openEuler-portal/issues/363) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | [!3345](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3345)（进行中） | 2026-10-24 | 2026-10-29 |
 | llms.txt | [#362](https://atomgit.com/openeuler/openEuler-portal/issues/362) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 
