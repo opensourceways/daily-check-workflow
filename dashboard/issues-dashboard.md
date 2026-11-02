@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-01T12:29:43.642Z
+> 生成时间：2026-11-02T14:26:31.915Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -9,24 +9,25 @@
 
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
-| openEuler 官网（openEuler-portal） | 3 | 2 | 1 |
+| openEuler 官网（openEuler-portal） | 4 | 2 | 2 |
 | openEuler 文档（openEuler-docs） | 4 | 0 | 4 |
-| openGauss 官网（openGauss-portal） | 2 | 0 | 2 |
+| openGauss 官网（openGauss-portal） | 3 | 0 | 3 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 4 | 0 | 4 |
+| MindSpore 官网（MindSpore-portal） | 5 | 0 | 5 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
-| openUBMC 官网（openUBMC-portal） | 13 | 0 | 13 |
-| openUBMC 文档（openUBMC-docs） | 3 | 0 | 3 |
-| UnifiedBus（UnifiedBus） | 2 | 1 | 1 |
-| HiFloat（HiFloat） | 4 | 0 | 4 |
+| openUBMC 官网（openUBMC-portal） | 14 | 0 | 14 |
+| openUBMC 文档（openUBMC-docs） | 4 | 0 | 4 |
+| UnifiedBus（UnifiedBus） | 3 | 1 | 2 |
+| HiFloat（HiFloat） | 5 | 0 | 5 |
 
 ## openEuler 官网（openEuler-portal）
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | [!3352](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3352)（进行中） | 2026-10-28 | 2026-10-30 |
+| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | [!3358](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3358)（进行中）<br>[!3352](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3352)（进行中） | 2026-10-28 | 2026-10-30 |
 | JSON-LD | [#363](https://atomgit.com/openeuler/openEuler-portal/issues/363) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | [!3345](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3345)（进行中） | 2026-10-24 | 2026-10-29 |
 | llms.txt | [#362](https://atomgit.com/openeuler/openEuler-portal/issues/362) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
+| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## openEuler 文档（openEuler-docs）
 
@@ -43,6 +44,7 @@
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#455](https://atomgit.com/opengauss/website/issues/455) openGauss 官网（openGauss-portal）：抽样页面 HTML 语义化检查发现 25 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#448](https://atomgit.com/opengauss/website/issues/448) openGauss 官网（openGauss-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
+| TDK Duplicate | [#462](https://atomgit.com/opengauss/website/issues/462) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## openGauss 文档（openGauss-docs）
 
@@ -61,6 +63,7 @@
 | JSON-LD | [#298](https://atomgit.com/mindspore/mindspore-portal/issues/298) MindSpore 官网（MindSpore-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | llms.txt | [#314](https://atomgit.com/mindspore/mindspore-portal/issues/314) MindSpore 官网（MindSpore-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-30 | 2026-10-30 |
 | Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
+| TDK Duplicate | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## MindSpore 文档（MindSpore-docs）
 
@@ -85,6 +88,7 @@
 | HTML Semantic | [#318](https://atomgit.com/openUBMC/website/issues/318) openUBMC 官网（openUBMC-portal）：抽样页面 HTML 语义化检查发现 15 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#312](https://atomgit.com/openUBMC/website/issues/312) openUBMC 官网（openUBMC-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
 | Sitemap | [#308](https://atomgit.com/openUBMC/website/issues/308) openUBMC 官网（openUBMC-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-24 |
+| TDK Duplicate | [#329](https://atomgit.com/openUBMC/website/issues/329) openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 | 优化 | [#285](https://atomgit.com/openUBMC/website/issues/285) ：内链整改：入口薄弱页面补链 + 正文断链修复 | open（未关闭） | — | 2026-10-15 | 2026-10-15 |
 
 ## openUBMC 文档（openUBMC-docs）
@@ -94,6 +98,7 @@
 | HTML Semantic | [#25](https://atomgit.com/openUBMC/docs-website/issues/25) openUBMC 文档（openUBMC-docs）：抽样页面 HTML 语义化检查发现 2 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#24](https://atomgit.com/openUBMC/docs-website/issues/24) openUBMC 文档（openUBMC-docs）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | llms.txt | [#23](https://atomgit.com/openUBMC/docs-website/issues/23) openUBMC 文档（openUBMC-docs）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
+| TDK Duplicate | [#28](https://atomgit.com/openUBMC/docs-website/issues/28) openUBMC 文档（openUBMC-docs）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## UnifiedBus（UnifiedBus）
 
@@ -101,6 +106,7 @@
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#118](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/118) UnifiedBus（UnifiedBus）：抽样页面 HTML 语义化检查发现 9 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | Sitemap | [#109](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/109) UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | [!663](https://atomgit.com/unifiedbus/UnifiedBus-portal/merge_requests/663)（进行中） | 2026-10-23 | 2026-10-23 |
+| TDK Duplicate | [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## HiFloat（HiFloat）
 
@@ -110,3 +116,4 @@
 | JSON-LD | [#46](https://atomgit.com/hifloat/hifloat-portal/issues/46) HiFloat（HiFloat）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | llms.txt | [#45](https://atomgit.com/hifloat/hifloat-portal/issues/45) HiFloat（HiFloat）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | Sitemap | [#44](https://atomgit.com/hifloat/hifloat-portal/issues/44) HiFloat（HiFloat）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
+| TDK Duplicate | [#59](https://atomgit.com/hifloat/hifloat-portal/issues/59) HiFloat（HiFloat）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
