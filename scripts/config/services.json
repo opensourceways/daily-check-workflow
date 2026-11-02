@@ -13,7 +13,8 @@
         "openEuler"
       ],
       "owners": [
-        "黄世俊"
+        "黄世俊",
+        "周琪"
       ],
       "repo": {
         "url": "https://gitcode.com/openeuler/openEuler-portal",
@@ -133,7 +134,7 @@
         "openEuler"
       ],
       "owners": [
-        "龚壮邦"
+        "黄世俊"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/software-package-website",
@@ -150,7 +151,7 @@
         "openEuler"
       ],
       "owners": [
-        "贾森森"
+        "黄世俊"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/lfs-website",
@@ -185,7 +186,7 @@
         "openEuler"
       ],
       "owners": [
-        "贾森森"
+        "黄世俊"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/easywhisperx-website",
@@ -365,59 +366,6 @@
       }
     },
     {
-      "id": "atomgit/modelers/merlin-website",
-      "name": "openMind 官网",
-      "serviceName": "官网",
-      "groups": [
-        "openMind"
-      ],
-      "owners": [
-        "黄泽麟",
-        "贾森森",
-        "李胜波"
-      ],
-      "repo": {
-        "url": "https://gitee.com/modelers/merlin-website",
-        "platform": "atomgit",
-        "owner": "modelers",
-        "repo": "merlin-website"
-      }
-    },
-    {
-      "id": "atomgit/modelers/merlin-docs",
-      "name": "openMind 文档",
-      "serviceName": "文档",
-      "groups": [
-        "openMind"
-      ],
-      "owners": [
-        "贾森森"
-      ],
-      "repo": {
-        "url": "https://gitee.com/modelers/merlin-docs",
-        "platform": "atomgit",
-        "owner": "modelers",
-        "repo": "merlin-docs"
-      }
-    },
-    {
-      "id": "atomgit/modelers/merlin-blogs",
-      "name": "openMind 博客",
-      "serviceName": "博客",
-      "groups": [
-        "openMind"
-      ],
-      "owners": [
-        "贾森森"
-      ],
-      "repo": {
-        "url": "https://gitee.com/modelers/merlin-blogs",
-        "platform": "atomgit",
-        "owner": "modelers",
-        "repo": "merlin-blogs"
-      }
-    },
-    {
       "id": "atomgit/hifloat/hifloat-portal",
       "name": "HiFloat 官网",
       "serviceName": "官网",
@@ -493,7 +441,8 @@
         "基础设施服务"
       ],
       "owners": [
-        "贾森森"
+        "黄世俊",
+        "周琪"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/meeting-website",
@@ -510,7 +459,7 @@
         "基础设施服务"
       ],
       "owners": [
-        "贾森森"
+        "周琪"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/hwid-website",
@@ -544,7 +493,7 @@
         "基础设施服务"
       ],
       "owners": [
-        "李胜波"
+        "黄泽麟"
       ],
       "repo": {
         "url": "https://github.com/opensourceways/vLLM-dashboard-website",

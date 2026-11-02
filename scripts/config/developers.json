@@ -1,6 +1,6 @@
 {
   "meta": {
-    "purpose": "责任人姓名 → 平台账号映射：看板展示 @账号，并用于「首次响应」归因（该仓库责任人在对应平台的首条非创建者评论）",
+    "purpose": "责任人姓名 → 平台账号映射：看板展示 @账号，并用于「首次响应」归因（该仓库责任人在对应平台的首次回复）",
     "usage": "github 填 github.com 登录名，atomgit 填 atomgit.com 登录名；留空表示未配置，首次响应判定自动降级为「任意非创建者评论」（机器人除外）",
     "note": "责任人名单须与 services.json 的 owners 对齐；xlsx 新增责任人时同步在此登记。AtomGit issue 的 user.name 常为中文名，可用其 API 响应核对账号归属"
   },

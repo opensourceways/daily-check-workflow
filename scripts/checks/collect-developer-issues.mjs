@@ -10,6 +10,7 @@
 //   services.json    服务清单（服务名 / 责任人 / 仓库，源自 项目信息.xlsx）
 //   developers.json  责任人 → github / atomgit 平台账号映射（展示 + 首次响应归因）
 //   issue-sla.json   统计窗口起始日（since）与 SLA 阈值
+//   issue-routing.json  issue 关键词划归规则（不以仓库归属为准的 issue 按关键词划归责任人）
 //
 // 平台约定：
 //   github.com 仓库走 GitHub API（GITHUB_TOKEN 可选，opensourceways 私有仓必须）；
@@ -19,12 +20,16 @@
 // 口径：
 //   - 统计窗口：created_at ≥ since（北京时间当日 00:00）的 issue；PR 不计入；
 //   - 闭环率 = 已闭环 / 窗口内总数，目标 ≥ closureRate（默认 80%）；
-//   - 首次响应 = 首条「非创建者且非机器人」评论；该仓库责任人在对应平台的账号已配置时，
-//     仅统计责任人账号的首条回复（归因模式），全部未配置时降级为任意非创建者评论；
+//   - 首次响应：该仓库责任人在对应平台的账号已配置时（归因模式）仅统计责任人账号的首条回复，
+//     责任人自建 issue 的本人操作评论（如回复机器人 /accept）同样计为响应；
+//     全部未配置时降级为任意「非创建者且非机器人」的首条评论；
 //   - 响应达标 = 响应时长 ≤ firstResponseHours（默认 24h）；闭环达标 = 闭环时长 ≤ closureHours（默认 120h）；
 //   - 超时未响应 = open 且无响应且龄期超 firstResponseHours；超时未闭环 = open 且龄期超 closureHours；
 //   - 评论拉取失败的 issue：响应指标按「未知」处理，不参与达标率分母，详情表标 ⚠️；
 //   - 多责任人服务（如 openMind 官网）计入每位责任人的指标（详情表在各自分区重复展示）。
+//   - 关键词划归：标题/正文命中 issue-routing.json 规则的 issue 改计入规则 owner
+//     （如 [GEO *] / 【GEO】 整改 issue 统一划归张峻玮），不再计入原仓库责任人；
+//     首次响应亦按规则 owner 的平台账号归因；详情表以 🔄 标注划归去向。
 //
 // CLI：--since=YYYY-MM-DD（临时覆盖窗口起点） --developer=姓名（只采集其名下服务）
 //      --service=<services.json 里的 id>（单服务调试）
@@ -41,6 +46,7 @@ const OUTPUT = resolve(ROOT, 'dashboard', 'developer-issues-dashboard.md');
 const SERVICES_FILE = resolve(__dirname, '..', 'config', 'services.json');
 const DEVELOPERS_FILE = resolve(__dirname, '..', 'config', 'developers.json');
 const SLA_FILE = resolve(__dirname, '..', 'config', 'issue-sla.json');
+const ROUTING_FILE = resolve(__dirname, '..', 'config', 'issue-routing.json');
 
 const MAX_PAGES = 10; // 单仓库最多翻 10 页（1000 条），超出截断并在看板标注
 const COMMENT_DELAY_MS = 500; // 评论拉取间隔节流（AtomGit 匿名限流较紧，约 120 次/分钟档）
@@ -128,6 +134,7 @@ function normIssue(raw, platform, target) {
     updatedAt: raw.updated_at || raw.created_at || '',
     closedAt: closedAt || null,
     author: raw.user?.login || '',
+    body: typeof raw.body === 'string' ? raw.body : '', // 关键词划归匹配用（标题 + 正文）
     commentsCount: Number(raw.comments || 0),
     firstResponse: null, // { author, at, mode: 'dev' | 'any' }
     commentError: '',
@@ -187,13 +194,25 @@ async function fetchIssuesResilient(platform, target, sinceMs) {
 
 // ---- 首次响应判定 ----
 
-function devLoginsFor(svc, developersByName) {
+function devLoginsFor(owners, platform, developersByName) {
   const set = new Set();
-  for (const name of svc.owners) {
-    const id = developersByName.get(name)?.[svc.repo.platform];
+  for (const name of owners) {
+    const id = developersByName.get(name)?.[platform];
     if (id && String(id).trim()) set.add(String(id).trim().toLowerCase());
   }
   return set;
+}
+
+// ---- 关键词划归（scripts/config/issue-routing.json）----
+
+// 命中规则的 issue 改按规则 owner 统计与归因；未命中走仓库归属（services.json 的 owners）
+function matchRoutingRule(issue, rules) {
+  if (!rules.length) return null;
+  const text = `${issue.title || ''}\n${issue.body || ''}`;
+  for (const rule of rules) {
+    if (rule.keyword && text.includes(rule.keyword)) return rule;
+  }
+  return null;
 }
 
 async function fetchFirstResponse(platform, target, issue, devLogins) {
@@ -206,11 +225,15 @@ async function fetchFirstResponse(platform, target, issue, devLogins) {
     .map((c) => ({ author: c?.user?.login || '', at: c?.created_at || '' }))
     .filter((c) => c.at)
     .sort((a, b) => Date.parse(a.at) - Date.parse(b.at)); // AtomGit 评论倒序返回，必须自排序取最早
-  const eligible = comments.filter((c) => c.author && c.author !== issue.author && !isBotLogin(c.author));
-  // 归因模式：责任人平台 ID 已配置 → 只认责任人的首条回复；否则降级为任意非创建者评论
-  const byDev = devLogins.size ? eligible.filter((c) => devLogins.has(c.author.toLowerCase())) : null;
-  const chosen = byDev ? byDev[0] : eligible[0];
-  return chosen ? { author: chosen.author, at: chosen.at, mode: byDev ? 'dev' : 'any' } : null;
+  // 归因模式：责任人平台 ID 已配置 → 只认责任人账号的首条回复；责任人自建 issue（作者=责任人）时，
+  // 其本人的操作评论（如回复机器人 /accept）同样计为响应，不因「非创建者」被排除
+  if (devLogins.size) {
+    const byDev = comments.find((c) => c.author && !isBotLogin(c.author) && devLogins.has(c.author.toLowerCase()));
+    return byDev ? { author: byDev.author, at: byDev.at, mode: 'dev' } : null;
+  }
+  // 降级口径：任意「非创建者且非机器人」的首条评论
+  const eligible = comments.find((c) => c.author && c.author !== issue.author && !isBotLogin(c.author));
+  return eligible ? { author: eligible.author, at: eligible.at, mode: 'any' } : null;
 }
 
 // ---- 指标 ----
@@ -233,7 +256,7 @@ function metricsFor(issue, sla, nowMs) {
 }
 
 async function collectService(svc, ctx) {
-  const { sinceMs, sla, developersByName } = ctx;
+  const { sinceMs, sla, developersByName, routingRules } = ctx;
   const target = { owner: svc.repo.owner, repo: svc.repo.repo };
   const platform = svc.repo.platform;
   const entry = {
@@ -256,13 +279,19 @@ async function collectService(svc, ctx) {
     return entry;
   }
   entry.truncated = res.truncated;
-  const devLogins = devLoginsFor(svc, developersByName);
+  const devLogins = devLoginsFor(svc.owners, platform, developersByName);
   entry.attribution = devLogins.size ? 'dev' : 'any';
   const nowMs = Date.now();
   for (const issue of res.issues) {
+    // 关键词划归：命中规则的 issue 有效归属改为规则 owner（首次响应也按其平台账号归因）
+    const rule = matchRoutingRule(issue, routingRules);
+    issue.routedTo = rule ? rule.owner : '';
+    issue.routedBy = rule ? rule.keyword : '';
+    issue.owners = rule ? [rule.owner] : svc.owners;
+    const issueDevLogins = rule ? devLoginsFor(issue.owners, platform, developersByName) : devLogins;
     if (issue.commentsCount) {
       try {
-        issue.firstResponse = await fetchFirstResponse(platform, target, issue, devLogins);
+        issue.firstResponse = await fetchFirstResponse(platform, target, issue, issueDevLogins);
         await sleep(COMMENT_DELAY_MS); // AtomGit 匿名限流较紧，评论拉取间隔节流
       } catch (err) {
         issue.commentError = briefError(err);
@@ -278,9 +307,15 @@ async function collectService(svc, ctx) {
 
 function aggregateDeveloper(devName, ids, serviceResults, sla) {
   const mine = serviceResults.filter((r) => r.owners.includes(devName));
-  const ok = mine.filter((r) => !r.error);
   const failed = mine.filter((r) => r.error);
-  const issues = ok.flatMap((r) => r.issues);
+  // 指标口径：有效归属（issue.owners）含本人 —— 名下未被划走的 issue + 任何仓库按关键词划归给本人的 issue
+  const issues = serviceResults
+    .filter((r) => !r.error)
+    .flatMap((r) => r.issues.filter((i) => (i.owners || []).includes(devName)));
+  // 详情展示：非名下仓库中含划归给本人 issue 的服务（分区只展示划归 issue）
+  const routedFrom = serviceResults.filter(
+    (r) => !r.error && !r.owners.includes(devName) && r.issues.some((i) => i.routedTo === devName)
+  );
   const closed = issues.filter((i) => i.closed);
   const responded = issues.filter((i) => i.firstResponse);
   const respOnTime = responded.filter((i) => i.metrics.respH <= sla.firstResponseHours);
@@ -300,6 +335,7 @@ function aggregateDeveloper(devName, ids, serviceResults, sla) {
     name: devName,
     ids,
     services: mine,
+    routedFrom,
     failedServices: failed,
     total: issues.length,
     open: issues.length - closed.length,
@@ -332,7 +368,10 @@ function renderOverview(aggs, sla) {
   lines.push(`| 责任人 | 仓库 | 窗口内 issue | 未关闭 | 已闭环 | 闭环率（≥${Math.round(sla.closureRate * 100)}%） | 响应≤${sla.firstResponseHours}h² | 平均响应 | 超时未响应 | 闭环≤${sla.closureHours}h³ | 平均闭环 | 超时未闭环 | 综合 |`);
   lines.push('|------|------|------|------|------|------|------|------|------|------|------|------|------|');
   for (const a of aggs) {
-    const repoCell = a.services.length + (a.failedServices.length ? `（⚠️${a.failedServices.length} 失败）` : '');
+    const repoCell =
+      a.services.length +
+      (a.failedServices.length ? `（⚠️${a.failedServices.length} 失败）` : '') +
+      (a.routedFrom.length ? `（🔄${a.routedFrom.length}）` : '');
     const closureCell = a.total ? `${pct(a.closed, a.total)}（${a.closed}/${a.total}）${a.closureRate >= sla.closureRate ? '✅' : '❌'}` : '—';
     const respCell = a.responded ? `${pct(a.respOnTime, a.responded)}（${a.respOnTime}/${a.responded}）` : '—';
     const closeRateCell = a.closed ? `${pct(a.closedOnTime, a.closed)}（${a.closedOnTime}/${a.closed}）` : '—';
@@ -343,7 +382,7 @@ function renderOverview(aggs, sla) {
   return lines.join('\n');
 }
 
-function renderServiceSection(r, sla) {
+function renderServiceSection(r, sla, opts = {}) {
   const lines = [];
   const target = `${r.owners.length > 1 ? `${r.owners.join('、')} · ` : ''}${r.repoUrl}`;
   lines.push(`### ${esc(r.name)}（${r.id.slice(r.id.indexOf('/') + 1)} · ${r.platform}）`);
@@ -353,21 +392,26 @@ function renderServiceSection(r, sla) {
     lines.push('');
     return lines.join('\n');
   }
+  // opts.owner：非名下仓库的「划归视角」——只展示按关键词划归给该责任人的 issue
+  const shown = opts.owner ? r.issues.filter((i) => i.routedTo === opts.owner) : r.issues;
+  const routedCount = r.issues.filter((i) => i.routedTo).length;
   const attrText = r.attribution === 'dev'
-    ? '责任人账号首条回复（归因模式，ID 见 scripts/config/developers.json）'
+    ? '责任人账号首条回复（归因模式，其自建 issue 的本人操作评论如 /accept 也计为响应；ID 见 scripts/config/developers.json）'
     : '任意非创建者首条评论（责任人平台 ID 未配置，降级口径）';
   const bits = [`首次响应口径：${attrText}`];
   if (r.truncated) bits.push(`⚠️ issue 超过 ${MAX_PAGES * 100} 条被截断，指标为部分统计`);
+  if (opts.owner) bits.push(`🔄 非本责任人名下仓库，仅展示关键词划归 issue（规则：scripts/config/issue-routing.json）`);
+  else if (routedCount) bits.push(`🔄 ${routedCount} 条 issue 已按关键词划归他人（🔄→ 责任人），不计入本仓责任人指标`);
   lines.push(`> ${bits.join(' ｜ ')}`);
   lines.push('');
-  if (!r.issues.length) {
+  if (!shown.length) {
     lines.push('_统计窗口内无 issue。_');
     lines.push('');
     return lines.join('\n');
   }
   lines.push('| Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |');
   lines.push('|------|------|----------|----------|--------|----------|----------------|-----|');
-  const sorted = [...r.issues].sort((a, b) => Number(a.closed) - Number(b.closed) || String(a.createdAt).localeCompare(String(b.createdAt)));
+  const sorted = [...shown].sort((a, b) => Number(a.closed) - Number(b.closed) || String(a.createdAt).localeCompare(String(b.createdAt)));
   for (const i of sorted) {
     const stateCell = i.closed ? '已闭环' : '未关闭';
     let respAtCell = '—（未响应）';
@@ -376,8 +420,9 @@ function renderServiceSection(r, sla) {
     const respAuthor = i.firstResponse ? `@${esc(i.firstResponse.author)}` : '—';
     const durationCell = i.closed ? fmtH(i.metrics.closeH) : `开启 ${fmtH(i.metrics.ageH)}`;
     const slaCell = i.metrics.flags.length ? `🔴 ${i.metrics.flags.join('；')}` : i.closed ? '✅' : '🟢';
+    const routedTag = i.routedTo ? ` 🔄→${esc(i.routedTo)}` : '';
     lines.push(
-      `| [#${i.number}](${i.url}) ${esc(i.title)} | ${stateCell} | ${dateOnly(i.createdAt)} | ${respAtCell} | ${respAuthor} | ${fmtH(i.metrics.respH)} | ${durationCell} | ${slaCell} |`
+      `| [#${i.number}](${i.url}) ${esc(i.title)}${routedTag} | ${stateCell} | ${dateOnly(i.createdAt)} | ${respAtCell} | ${respAuthor} | ${fmtH(i.metrics.respH)} | ${durationCell} | ${slaCell} |`
     );
   }
   lines.push('');
@@ -399,6 +444,9 @@ function renderDeveloperSection(a, sla) {
   for (const svc of a.services) {
     lines.push(renderServiceSection(svc, sla));
   }
+  for (const svc of a.routedFrom || []) {
+    lines.push(renderServiceSection(svc, sla, { owner: a.name }));
+  }
   return lines.join('\n').trimEnd();
 }
 
@@ -419,6 +467,19 @@ const developersByName = new Map((developersConfig?.developers || []).map((d) =>
 
 const slaConfig = (await loadJson(SLA_FILE)) || {};
 const sla = { ...DEFAULT_SLA, ...(slaConfig.sla || {}) };
+
+// 关键词划归规则（issue-routing.json）：不以仓库归属为准的 issue 按规则划归
+const routingConfig = (await loadJson(ROUTING_FILE)) || {};
+const routingRules = (Array.isArray(routingConfig.rules) ? routingConfig.rules : [])
+  .filter((r) => r && typeof r.keyword === 'string' && r.keyword && typeof r.owner === 'string' && r.owner);
+if (Array.isArray(routingConfig.rules) && routingConfig.rules.length !== routingRules.length) {
+  console.log('[developer-issues] ⚠️ issue-routing.json 存在非法规则（缺 keyword/owner），已忽略');
+}
+if (routingRules.length) {
+  const ruleText = routingRules.map((r) => `“${r.keyword}”→${r.owner}`).join('、');
+  console.log(`[developer-issues] 划归规则 ${routingRules.length} 条：${ruleText}`);
+}
+
 const sinceStr = arg('since') || slaConfig.since || '';
 if (!/^\d{4}-\d{2}-\d{2}$/.test(sinceStr)) {
   console.error(`[developer-issues] 统计窗口起始日非法：“${sinceStr}”（issue-sla.json 的 since 或 --since=YYYY-MM-DD）`);
@@ -435,6 +496,7 @@ if (developerFilter) {
     console.error(`[developer-issues] 责任人 ${developerFilter} 名下无服务，可选：${[...new Set(services.flatMap((s) => s.owners))].join(', ')}`);
     process.exit(1);
   }
+  console.log('[developer-issues] 提示：--developer 只采集名下服务，非名下仓库的关键词划归 issue 需全量运行才会计入');
 }
 const serviceFilter = arg('service');
 if (serviceFilter) {
@@ -446,14 +508,15 @@ if (serviceFilter) {
   selected = [svc];
 }
 
-// 责任人清单：配置登记的 + services 里出现但未登记的（后者看板标注提醒补录）
+// 责任人清单：配置登记的 + services 里出现但未登记的 + 划归规则指定的（均看板标注提醒补录）
 const devNames = [];
 for (const d of developersConfig?.developers || []) if (!devNames.includes(d.name)) devNames.push(d.name);
 for (const s of selected) for (const o of s.owners) if (!devNames.includes(o)) devNames.push(o);
+for (const rule of routingRules) if (rule.owner && !devNames.includes(rule.owner)) devNames.push(rule.owner);
 const unregistered = devNames.filter((n) => !developersByName.has(n));
 
 console.log(`[developer-issues] 窗口起点 ${sinceStr}（北京时间），采集 ${selected.length} 个服务 / ${devNames.length} 位责任人...`);
-const ctx = { sinceMs, sla, developersByName };
+const ctx = { sinceMs, sla, developersByName, routingRules };
 const results = [];
 for (const svc of selected) {
   const r = await collectService(svc, ctx);
@@ -472,10 +535,11 @@ const aggregates = devNames
 
 let md = `# 开发者 Issue 闭环看板
 
-> 本文件由 \`scripts/checks/collect-developer-issues.mjs\` 自动生成（GitHub Action 定时执行，默认每 12 小时），请勿手动编辑。
+> 本文件由 \`scripts/checks/collect-developer-issues.mjs\` 自动生成（GitHub Action 定时执行，默认每 3 小时：北京时间 07 / 10 / 13 / 16 / 19 / 22 点），请勿手动编辑。
 > 生成时间：${now()}${developerFilter || serviceFilter ? '（本次为过滤采集：' + [developerFilter && `--developer=${developerFilter}`, serviceFilter && `--service=${serviceFilter}`].filter(Boolean).join(' ') + '）' : ''}
 > 统计窗口：**${sinceStr}**（北京时间当日 00:00）起创建的 issue；窗口起点与 SLA 阈值在 \`scripts/config/issue-sla.json\` 配置。
 > 仓库范围：\`scripts/config/services.json\`（源自 项目信息.xlsx）；github.com 仓库走 GitHub API，gitcode / gitee / atomgit 仓库按 AtomGit 同名镜像采集。
+> 关键词划归：标题/正文命中 \`scripts/config/issue-routing.json\` 规则的 issue（如 [GEO *] / 【GEO】）计入规则指定的责任人，不再计入原仓库责任人。
 > 与 [GEO Issue 看板](issues-dashboard.md) 相互独立：本看板面向**全部 issue** 的开发者闭环考核，而非 \`[GEO *]\` 整改 issue。
 
 ## 责任人总览
@@ -484,21 +548,23 @@ ${renderOverview(aggregates, sla)}
 
 > ² 响应达标率 = 首次响应 ≤ ${sla.firstResponseHours}h 的 issue / 已响应 issue（分母不含评论拉取失败者；目标 100%）。
 > ³ 闭环达标率 = 闭环时长 ≤ ${sla.closureHours}h 的 issue / 已闭环 issue（目标 100%）。
+> 仓库列（🔄n）= 另有 n 个非名下仓库的 issue 按关键词划归计入本行指标（规则：scripts/config/issue-routing.json）。
 > 综合标记：❌ 闭环率 < ${Math.round(sla.closureRate * 100)}% ｜ 🟡 闭环率达标但存在超时未响应 / 超时未闭环 ｜ ✅ 全部达标 ｜ ⚠️ 名下仓库全部采集失败 ｜ — 窗口内无 issue。
 
 ${aggregates.map((a) => renderDeveloperSection(a, sla)).join('\n\n')}
 
 ## 状态与口径说明
 
-- **闭环率**：已闭环 / 窗口内 issue 总数，目标 ≥ ${Math.round(sla.closureRate * 100)}%；**首次响应**：issue 创建者之外的首条评论（机器人账号排除），责任人平台 ID 已配置时仅统计责任人的首条回复；**闭环时长**：创建 → 闭环（AtomGit 的 finished_at / GitHub 的 closed_at）。
+- **闭环率**：已闭环 / 窗口内 issue 总数，目标 ≥ ${Math.round(sla.closureRate * 100)}%；**首次响应**：机器人账号排除后，责任人平台 ID 已配置时仅统计责任人账号的首条回复（其自建 issue 上的本人操作评论如 /accept 也计为响应），未配置时降级为任意非创建者首条评论；**闭环时长**：创建 → 闭环（AtomGit 的 finished_at / GitHub 的 closed_at）。
 - **超时未响应**：未关闭、无响应、龄期 > ${sla.firstResponseHours}h；**超时未闭环**：未关闭、龄期 > ${sla.closureHours}h。评论拉取失败的 issue 响应指标按「未知」处理（详情表 ⚠️），不计入超时。
 - 多责任人服务（如 openMind 官网）计入每位责任人的指标，详情表在各自分区重复展示；PR 不计入。
+- **关键词划归**：标题/正文命中 \`scripts/config/issue-routing.json\` 规则的 issue 计入规则指定的责任人（如 [GEO *] / 【GEO】 GEO 整改 issue），不再计入原仓库责任人；首次响应按规则责任人的平台账号归因，详情表以 🔄 标注划归去向。
 - 采集失败常见原因：GitHub 私有仓（需 repo secret \`HSJ_GITHUB_TOKEN\`——HSJ 账号且有 opensourceways 组织读权限的 PAT）；AtomGit 私有仓（需 repo secret \`HSJ_ATOMGIT_TOKEN\`）；AtomGit 404 = github / gitee 源仓库无同名镜像。
 - 单仓库 issue 超过 ${MAX_PAGES * 100} 条时截断并在服务分区标注（现量级不会触及）。
 
 ## 相关入口
 
-- [服务清单](../scripts/config/services.json)（服务名 / 责任人 / 仓库）· [责任人平台 ID 映射](../scripts/config/developers.json) · [SLA 配置](../scripts/config/issue-sla.json)
+- [服务清单](../scripts/config/services.json)（服务名 / 责任人 / 仓库）· [责任人平台 ID 映射](../scripts/config/developers.json) · [SLA 配置](../scripts/config/issue-sla.json) · [关键词划归规则](../scripts/config/issue-routing.json)
 - [采集脚本](../scripts/checks/collect-developer-issues.mjs) · [定时 workflow](../.github/workflows/developer-issues-dashboard.yml)
 - [GEO Issue 看板](issues-dashboard.md) · [GEO 整改看板](dashboard.md) · [总索引](../index.md)
 
@@ -509,7 +575,7 @@ ${aggregates.map((a) => renderDeveloperSection(a, sla)).join('\n\n')}
 node scripts/checks/collect-developer-issues.mjs
 
 # 临时覆盖统计窗口起点
-node scripts/checks/collect-developer-issues.mjs --since=2026-10-20
+node scripts/checks/collect-developer-issues.mjs --since=2026-11-01
 
 # 只采集某责任人名下服务 / 单个服务（调试）
 node scripts/checks/collect-developer-issues.mjs --developer=刘勇

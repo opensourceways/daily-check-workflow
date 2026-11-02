@@ -1,12 +1,13 @@
 name: Developer Issues Dashboard
 
-# 开发者 issue 闭环看板：按责任人聚合其名下仓库的 issue（闭环率 ≥80% / 首次响应 ≤24h / 闭环 ≤120h），
+# 开发者 issue 闭环看板：按责任人聚合 issue（名下仓库 + 关键词划归，闭环率 ≥80% / 首次响应 ≤24h / 闭环 ≤120h），
 # 全量重生成 dashboard/developer-issues-dashboard.md 并 commit 回本仓库。
 #
 # 配置位置（改这些不用动本文件）：
 #   scripts/config/services.json    服务清单：服务名 / 责任人 / 仓库（源自 项目信息.xlsx）
 #   scripts/config/developers.json  责任人 → github / atomgit 平台账号映射（展示 + 首次响应归因）
-#   scripts/config/issue-sla.json   统计窗口起始日（since）与 SLA 阈值
+#   scripts/config/issue-sla.json    统计窗口起始日（since）与 SLA 阈值
+#   scripts/config/issue-routing.json  issue 关键词划归规则（不以仓库归属为准的 issue，如 [GEO *] / 【GEO】 → 张峻玮）
 #
 # Token（HSJ 账号令牌）：
 #   HSJ_ATOMGIT_TOKEN   读 AtomGit 私有仓 issue（HSJ 账号在 AtomGit 的令牌）
@@ -14,12 +15,12 @@ name: Developer Issues Dashboard
 #                       未配置时 GitHub 侧退化为匿名（仅公共仓可读，opensourceways 多数仓为私有，会标采集失败）
 on:
   schedule:
-    # 默认每 12 小时一次（UTC 00:00 / 12:00，即北京时间 08:00 / 20:00）。
+    # 默认每 3 小时一次（北京时间 07 / 10 / 13 / 16 / 19 / 22 点；对应 UTC 23 / 2 / 5 / 8 / 11 / 14）。
     # 调整更新频率只改下面这一行：
     #   每小时一次      "0 * * * *"
     #   每天一次        "0 2 * * *"        （北京时间 10:00）
     #   每半天错峰      "30 1,13 * * *"
-    - cron: "0 */12 * * *"
+    - cron: "0 23,2,5,8,11,14 * * *"
   workflow_dispatch:
     inputs:
       since:

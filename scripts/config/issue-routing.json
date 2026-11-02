@@ -1,0 +1,11 @@
+{
+  "meta": {
+    "purpose": "issue 关键词划归规则：不以仓库归属为准的 issue（如散落在各项目仓的 GEO 整改 issue），按标题/正文关键词划归给指定责任人，统一闭环考核",
+    "usage": "keyword 为子串匹配（区分大小写，匹配 issue 标题或正文）；owner 为责任人姓名，须在 developers.json 登记平台账号；rules 按数组顺序匹配，命中即止；未命中任何规则的 issue 走仓库归属（services.json 的 owners）",
+    "effect": "命中规则的 issue 只计入规则 owner 的闭环指标（含首次响应归因，按 owner 的平台账号），不再计入原仓库 owners；看板详情表以 🔄 标注划归去向"
+  },
+  "rules": [
+    { "keyword": "【GEO】", "owner": "张峻玮" },
+    { "keyword": "[GEO", "owner": "张峻玮" }
+  ]
+}

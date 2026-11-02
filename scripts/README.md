@@ -113,7 +113,7 @@ node dashboard/generate-dashboard.mjs   # 从 stats 汇聚生成看板
 与 GEO Issue 看板（仅 `[GEO *]` 前缀）相互独立：面向**全部 issue** 的开发者闭环考核，统计统计窗口内创建的 issue，按责任人（config/services.json 的 owners，多责任人服务计入每位）聚合三项 SLA：
 
 - **闭环率**：已闭环 / 窗口内总数，目标 ≥80%
-- **首次响应**：issue 创建者之外的首条评论（机器人账号排除）；责任人平台账号已配置时仅统计责任人的首条回复（归因模式），未配置降级为任意非创建者评论；目标 ≤24h
+- **首次响应**：机器人账号排除后，责任人平台账号已配置时仅统计责任人账号的首条回复（归因模式，其自建 issue 上的本人操作评论如 /accept 也计为响应），未配置降级为任意非创建者评论；目标 ≤24h
 - **闭环时长**：创建 → 闭环（AtomGit finished_at / GitHub closed_at），目标 ≤120h
 
 采集平台：github.com 仓库走 GitHub API（`GITHUB_TOKEN`，Action 经 repo secret `HSJ_GITHUB_TOKEN` 注入；opensourceways 私有仓需该 PAT 有组织读权限，未配置时这些仓标采集失败）；gitcode / gitee / atomgit 仓库统一按 AtomGit 同 owner/repo 镜像采集（`ATOMGIT_TOKEN`，Action 经 repo secret `HSJ_ATOMGIT_TOKEN` 注入，私有仓必需；AtomGit 404 = 源仓库无镜像，看板标采集失败）。
