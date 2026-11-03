@@ -3,7 +3,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadProjects, filterProjects } from '../lib/config.mjs';
 import { getText, mapLimit, collectUrls } from '../lib/crawl.mjs';
-import { extractTitle, extractMeta } from '../lib/html.mjs';
+import { extractTitle, extractMeta, extractCanonical } from '../lib/html.mjs';
 import { createJsonLdAnalyzer, classifyJsonLd } from '../lib/jsonld.mjs';
 import { writeStats, now } from '../lib/report.mjs';
 import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueCommentBody } from '../lib/atomgit.mjs';
@@ -15,6 +15,9 @@ import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueComme
 // --dims=tdk / --dims=jsonld 可只跑单维度（另一维度的 stats/report 不动）。
 // JSON-LD 分级调整：P0 三件套缺失、Google 必填属性缺失 由硬性错误降级为告警（告警不提单）；
 // 提单触发仅剩：站点/sitemap 不可达、抓取全失败、整站无合法块、JSON 语法错误、@context 异常、占位符。
+// TDK 判重的 canonical 豁免（2026-11 新增）：同值重复组内所有页面都声明了 <link rel="canonical">
+// 且指向同一个规范版本 URL 时，视为站点已主动指定规范版本（搜索引擎只会索引 canonical 那一个页面），
+// 不算重复问题；此类组单独归入"canonical 豁免组"，仅列完全版报告供人工复核，不提单、不计入重复统计。
 const TDK_PREFIX = '[GEO TDK Duplicate]';
 const JSONLD_PREFIX = '[GEO JSON-LD]';
 const FIELDS = ['title', 'description', 'keywords'];
@@ -96,7 +99,8 @@ async function scanProject(project) {
         if (v === null) tdkMissing[field].noElement.push(url);
         else if (v === '') tdkMissing[field].empty.push(url);
       }
-      tdkPages.push({ url, title: raw.title ?? '', description: raw.description ?? '', keywords: raw.keywords ?? '' });
+      // canonical 一并抓下来：判重时用于"整组统一指向同一规范版本"的豁免判定（相对地址已解析为绝对）
+      tdkPages.push({ url, title: raw.title ?? '', description: raw.description ?? '', keywords: raw.keywords ?? '', canonical: extractCanonical(res.text, url) });
     }
     if (DO_JSONLD) jsonldAnalyzer.addPage(url, res.text);
     return true;
@@ -108,6 +112,7 @@ async function scanProject(project) {
 // ---- TDK 维度 ----
 
 // 判重只看有非空取值的页面；空值/缺失元素由独立的"缺失检查"统计，不重复计入判重
+// 按字段取值分组：value -> 组内页面数组（元素为 { url, canonical } 的页面对象，供 canonical 豁免判定用）
 function buildFieldMaps(pages) {
   const maps = new Map(FIELDS.map((f) => [f, new Map()]));
   for (const page of pages) {
@@ -116,16 +121,36 @@ function buildFieldMaps(pages) {
       if (!value) continue;
       const map = maps.get(field);
       if (!map.has(value)) map.set(value, []);
-      map.get(value).push(page.url);
+      map.get(value).push(page);
     }
   }
   return maps;
 }
 
-function getDuplicates(map) {
-  return [...map.entries()]
-    .filter(([, urls]) => urls.length > 1)
-    .sort((a, b) => b[1].length - a[1].length);
+// canonical 豁免判定：组内每一页都声明了 <link rel="canonical">，且这些 canonical 归一化后全部指向同一个目标 URL，
+// 说明站点已主动指定规范版本（重复页面只是别名 URL，搜索引擎只索引 canonical 页面），不算重复问题。
+// 注意：各页 canonical 指向自身（互不相同）、或部分页面没有 canonical，都不满足豁免条件，仍按重复处理。
+function isCanonicalExempt(pages) {
+  const canonicalSet = new Set();
+  for (const p of pages) {
+    if (!p.canonical) return false;
+    canonicalSet.add(p.canonical);
+  }
+  return canonicalSet.size === 1;
+}
+
+// 从字段分组 Map 拆出两类同值组（≥2 页）：
+// - duplicates：真重复组（进入重复统计与提单判定）
+// - exempted：整组统一 canonical 指向同一规范版本的豁免组（不提单，只在完全版报告列明细供复核）
+function splitDuplicateGroups(map) {
+  const duplicates = [];
+  const exempted = [];
+  for (const [value, pages] of map.entries()) {
+    if (pages.length < 2) continue;
+    (isCanonicalExempt(pages) ? exempted : duplicates).push([value, pages]);
+  }
+  const bySize = (a, b) => b[1].length - a[1].length;
+  return { duplicates: duplicates.sort(bySize), exempted: exempted.sort(bySize) };
 }
 
 function buildTdkEntry(project, scan) {
@@ -139,6 +164,7 @@ function buildTdkEntry(project, scan) {
     failed: scan.failed,
     notes: scan.notes,
     duplicates: {},
+    canonicalExempt: {},
     missing: scan.tdkMissing,
   };
   const missingCounts = FIELDS.map((f) => {
@@ -149,19 +175,26 @@ function buildTdkEntry(project, scan) {
 
   const maps = buildFieldMaps(scan.tdkPages);
   for (const field of FIELDS) {
-    const duplicates = getDuplicates(maps.get(field));
-    const dupPages = duplicates.reduce((n, [, us]) => n + us.length, 0);
+    const { duplicates, exempted } = splitDuplicateGroups(maps.get(field));
+    const dupPages = duplicates.reduce((n, [, ps]) => n + ps.length, 0);
     entry.duplicates[field] = {
       groups: duplicates.length,
       pages: dupPages,
-      list: duplicates.map(([value, us]) => ({ value: value || '(缺失)', count: us.length, urls: us })),
+      list: duplicates.map(([value, ps]) => ({ value: value || '(缺失)', count: ps.length, urls: ps.map((p) => p.url) })),
     };
+    // canonical 豁免组：整组页面统一 <link rel="canonical"> 指向同一规范版本，不计重复，单独存档供人工复核
+    entry.canonicalExempt[field] = {
+      groups: exempted.length,
+      pages: exempted.reduce((n, [, ps]) => n + ps.length, 0),
+      list: exempted.map(([value, ps]) => ({ value: value || '(缺失)', count: ps.length, canonical: ps[0].canonical, urls: ps.map((p) => p.url) })),
+    };
+    const exemptNote = exempted.length ? `（另有 ${exempted.length} 组因统一 canonical 指向同一规范版本被豁免，不计重复）` : '';
     if (duplicates.length) {
-      console.log(`[tdk-dup] ${project.id} / ${field}：${duplicates.length} 组重复，涉及 ${dupPages} 页`);
+      console.log(`[tdk-dup] ${project.id} / ${field}：${duplicates.length} 组重复，涉及 ${dupPages} 页${exemptNote}`);
       for (const [value, us] of duplicates.slice(0, 5)) console.log(`  [重复 ${us.length} 次] ${value || '(缺失)'}`);
       if (duplicates.length > 5) console.log(`  ... 其余 ${duplicates.length - 5} 组详见报告文件`);
     } else {
-      console.log(`[tdk-dup] ${project.id} / ${field}：无重复`);
+      console.log(`[tdk-dup] ${project.id} / ${field}：无重复${exemptNote}`);
     }
   }
   if (entry.failed.length) console.log(`[tdk-dup] ${project.id}: ${entry.failed.length} 个页面抓取失败，未计入统计`);
@@ -171,6 +204,7 @@ function buildTdkEntry(project, scan) {
 function tdkZeroState() {
   return {
     duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
+    canonicalExempt: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
     missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
   };
 }
@@ -231,6 +265,23 @@ function tdkDetailLines(r) {
       for (const u of g.urls) lines.push(`- ${su(u)}`);
     }
   }
+  // canonical 豁免组明细：整组页面统一 <link rel="canonical"> 指向同一规范版本的同值组，
+  // 判重时已被豁免（不计入上面的重复组），这里仅列出供人工复核豁免是否属实
+  for (const field of FIELDS) {
+    const e = r.canonicalExempt?.[field];
+    if (!e || !e.groups) continue;
+    lines.push('');
+    lines.push(`#### ${field} canonical 豁免组（不计入重复）`);
+    lines.push('');
+    lines.push(`共 ${e.groups} 组涉及 ${e.pages} 个页面：组内每页都声明了 <link rel="canonical"> 且指向同一个规范版本 URL，视为站点主动指定规范版本（搜索引擎仅索引规范版本），不作为重复问题`);
+    for (const g of e.list) {
+      lines.push('');
+      lines.push(`##### [豁免 ${g.count} 页 · 共同 canonical] ${g.value}`);
+      lines.push('');
+      lines.push(`- 规范版本：${su(g.canonical)}`);
+      for (const u of g.urls) lines.push(`- ${su(u)}`);
+    }
+  }
   const m = r.missing;
   if (m) {
     lines.push('');
@@ -273,6 +324,15 @@ function tdkBriefLines(r) {
     }
     if (d.list.length > 3) lines.push(`- …其余 ${d.list.length - 3} 组见完全版报告`);
   }
+  // 简短版只报豁免数量，豁免组明细见完全版报告
+  const exemptParts = FIELDS.map((f) => {
+    const e = r.canonicalExempt?.[f];
+    return e && e.groups ? `${f} ${e.groups} 组（涉及 ${e.pages} 页）` : null;
+  }).filter(Boolean);
+  if (exemptParts.length) {
+    lines.push('');
+    lines.push(`**canonical 豁免**：${exemptParts.join('；')} —— 组内每页均有 <link rel="canonical"> 且统一指向同一规范版本，不计重复（明细见完全版报告）`);
+  }
   const m = r.missing;
   if (m && missingTotal(r) > 0) {
     lines.push('');
@@ -299,6 +359,7 @@ function tdkHeaderBlock(title) {
     '',
     `- 检查时间：${startedAt}`,
     '- 检查方式：按 sitemap 全量页面逐页请求 HTML（与 JSON-LD 维度共用同一份抓取），对 title（`<title>`）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`）按原文精确分组，同值 ≥2 页记为重复组；空值/缺失不参与判重，单独在"TDK 缺失检查"中列出（区分元素缺失/内容为空）',
+    '- canonical 豁免：同值组内每一页都声明了 `<link rel="canonical">` 且统一指向同一个规范版本 URL 时，视为站点已主动指定规范版本，不计重复；此类组单列在"canonical 豁免组"章节供复核',
     '',
   ];
 }
@@ -319,7 +380,7 @@ function tdkIssueBodyFor(r, fullFileName) {
   lines.push('');
   lines.push('### 处理说明');
   lines.push('');
-  lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同');
+  lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同；若确属同一内容的多个别名 URL，也可改为让组内每页都用 `<link rel="canonical">` 指向同一个规范版本（统一 canonical 的组会被自动豁免，不再提单）');
   lines.push('- 缺失项：为"元素缺失"的页面补上 `<title>` / `<meta name="description">` / `<meta name="keywords">`，为"内容为空"的页面填入实际描述');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复提单（若同轮 JSON-LD 维度另有未关闭 issue，共用抓取仍会照常进行，但本维度不再产出结论）');
   lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
@@ -600,6 +661,7 @@ if (DO_TDK) {
   lines.push(`- 检查时间：${startedAt}`);
   lines.push('- 检查方式：按 sitemap 全量页面逐页请求 HTML 分组判重（title/description/keywords），数据与 JSON-LD 维度共用同一份抓取（脚本已合并为 check-tdk-jsonld.mjs）');
   lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
+  lines.push('- canonical 豁免：同值组内所有页面均声明 `<link rel="canonical">` 且指向同一规范版本时，视为站点主动指定规范版本（搜索引擎仅索引规范版本），不计重复；豁免组数与明细单列于各项目报告的"canonical 豁免组"章节及 stats JSON 的 canonicalExempt 字段');
   lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}；本次维度：${DIMS.join('、')}`);
   if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
   lines.push('- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（与 JSON-LD 维度共用同一跳过清单）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面');
@@ -724,6 +786,6 @@ if (DO_JSONLD) {
 const compactTdk = (r) =>
   r.skipped
     ? { dim: 'tdk', id: r.projectId, verdict: '⏭️', issueAction: r.issueAction }
-    : { dim: 'tdk', id: r.projectId, urlCount: r.urlCount, fetched: r.fetched, failed: r.failed.length, dupGroups: FIELDS.map((f) => r.duplicates[f]?.groups ?? 0).join('/'), missingPages: missingTotal(r), issueAction: r.issueAction, issueUrl: r.issueUrl };
+    : { dim: 'tdk', id: r.projectId, urlCount: r.urlCount, fetched: r.fetched, failed: r.failed.length, dupGroups: FIELDS.map((f) => r.duplicates[f]?.groups ?? 0).join('/'), canonicalExemptGroups: FIELDS.map((f) => r.canonicalExempt?.[f]?.groups ?? 0).join('/'), missingPages: missingTotal(r), issueAction: r.issueAction, issueUrl: r.issueUrl };
 const compactJsonld = (r) => ({ dim: 'jsonld', id: r.projectId, verdict: r.skipped ? '⏭️' : r.verdict, errors: r.hardErrors, warnings: (r.warnings || []).length, issueAction: r.issueAction, issueUrl: r.issueUrl });
 console.log(JSON.stringify([...tdkResults.map(compactTdk), ...jsonldResults.map(compactJsonld)], null, 2));

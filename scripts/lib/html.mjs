@@ -17,6 +17,32 @@ export function extractMeta(html, name) {
   return null;
 }
 
+// 提取 <link rel="canonical" href="..."> 的规范化目标 URL（TDK 重复维度的 canonical 豁免用）。
+// - rel 按空格分词精确匹配 canonical（避免误中 rel="prev canonical-x" 之类畸形值）；href 在 rel 前后均可
+// - 多个 canonical 标签时按搜索引擎惯例取第一个非空 href
+// - 相对路径基于页面 URL 解析为绝对地址；解析失败（非法 URL）视为无 canonical
+// - 去掉 hash 片段（canonical 指向同页带锚点与不带锚点应视为同一目标）
+export function extractCanonical(html, baseUrl) {
+  const re = /<link\b[^>]*>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const tag = m[0];
+    const rel = extractAttr(tag, 'rel');
+    if (!rel || !rel.toLowerCase().split(/\s+/).includes('canonical')) continue;
+    const href = extractAttr(tag, 'href');
+    if (!href) continue;
+    try {
+      const u = new URL(href, baseUrl);
+      if (!/^https?:$/.test(u.protocol)) return null;
+      u.hash = '';
+      return u.href;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export function extractJsonLd(html) {
   const blocks = [];
   const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
