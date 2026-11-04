@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-03T13:25:41.374Z
+> 生成时间：2026-11-04T13:36:36.241Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -28,7 +28,7 @@
 | JSON-LD | [#363](https://atomgit.com/openeuler/openEuler-portal/issues/363) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | [!3345](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3345)（进行中） | 2026-10-24 | 2026-10-29 |
 | Link Check | [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) openEuler 官网（openEuler-portal）：发现 638 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#362](https://atomgit.com/openeuler/openEuler-portal/issues/362) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
-| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3368](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3368)（进行中） | 2026-11-02 | 2026-11-02 |
+| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3371](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3371)（进行中）<br>[!3368](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3368)（进行中） | 2026-11-02 | 2026-11-02 |
 
 ## openEuler 文档（openEuler-docs）
 
