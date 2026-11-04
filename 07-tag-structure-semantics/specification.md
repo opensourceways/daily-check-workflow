@@ -35,6 +35,27 @@
   - 重复：一个HTML中可以存在多个`<header>`、`<footer>`，但在同一时刻，只能有一个元素是可见的（未被设置 aria-hidden 属性以及css `display: none`），否则记为不合法（❌）
   - 层级结构：禁止自嵌套，`<header>`、`<footer>`的后代及祖先元素中不可以存在`<header>`或`<footer>`，如有则记为不合法（❌）
 
+- `<nav>`
+
+  - 重复：页面中可以存在多个`<nav>`，但是各个`<nav>`须有`aria-label`或`aria-labelledby`来区分用途
+
+    ```html
+    <header>
+      <nav aria-labelledby="primary-navigation">
+        <h2 id="primary-navigation">Primary navigation</h2>
+        <!-- navigation items -->
+      </nav>
+    </header>
+
+    <!-- page content -->
+
+    <footer>
+      <nav aria-label="footer-navigation">
+        <!-- navigation items -->
+      </nav>
+    </footer>
+    ```
+
 - `<main>`
 
   - 缺失：页面缺失顶层`<main>`，记为缺失（❌）
