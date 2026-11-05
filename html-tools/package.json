@@ -1,0 +1,22 @@
+{
+  "name": "seo-html-tools",
+  "version": "1.1.0",
+  "description": "SEO/GEO 辅助脚本：to-md-snapshot 抓正文快照、calc-content-fit 算贴合度",
+  "type": "module",
+  "bin": {
+    "to-md-snapshot": "./to-md-snapshot.js",
+    "calc-content-fit": "./calc-content-fit.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "commander": "^15.0.0",
+    "modern-ahocorasick": "^3.3.0",
+    "turndown": "^7.2.4"
+  }
+}
