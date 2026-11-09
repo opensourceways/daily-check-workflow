@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-08T12:34:50.239Z
+> 生成时间：2026-11-09T14:52:25.895Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -9,7 +9,7 @@
 
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
-| openEuler 官网（openEuler-portal） | 5 | 3 | 2 |
+| openEuler 官网（openEuler-portal） | 5 | 2 | 3 |
 | openEuler 文档（openEuler-docs） | 4 | 0 | 4 |
 | openGauss 官网（openGauss-portal） | 4 | 0 | 4 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
@@ -24,17 +24,17 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | [!3358](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3358)（进行中）<br>[!3352](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3352)（进行中） | 2026-10-28 | 2026-10-30 |
-| JSON-LD | [#363](https://atomgit.com/openeuler/openEuler-portal/issues/363) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | [!3345](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3345)（进行中） | 2026-10-24 | 2026-10-29 |
+| HTML Semantic | [#368](https://atomgit.com/openeuler/openEuler-portal/issues/368) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 127 处规范问题 | open（未关闭） | [!3352](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3352)（进行中）<br>[!3358](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3358)（已合并） | 2026-10-28 | 2026-10-30 |
+| JSON-LD | [#383](https://atomgit.com/openeuler/openEuler-portal/issues/383) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-11-09 | 2026-11-09 |
 | Link Check | [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) openEuler 官网（openEuler-portal）：发现 638 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#362](https://atomgit.com/openeuler/openEuler-portal/issues/362) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
-| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3368](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3368)（进行中）<br>[!3372](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3372)（已合并）<br>[!3371](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3371)（已合并） | 2026-11-02 | 2026-11-02 |
+| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3378](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3378)（已合并）<br>[!3372](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3372)（已合并）<br>[!3371](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3371)（已合并） | 2026-11-02 | 2026-11-09 |
 
 ## openEuler 文档（openEuler-docs）
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#82](https://atomgit.com/openeuler/docs-website/issues/82) openEuler 文档（openEuler-docs）：抽样页面 HTML 语义化检查发现 70 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
+| HTML Semantic | [#82](https://atomgit.com/openeuler/docs-website/issues/82) openEuler 文档（openEuler-docs）：抽样页面 HTML 语义化检查发现 70 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-11-09 |
 | JSON-LD | [#78](https://atomgit.com/openeuler/docs-website/issues/78) openEuler 文档（openEuler-docs）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | llms.txt | [#77](https://atomgit.com/openeuler/docs-website/issues/77) openEuler 文档（openEuler-docs）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-24 | 2026-10-24 |
 | Sitemap | [#76](https://atomgit.com/openeuler/docs-website/issues/76) openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
