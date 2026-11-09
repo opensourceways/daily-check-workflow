@@ -11,6 +11,7 @@
   "links": {
     "workers": 5,
     "timeoutSeconds": 15,
-    "delaySeconds": 0.5
+    "delaySeconds": 0.5,
+    "issueStatuses": [404]
   }
 }

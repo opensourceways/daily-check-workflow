@@ -17,7 +17,7 @@ on:
         type: boolean
         default: false
       force_check:
-        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭）"
+        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭。提单口径默认仅 404，见 check-rules.json 的 links.issueStatuses；报告仍记录全部失效状态）"
         required: false
         type: boolean
         default: false
