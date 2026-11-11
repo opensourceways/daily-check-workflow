@@ -21,9 +21,14 @@ import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueComme
 // TDK 白名单跳过（2026-11 新增）：projects.config.json 各项目 tdkWhitelist 数组 + CLI --tdk-whitelist=（逗号分隔）取并集，
 // 条目以 / 开头按 URL pathname 前缀匹配、否则按正则匹配（完整 URL 与 pathname 任一命中即算）；命中页面在 TDK 维度整页跳过（不判重/不计缺失），
 // JSON-LD 维度不受影响；--tdk-whitelist= 传空 = 白名单整体关闭。跳过数量与明细入报告与 stats（whitelistSkipped）。
+// TDK 分级调整（2026-11 新增）：keywords 重复由硬性触发降级为告警——重复组明细仍列于报告与 stats 供整改参考，但不再触发提单；
+// 提单触发仅剩：title/description 重复（canonical 豁免后）、三字段任一缺失。强制复检时若仅剩 keywords 重复，同样按"问题已消除"处理（可 /close 原 issue）。
 const TDK_PREFIX = '[GEO TDK Duplicate]';
 const JSONLD_PREFIX = '[GEO JSON-LD]';
 const FIELDS = ['title', 'description', 'keywords'];
+// keywords 重复为告警级（2026-11 起降级，不提单）；缺失不受影响，三字段缺失仍为提单触发
+const DUP_ISSUE_FIELDS = ['title', 'description'];
+const DUP_WARN_FIELDS = ['keywords'];
 // docs 大站（页面量级大且历史版本同页 TDK 同值属预期）两个维度共用同一默认跳过清单；--skip= 传空可强制全查
 const DEFAULT_SKIP = ['openeuler-docs', 'opengauss-docs', 'mindspore-docs'];
 
@@ -251,8 +256,9 @@ function buildTdkEntry(project, scan) {
       list: exempted.map(([value, ps]) => ({ value: value || '(缺失)', count: ps.length, canonical: ps[0].canonical, urls: ps.map((p) => p.url) })),
     };
     const exemptNote = exempted.length ? `（另有 ${exempted.length} 组因统一 canonical 指向同一规范版本被豁免，不计重复）` : '';
+    const warnNote = DUP_WARN_FIELDS.includes(field) ? '（告警级，不触发提单）' : '';
     if (duplicates.length) {
-      console.log(`[tdk-dup] ${project.id} / ${field}：${duplicates.length} 组重复，涉及 ${dupPages} 页${exemptNote}`);
+      console.log(`[tdk-dup] ${project.id} / ${field}：${duplicates.length} 组重复，涉及 ${dupPages} 页${warnNote}${exemptNote}`);
       for (const [value, us] of duplicates.slice(0, 5)) console.log(`  [重复 ${us.length} 次] ${value || '(缺失)'}`);
       if (duplicates.length > 5) console.log(`  ... 其余 ${duplicates.length - 5} 组详见报告文件`);
     } else {
@@ -293,7 +299,11 @@ function missingTotal(r) {
 }
 
 function hasAnyIssueTdk(r) {
-  return !r.skipped && (FIELDS.some((f) => r.duplicates[f]?.groups > 0) || missingTotal(r) > 0);
+  return !r.skipped && (DUP_ISSUE_FIELDS.some((f) => r.duplicates[f]?.groups > 0) || missingTotal(r) > 0);
+}
+
+function hasWarnDupTdk(r) {
+  return !r.skipped && DUP_WARN_FIELDS.some((f) => r.duplicates[f]?.groups > 0);
 }
 
 function tdkDetailLines(r) {
@@ -329,7 +339,7 @@ function tdkDetailLines(r) {
     const d = r.duplicates[field];
     if (!d) continue;
     lines.push('');
-    lines.push(`#### ${field} 重复检查`);
+    lines.push(`#### ${field} 重复检查${DUP_WARN_FIELDS.includes(field) ? '（告警级，不触发提单）' : ''}`);
     lines.push('');
     lines.push(`共 ${d.groups} 组重复，涉及 ${d.pages} 个页面`);
     if (!d.groups) continue;
@@ -393,7 +403,7 @@ function tdkBriefLines(r) {
     const d = r.duplicates[field];
     if (!d || !d.groups) continue;
     lines.push('');
-    lines.push(`**${field}**：${d.groups} 组重复，涉及 ${d.pages} 个页面`);
+    lines.push(`**${field}**${DUP_WARN_FIELDS.includes(field) ? '（告警级，不触发提单）' : ''}：${d.groups} 组重复，涉及 ${d.pages} 个页面`);
     for (const g of d.list.slice(0, 3)) {
       const value = g.value.length > 80 ? `${g.value.slice(0, 80)}…` : g.value;
       lines.push(`- [重复 ${g.count} 次] \`${value}\``);
@@ -438,6 +448,7 @@ function tdkHeaderBlock(title) {
     `- 检查时间：${startedAt}`,
     '- 检查方式：按 sitemap 全量页面逐页请求 HTML（与 JSON-LD 维度共用同一份抓取），对 title（`<title>`）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`）按原文精确分组，同值 ≥2 页记为重复组；空值/缺失不参与判重，单独在"TDK 缺失检查"中列出（区分元素缺失/内容为空）',
     '- canonical 豁免：同值组内每一页都声明了 `<link rel="canonical">` 且统一指向同一个规范版本 URL 时，视为站点已主动指定规范版本，不计重复；此类组单列在"canonical 豁免组"章节供复核',
+    '- 分级说明（2026-11 起）：keywords 重复为告警级——重复组明细仍列于本报告与 stats 供整改参考，但不触发提单；提单触发条件 = title/description 重复（canonical 豁免后）或三字段任一缺失',
     '- 白名单跳过：URL 命中项目配置的 `tdkWhitelist`（projects.config.json）或 `--tdk-whitelist` 参数（两者并集；以 `/` 开头的条目按 URL 路径前缀匹配，其余按正则匹配（完整 URL 与 pathname 任一命中））的页面整页不参与判重与缺失检查，明细见完全版报告"TDK 白名单跳过页面"章节；仅影响 TDK 维度，JSON-LD 维度不受影响',
     '',
   ];
@@ -445,7 +456,7 @@ function tdkHeaderBlock(title) {
 
 function tdkIssueBodyFor(r, fullFileName) {
   const lines = [];
-  lines.push(`本 issue 由 GEO 例行检查（TDK 重复性维度）自动生成。以下为 TDK（title/description/keywords）重复与缺失问题，按 sitemap 全量页面逐页抓取后判重/查缺得出（${dateStr}）。`);
+  lines.push(`本 issue 由 GEO 例行检查（TDK 重复性维度）自动生成。以下为 TDK（title/description/keywords）重复与缺失问题，按 sitemap 全量页面逐页抓取后判重/查缺得出（${dateStr}）。分级说明（2026-11 起）：keywords 重复为告警级，仅列于下方供整改参考，不作为本 issue 的提单依据。`);
   lines.push('');
   lines.push(`**项目**：${r.projectName}（${r.projectId}）`);
   lines.push('');
@@ -459,7 +470,7 @@ function tdkIssueBodyFor(r, fullFileName) {
   lines.push('');
   lines.push('### 处理说明');
   lines.push('');
-  lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同；若确属同一内容的多个别名 URL，也可改为让组内每页都用 `<link rel="canonical">` 指向同一个规范版本（统一 canonical 的组会被自动豁免，不再提单）');
+  lines.push('- 重复项：修复对应页面的 title / description，使各页面取值不再彼此相同；keywords 重复为告警级，可酌情一并整改（不阻塞本 issue 关闭）；若确属同一内容的多个别名 URL，也可改为让组内每页都用 `<link rel="canonical">` 指向同一个规范版本（统一 canonical 的组会被自动豁免，不再提单）');
   lines.push('- 缺失项：为"元素缺失"的页面补上 `<title>` / `<meta name="description">` / `<meta name="keywords">`，为"内容为空"的页面填入实际描述');
   lines.push('- 白名单：若某些页面的同值/缺失确属预期（如模板页、归档页、内部页），可评论告知维护者，由其将对应路径前缀（以 `/` 开头）或 URL 正则配置到检查仓库 projects.config.json 该项目的 `tdkWhitelist` 数组，后续检查将整页跳过这些 URL（仅 TDK 维度，JSON-LD 不受影响）');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复提单（若同轮 JSON-LD 维度另有未关闭 issue，共用抓取仍会照常进行，但本维度不再产出结论）');
@@ -503,7 +514,7 @@ async function finalizeTdk(project, pre, entry) {
     if (outcome.action !== 'none') entry.issueAction = outcome.action;
     if (outcome.url) entry.issueUrl = outcome.url;
   } else {
-    console.log(`[tdk-dup] ${project.id}: 未发现重复与缺失，不提 issue`);
+    console.log(`[tdk-dup] ${project.id}: 无提单触发项，不提 issue${hasWarnDupTdk(entry) ? '（有 keywords 重复告警，见报告）' : ''}`);
   }
   return entry;
 }
@@ -741,6 +752,7 @@ if (DO_TDK) {
   lines.push(`- 检查时间：${startedAt}`);
   lines.push('- 检查方式：按 sitemap 全量页面逐页请求 HTML 分组判重（title/description/keywords），数据与 JSON-LD 维度共用同一份抓取（脚本已合并为 check-tdk-jsonld.mjs）');
   lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
+  lines.push('- 分级说明（2026-11 起）：keywords 重复降级为告警——重复组明细仍列于各项目报告及 stats JSON，供整改参考，但不计入提单触发条件；提单触发 = title/description 重复（canonical 豁免后）或三字段任一缺失');
   lines.push('- canonical 豁免：同值组内所有页面均声明 `<link rel="canonical">` 且指向同一规范版本时，视为站点主动指定规范版本（搜索引擎仅索引规范版本），不计重复；豁免组数与明细单列于各项目报告的"canonical 豁免组"章节及 stats JSON 的 canonicalExempt 字段');
   lines.push('- 白名单跳过：URL 命中项目配置的 `tdkWhitelist`（projects.config.json）或 `--tdk-whitelist` 参数（两者并集；以 `/` 开头的条目按 URL 路径前缀匹配、其余按正则匹配（完整 URL 与 pathname 任一命中），`--tdk-whitelist=` 传空整体关闭）的页面整页不参与判重与缺失检查；跳过明细见各项目报告"TDK 白名单跳过页面"章节及 stats JSON 的 whitelistSkipped 字段；仅影响 TDK 维度，JSON-LD 维度不受影响');
   lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}；本次维度：${DIMS.join('、')}`);
@@ -762,10 +774,19 @@ if (DO_TDK) {
     const d = r.duplicates;
     const fmt = (f) => (d && d[f] ? `${d[f].groups}/${d[f].pages}` : '-');
     const fmtM = r.missing ? FIELDS.map((f) => (r.missing[f]?.noElement.length ?? 0) + (r.missing[f]?.empty.length ?? 0)).join('/') : '-';
-    const hasDup = d && FIELDS.some((f) => d[f] && d[f].groups > 0);
+    const hasHardDup = DUP_ISSUE_FIELDS.some((f) => d?.[f]?.groups > 0);
+    const hasWarnDup = hasWarnDupTdk(r);
     const hasMissing = missingTotal(r) > 0;
     const tag = r.issueUrl ? `，[issue](${r.issueUrl})` : '';
-    const verdict = r.urlCount === 0 ? `❌ 无法检查${tag}` : hasDup ? (hasMissing ? `⚠️ 存在重复+缺失${tag}` : `⚠️ 存在重复${tag}`) : hasMissing ? `⚠️ 存在缺失${tag}` : `✅ 正常${tag}`;
+    const verdict = r.urlCount === 0
+      ? `❌ 无法检查${tag}`
+      : hasHardDup
+        ? (hasMissing ? `⚠️ 存在重复+缺失${tag}` : `⚠️ 存在重复${tag}`)
+        : hasMissing
+          ? `⚠️ 存在缺失${tag}`
+          : hasWarnDup
+            ? `⚠️ keywords 重复（告警级，不触发提单）`
+            : `✅ 正常${tag}`;
     lines.push(`| ${r.projectName}（${r.projectId}） | ${r.urlCount} | ${r.fetched} | ${r.failed.length} | ${fmt('title')} | ${fmt('description')} | ${fmt('keywords')} | ${fmtM} | ${verdict} |`);
   }
   lines.push('');
