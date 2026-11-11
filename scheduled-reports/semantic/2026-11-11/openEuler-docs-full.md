@@ -1,6 +1,6 @@
 # HTML 语义化检查完全版报告 · openEuler 文档（openEuler-docs）
 
-- 检查时间：2026-11-11T02:43:22.519Z
+- 检查时间：2026-11-11T03:04:54.876Z
 - 规范来源：**measures/10-HTML-semantic-check/规范.md「检查细节」**（header/footer/main/h1~h6/img alt/a 的缺失·重复·层级结构判定）；06/07/08 未覆盖项（黑名单文本、外链 noopener、失效锚点、alt 质量等）为附加项
 检查抽样范围：门户类 = 首页（meta-refresh 跟随）+ 至多 4 个 sitemap 栏目页；文档类 = /zh/、/en/ 文档首页
 - 解析口径：线上静态/SSR HTML 剔除 `<script>`/`<style>`/注释/`<noscript>` 后构建元素树；不含 JS 运行时插入的 DOM
@@ -12,7 +12,7 @@
 
 | 抽查页面数 | 检查细节(10) | 附加项(06/07/08) | 其中 warn | 不可访问 |
 | --- | --- | --- | --- | --- |
-| 2 | 4 | 36 | 0 | 0 |
+| 2 | 4 | 0 | 36 | 0 |
 
 ## 抽查页面
 
@@ -28,7 +28,7 @@
     - existing=0
 - ❌ [10·img] `<img>` 不存在 alt 属性：1 处
     - src=https://www.openeuler.openatom.cn/footer/images/police.png
-- ❌ [06·附加] 外链 target=_blank 缺 rel=noopener：18 处
+- ⚠️ [06·附加] 外链 target=_blank 缺 rel=noopener：18 处
     - href=https://openatom.cn，rel=(无)
     - text=木兰开源社区，href=https://portal.mulanos.cn/，rel=(无)
     - text=鲲鹏社区，href=https://www.hikunpeng.com/zh/，rel=(无)
@@ -47,7 +47,7 @@
     - existing=0
 - ❌ [10·img] `<img>` 不存在 alt 属性：1 处
     - src=https://www.openeuler.openatom.cn/footer/images/police.png
-- ❌ [06·附加] 外链 target=_blank 缺 rel=noopener：18 处
+- ⚠️ [06·附加] 外链 target=_blank 缺 rel=noopener：18 处
     - href=https://openatom.cn，rel=(无)
     - text=木兰开源社区，href=https://portal.mulanos.cn/，rel=(无)
     - text=鲲鹏社区，href=https://www.hikunpeng.com/zh/，rel=(无)

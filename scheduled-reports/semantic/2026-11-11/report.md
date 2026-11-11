@@ -1,6 +1,6 @@
 # HTML 元素语义化规范抽查报告
 
-- 检查时间：2026-11-11T02:43:22.519Z
+- 检查时间：2026-11-11T03:04:54.876Z
 - 运行模式：提 issue（--submit-issues，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close）
 - 指定项目：--site=openEuler-docs
 - 规范来源：**measures/10-HTML-semantic-check/规范.md「检查细节」**（header/footer/main/h1~h6/img alt/a 的缺失·重复·层级结构判定）；06/07/08 未覆盖项（黑名单文本、外链 noopener、失效锚点、alt 质量等）为附加项
@@ -15,7 +15,7 @@
 
 | 项目 | 抽查页面数 | 检查细节(10) | 附加项(06/07/08) | 其中 warn | 不可访问 | 结论 |
 | --- | --- | --- | --- | --- | --- | --- |
-| openEuler 文档（openEuler-docs） | 2 | 4 | 36 | 0 | 0 | ❌，[issue](https://atomgit.com/openeuler/docs-website/issues/82) |
+| openEuler 文档（openEuler-docs） | 2 | 4 | 0 | 36 | 0 | ❌，[issue](https://atomgit.com/openeuler/docs-website/issues/82) |
 
 ## 问题类型汇总
 
@@ -23,7 +23,7 @@
 | --- | --- | --- | --- | --- | --- |
 | header/footer | 10 检查细节 | ❌ | 缺顶层 `<header>`（banner） | 2 | openEuler-docs(2) |
 | img | 10 检查细节 | ❌ | `<img>` 不存在 alt 属性 | 2 | openEuler-docs(2) |
-| 附加 | 06 附加 | ❌ | 外链 target=_blank 缺 rel=noopener | 36 | openEuler-docs(36) |
+| 附加 | 06 附加 | ⚠️ | 外链 target=_blank 缺 rel=noopener | 36 | openEuler-docs(36) |
 
 ## 各项目明细
 
