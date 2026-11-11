@@ -103,9 +103,12 @@ function toContentHtml(html) {
 
 function parseAttrs(s) {
   const attrs = {};
-  const re = /([:@a-zA-Z_.-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+  const re = /(?:"[^"]*"|'[^']*')|([:@a-zA-Z_.-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
   let m;
-  while ((m = re.exec(s)) !== null) attrs[m[1].toLowerCase()] = m[2] ?? m[3] ?? m[4] ?? '';
+  while ((m = re.exec(s)) !== null) {
+    if (!m[1]) continue;
+    attrs[m[1].toLowerCase()] = m[2] ?? m[3] ?? m[4] ?? '';
+  }
   return attrs;
 }
 
