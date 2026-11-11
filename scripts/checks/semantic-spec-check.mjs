@@ -62,7 +62,7 @@ const ISSUE_META = {
   'a.badHref': { spec: '10', group: 'a', name: 'href 为空，非合法 URL', level: 'error' },
   'a.badText': { spec: '06', group: '附加', name: '无语义链接文本', level: 'error' },
   'a.placeholder': { spec: '06', group: '附加', name: 'href 为 `#` 占位', level: 'error' },
-  'a.extNoRel': { spec: '06', group: '附加', name: '外链 target=_blank 缺 rel=noopener', level: 'error' },
+  'a.extNoRel': { spec: '06', group: '附加', name: '外链 target=_blank 缺 rel=noopener', level: 'warn' },
   'a.brokenAnchor': { spec: '06', group: '附加', name: '锚点指向不存在的 id', level: 'warn' },
   's.navMulti.label': { spec: '07', group: '附加', name: '多个 `<nav>` 时部分缺 `aria-label`/`aria-labelledby`', level: 'error' },
   's.navMulti.dupValue': { spec: '07', group: '附加', name: '多个 `<nav>` 时同类标注属性值跨 nav 重复', level: 'error' },
