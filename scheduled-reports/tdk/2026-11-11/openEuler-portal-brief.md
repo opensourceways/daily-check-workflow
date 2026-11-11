@@ -1,8 +1,9 @@
 # TDK 重复检查简短报告 · openEuler 官网（openEuler-portal）
 
-- 检查时间：2026-11-11T09:06:33.153Z
+- 检查时间：2026-11-11T10:15:32.868Z
 - 检查方式：按 sitemap 全量页面逐页请求 HTML（与 JSON-LD 维度共用同一份抓取），对 title（`<title>`）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`）按原文精确分组，同值 ≥2 页记为重复组；空值/缺失不参与判重，单独在"TDK 缺失检查"中列出（区分元素缺失/内容为空）
 - canonical 豁免：同值组内每一页都声明了 `<link rel="canonical">` 且统一指向同一个规范版本 URL 时，视为站点已主动指定规范版本，不计重复；此类组单列在"canonical 豁免组"章节供复核
+- 分级说明（2026-11 起）：keywords 重复为告警级——重复组明细仍列于本报告与 stats 供整改参考，但不触发提单；提单触发条件 = title/description 重复（canonical 豁免后）或三字段任一缺失
 - 白名单跳过：URL 命中项目配置的 `tdkWhitelist`（projects.config.json）或 `--tdk-whitelist` 参数（两者并集；以 `/` 开头的条目按 URL 路径前缀匹配，其余按正则匹配（完整 URL 与 pathname 任一命中））的页面整页不参与判重与缺失检查，明细见完全版报告"TDK 白名单跳过页面"章节；仅影响 TDK 维度，JSON-LD 维度不受影响
 
 - 检查范围：sitemap 全量页面 2042 个，成功抓取 1720 个（失败 2 个不计入）
@@ -35,13 +36,13 @@
   - https://www.openeuler.org/zh/blog/20220707-LibcarePlus-rebuding/20220707-LibcarePlus-rebuding 
 - …其余 3 组见完全版报告
 
-**keywords**：44 组重复，涉及 656 个页面
+**keywords**（告警级，不触发提单）：44 组重复，涉及 656 个页面
 - [重复 456 次] `openEuler`
   - https://www.openeuler.org/en/news/202030721-Buzz/202030721-Buzz 
   - https://www.openeuler.org/en/news/20230911-OSSUMMIT-en/20230911-OSSUMMIT-en 
   - https://www.openeuler.org/en/news/20231213-risc-v%20-%20en/Untitled-1 
   - https://www.openeuler.org/en/news/20240307-openEuler%20Global%20Ecosystem%20Collaboration%20Workshop/ 
-  - https://www.openeuler.org/en/news/20240329-OpenChain%20Workshop%202024%20Wrap-up/ 
+  - https://www.openeuler.org/en/news/20240422-openEuler%20Shines%20Alongside%20Partners%20at%20FOSSASIA%20Summit%202024/ 
   - …其余 451 个见完全版报告
 - [重复 41 次] `openEuler, 社区运作报告`
   - https://www.openeuler.org/zh/news/20221227-11%E6%9C%88%E6%9C%88%E6%8A%A5/%E6%9C%88%E6%8A%A5 
