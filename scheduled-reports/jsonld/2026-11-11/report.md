@@ -1,6 +1,6 @@
 # JSON-LD 规范检查报告
 
-- 检查时间：2026-11-11T01:41:00.083Z
+- 检查时间：2026-11-11T06:50:23.826Z
 - 检查范围：projects.config.json 中 1 个项目（跳过：openEuler-docs）
 - 运行模式：提 issue（--submit-issues，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close）；本次维度：jsonld
 - 指定项目：--site=openEuler-docs
