@@ -18,6 +18,9 @@ import { parseOwnerRepo, precheckExistingIssues, reconcileIssue, closeIssueComme
 // TDK 判重的 canonical 豁免（2026-11 新增）：同值重复组内所有页面都声明了 <link rel="canonical">
 // 且指向同一个规范版本 URL 时，视为站点已主动指定规范版本（搜索引擎只会索引 canonical 那一个页面），
 // 不算重复问题；此类组单独归入"canonical 豁免组"，仅列完全版报告供人工复核，不提单、不计入重复统计。
+// TDK 白名单跳过（2026-11 新增）：projects.config.json 各项目 tdkWhitelist 数组 + CLI --tdk-whitelist=（逗号分隔）取并集，
+// 条目以 / 开头按 URL pathname 前缀匹配、否则按正则匹配（完整 URL 与 pathname 任一命中即算）；命中页面在 TDK 维度整页跳过（不判重/不计缺失），
+// JSON-LD 维度不受影响；--tdk-whitelist= 传空 = 白名单整体关闭。跳过数量与明细入报告与 stats（whitelistSkipped）。
 const TDK_PREFIX = '[GEO TDK Duplicate]';
 const JSONLD_PREFIX = '[GEO JSON-LD]';
 const FIELDS = ['title', 'description', 'keywords'];
@@ -44,6 +47,43 @@ const SKIPS = skipArg
   : force ? [] : DEFAULT_SKIP;
 const dimsArg = process.argv.find((a) => a.startsWith('--dims='));
 const DIMS = (dimsArg ? dimsArg.split('=')[1] : 'tdk,jsonld').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+// ---- TDK 维度页面级跳过白名单（2026-11 新增）----
+// 两个来源取并集：projects.config.json 各项目的 tdkWhitelist 数组 + CLI --tdk-whitelist=（逗号分隔；正则含逗号时改配 config）。
+// --tdk-whitelist= 显式传空 = 白名单整体失效（含 config 配置项），与 --skip= 传空覆盖约定一致。
+// 条目匹配规则：以 / 开头 → 按 URL pathname 前缀匹配（路径写法）；其余 → 按正则匹配（对完整 URL 与 pathname 分别测试，任一命中即算，
+// 因此 ^/zh/sig/... 这类路径锚定写法同样可用；编译失败退化为子串匹配）。
+// 命中页面在 TDK 维度整页跳过（不判重、不计缺失；仅 dims=tdk 单跑时连抓取也省掉），JSON-LD 维度不受影响照常分析。
+const tdkWhitelistArg = process.argv.find((a) => a.startsWith('--tdk-whitelist='));
+const CLI_TDK_WHITELIST = tdkWhitelistArg
+  ? tdkWhitelistArg.slice('--tdk-whitelist='.length).split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
+if (tdkWhitelistArg && CLI_TDK_WHITELIST.length && siteId) {
+  console.log(`[tdk-dup] --tdk-whitelist 为全局生效参数（与所有项目的 tdkWhitelist 配置取并集），不按 --site 过滤`);
+}
+
+function tdkWhitelistFor(project) {
+  if (tdkWhitelistArg && CLI_TDK_WHITELIST.length === 0) return [];
+  const configured = Array.isArray(project.tdkWhitelist) ? project.tdkWhitelist.map((s) => String(s).trim()).filter(Boolean) : [];
+  const merged = CLI_TDK_WHITELIST ? [...configured, ...CLI_TDK_WHITELIST] : configured;
+  return [...new Set(merged)];
+}
+
+function buildTdkWhitelistMatchers(entries) {
+  return entries.map((entry) => {
+    if (entry.startsWith('/')) {
+      return { entry, match: (u) => { try { return new URL(u).pathname.startsWith(entry); } catch { return false; } } };
+    }
+    try {
+      const re = new RegExp(entry);
+      // 完整 URL 与 pathname 分别测试：^https://... 站点锚定与 ^/zh/sig/... 路径锚定两种写法都能命中
+      return { entry, match: (u) => { if (re.test(u)) return true; try { return re.test(new URL(u).pathname); } catch { return false; } } };
+    } catch {
+      console.warn(`[tdk-dup] 白名单条目 "${entry}" 不是合法正则，退化为完整 URL 子串匹配`);
+      return { entry, match: (u) => u.includes(entry) };
+    }
+  });
+}
 const unknownDims = DIMS.filter((d) => d !== 'tdk' && d !== 'jsonld');
 if (unknownDims.length) {
   console.error(`--dims 仅支持 tdk/jsonld，收到：${unknownDims.join('、')}`);
@@ -76,22 +116,39 @@ function fullUrlOf(dimDir, fileName) {
 async function scanProject(project) {
   const { urls, notes } = await collectUrls(project, { maxPages: MAX_PAGES });
   notes.forEach((n) => console.log(`[tdk-jsonld] ${project.id}: ${n}`));
-  if (urls.length) console.log(`[tdk-jsonld] ${project.id}: 共 ${urls.length} 个页面，开始抓取（并发 ${CONCURRENCY}，两维度共用）...`);
+  // TDK 白名单：命中页面从 TDK 分析集中剔除（JSON-LD 分析集不动）
+  const whitelistPatterns = tdkWhitelistFor(project);
+  const matchers = buildTdkWhitelistMatchers(whitelistPatterns);
+  let whitelistSkipped = [];
+  let tdkUrls = urls;
+  if (DO_TDK && matchers.length) {
+    const kept = [];
+    for (const u of urls) {
+      if (matchers.some((m) => m.match(u))) whitelistSkipped.push(u);
+      else kept.push(u);
+    }
+    tdkUrls = kept;
+    if (whitelistSkipped.length) notes.push(`TDK 白名单跳过 ${whitelistSkipped.length}/${urls.length} 个页面（命中 tdkWhitelist/--tdk-whitelist 的路径前缀或正则，不参与判重/缺失检查）`);
+  }
+  const skippedSet = new Set(whitelistSkipped);
+  // 抓取集：jsonld 要跑时全量抓（两维度共用一份 HTML），只跑 tdk 时白名单命中页直接免抓
+  const crawlUrls = DO_JSONLD ? urls : tdkUrls;
+  if (urls.length) console.log(`[tdk-jsonld] ${project.id}: 共 ${urls.length} 个页面，开始抓取（并发 ${CONCURRENCY}，两维度共用${whitelistSkipped.length ? `，其中 ${whitelistSkipped.length} 页 TDK 白名单跳过` : ''}）...`);
   const failed = [];
   const tdkPages = [];
   const tdkMissing = Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }]));
   const jsonldAnalyzer = DO_JSONLD ? createJsonLdAnalyzer() : null;
 
   let done = 0;
-  const okFlags = await mapLimit(urls, CONCURRENCY, async (url) => {
+  const okFlags = await mapLimit(crawlUrls, CONCURRENCY, async (url) => {
     const res = await getText(url);
     done++;
-    if (done % 500 === 0 || done === urls.length) console.log(`[tdk-jsonld] ${project.id}: ${done}/${urls.length}`);
+    if (done % 500 === 0 || done === crawlUrls.length) console.log(`[tdk-jsonld] ${project.id}: ${done}/${crawlUrls.length}`);
     if (!res.ok) {
       failed.push({ url, status: res.status ?? '请求失败' });
       return false;
     }
-    if (DO_TDK) {
+    if (DO_TDK && !skippedSet.has(url)) {
       const raw = {
         title: extractTitle(res.text),
         description: extractMeta(res.text, 'description'),
@@ -109,7 +166,7 @@ async function scanProject(project) {
     return true;
   });
 
-  return { urls, notes, failed, tdkPages, tdkMissing, jsonldAnalyzer, fetched: okFlags.filter(Boolean).length };
+  return { urls, notes, failed, tdkPages, tdkMissing, jsonldAnalyzer, fetched: okFlags.filter(Boolean).length, whitelistSkipped, whitelistPatterns };
 }
 
 // ---- TDK 维度 ----
@@ -169,7 +226,9 @@ function buildTdkEntry(project, scan) {
     duplicates: {},
     canonicalExempt: {},
     missing: scan.tdkMissing,
+    whitelistSkipped: { patterns: scan.whitelistPatterns, count: scan.whitelistSkipped.length, urls: scan.whitelistSkipped },
   };
+  if (entry.whitelistSkipped.count) console.log(`[tdk-dup] ${project.id}: TDK 白名单跳过 ${entry.whitelistSkipped.count} 个页面（规则：${entry.whitelistSkipped.patterns.join('、')}）`);
   const missingCounts = FIELDS.map((f) => {
     const m = entry.missing[f];
     return `${f}=${m.noElement.length + m.empty.length}`;
@@ -209,6 +268,7 @@ function tdkZeroState() {
     duplicates: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
     canonicalExempt: Object.fromEntries(FIELDS.map((f) => [f, { groups: 0, pages: 0, list: [] }])),
     missing: Object.fromEntries(FIELDS.map((f) => [f, { noElement: [], empty: [] }])),
+    whitelistSkipped: { patterns: [], count: 0, urls: [] },
   };
 }
 
@@ -252,6 +312,18 @@ function tdkDetailLines(r) {
     lines.push(`- 抓取失败清单（前 ${shown.length} 个）：`);
     for (const f of shown) lines.push(`  - ${f.url} → ${f.status}`);
     if (r.failed.length > shown.length) lines.push(`  - ... 其余 ${r.failed.length - shown.length} 个见 stats JSON`);
+  }
+  // TDK 白名单：命中路径前缀/正则的页面整页跳过判重与缺失检查，明细列于此供复核白名单是否配置得当
+  const wl = r.whitelistSkipped;
+  if (wl && wl.count) {
+    lines.push('');
+    lines.push(`#### TDK 白名单跳过页面（共 ${wl.count} 页，不参与判重/缺失检查）`);
+    lines.push('');
+    lines.push(`白名单规则（projects.config.json 的 tdkWhitelist 与 --tdk-whitelist 并集）：${wl.patterns.map((p) => `\`${p}\``).join('、')}`);
+    lines.push('');
+    const shown = wl.urls.slice(0, DETAIL_CAP);
+    for (const u of shown) lines.push(`- ${su(u)}`);
+    if (wl.urls.length > shown.length) lines.push(`- …其余 ${wl.urls.length - shown.length} 个见 stats JSON（tdk-duplicate-stats.json 的 whitelistSkipped.urls）`);
   }
   for (const field of FIELDS) {
     const d = r.duplicates[field];
@@ -314,6 +386,9 @@ function tdkDetailLines(r) {
 function tdkBriefLines(r) {
   const lines = [];
   lines.push(`- 检查范围：sitemap 全量页面 ${r.urlCount} 个，成功抓取 ${r.fetched} 个（失败 ${r.failed.length} 个不计入）`);
+  if (r.whitelistSkipped?.count) {
+    lines.push(`- TDK 白名单跳过 ${r.whitelistSkipped.count} 个页面（命中路径前缀或正则，不参与判重/缺失检查；明细见完全版报告）`);
+  }
   for (const field of FIELDS) {
     const d = r.duplicates[field];
     if (!d || !d.groups) continue;
@@ -363,6 +438,7 @@ function tdkHeaderBlock(title) {
     `- 检查时间：${startedAt}`,
     '- 检查方式：按 sitemap 全量页面逐页请求 HTML（与 JSON-LD 维度共用同一份抓取），对 title（`<title>`）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`）按原文精确分组，同值 ≥2 页记为重复组；空值/缺失不参与判重，单独在"TDK 缺失检查"中列出（区分元素缺失/内容为空）',
     '- canonical 豁免：同值组内每一页都声明了 `<link rel="canonical">` 且统一指向同一个规范版本 URL 时，视为站点已主动指定规范版本，不计重复；此类组单列在"canonical 豁免组"章节供复核',
+    '- 白名单跳过：URL 命中项目配置的 `tdkWhitelist`（projects.config.json）或 `--tdk-whitelist` 参数（两者并集；以 `/` 开头的条目按 URL 路径前缀匹配，其余按正则匹配（完整 URL 与 pathname 任一命中））的页面整页不参与判重与缺失检查，明细见完全版报告"TDK 白名单跳过页面"章节；仅影响 TDK 维度，JSON-LD 维度不受影响',
     '',
   ];
 }
@@ -385,6 +461,7 @@ function tdkIssueBodyFor(r, fullFileName) {
   lines.push('');
   lines.push('- 重复项：修复对应页面的 title / description / keywords，使各页面取值不再彼此相同；若确属同一内容的多个别名 URL，也可改为让组内每页都用 `<link rel="canonical">` 指向同一个规范版本（统一 canonical 的组会被自动豁免，不再提单）');
   lines.push('- 缺失项：为"元素缺失"的页面补上 `<title>` / `<meta name="description">` / `<meta name="keywords">`，为"内容为空"的页面填入实际描述');
+  lines.push('- 白名单：若某些页面的同值/缺失确属预期（如模板页、归档页、内部页），可评论告知维护者，由其将对应路径前缀（以 `/` 开头）或 URL 正则配置到检查仓库 projects.config.json 该项目的 `tdkWhitelist` 数组，后续检查将整页跳过这些 URL（仅 TDK 维度，JSON-LD 不受影响）');
   lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复提单（若同轮 JSON-LD 维度另有未关闭 issue，共用抓取仍会照常进行，但本维度不再产出结论）');
   lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某组重复属预期（如多语言/模板页），请在 issue 评论说明，维护者会关闭本 issue');
@@ -665,9 +742,12 @@ if (DO_TDK) {
   lines.push('- 检查方式：按 sitemap 全量页面逐页请求 HTML 分组判重（title/description/keywords），数据与 JSON-LD 维度共用同一份抓取（脚本已合并为 check-tdk-jsonld.mjs）');
   lines.push('- 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）');
   lines.push('- canonical 豁免：同值组内所有页面均声明 `<link rel="canonical">` 且指向同一规范版本时，视为站点主动指定规范版本（搜索引擎仅索引规范版本），不计重复；豁免组数与明细单列于各项目报告的"canonical 豁免组"章节及 stats JSON 的 canonicalExempt 字段');
+  lines.push('- 白名单跳过：URL 命中项目配置的 `tdkWhitelist`（projects.config.json）或 `--tdk-whitelist` 参数（两者并集；以 `/` 开头的条目按 URL 路径前缀匹配、其余按正则匹配（完整 URL 与 pathname 任一命中），`--tdk-whitelist=` 传空整体关闭）的页面整页不参与判重与缺失检查；跳过明细见各项目报告"TDK 白名单跳过页面"章节及 stats JSON 的 whitelistSkipped 字段；仅影响 TDK 维度，JSON-LD 维度不受影响');
   lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}；本次维度：${DIMS.join('、')}`);
   if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
   lines.push('- 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（与 JSON-LD 维度共用同一跳过清单）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面');
+  const wlActive = tdkResults.filter((r) => !r.skipped && r.whitelistSkipped?.count);
+  if (wlActive.length) lines.push(`- 本次白名单跳过：${wlActive.map((r) => `${r.projectId} 跳过 ${r.whitelistSkipped.count} 页（规则：${r.whitelistSkipped.patterns.map((p) => `\`${p}\``).join('、')}）`).join('；')}`);
   lines.push('- 完整重复组与缺失数据见：scripts/stats/tdk-duplicate-stats.json');
   lines.push('');
   lines.push('## 总览');
@@ -789,6 +869,6 @@ if (DO_JSONLD) {
 const compactTdk = (r) =>
   r.skipped
     ? { dim: 'tdk', id: r.projectId, verdict: '⏭️', issueAction: r.issueAction }
-    : { dim: 'tdk', id: r.projectId, urlCount: r.urlCount, fetched: r.fetched, failed: r.failed.length, dupGroups: FIELDS.map((f) => r.duplicates[f]?.groups ?? 0).join('/'), canonicalExemptGroups: FIELDS.map((f) => r.canonicalExempt?.[f]?.groups ?? 0).join('/'), missingPages: missingTotal(r), issueAction: r.issueAction, issueUrl: r.issueUrl };
+    : { dim: 'tdk', id: r.projectId, urlCount: r.urlCount, fetched: r.fetched, failed: r.failed.length, whitelistSkipped: r.whitelistSkipped?.count ?? 0, dupGroups: FIELDS.map((f) => r.duplicates[f]?.groups ?? 0).join('/'), canonicalExemptGroups: FIELDS.map((f) => r.canonicalExempt?.[f]?.groups ?? 0).join('/'), missingPages: missingTotal(r), issueAction: r.issueAction, issueUrl: r.issueUrl };
 const compactJsonld = (r) => ({ dim: 'jsonld', id: r.projectId, verdict: r.skipped ? '⏭️' : r.verdict, errors: r.hardErrors, warnings: (r.warnings || []).length, issueAction: r.issueAction, issueUrl: r.issueUrl });
 console.log(JSON.stringify([...tdkResults.map(compactTdk), ...jsonldResults.map(compactJsonld)], null, 2));

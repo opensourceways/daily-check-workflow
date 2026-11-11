@@ -10,7 +10,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 ## 仓库结构
 
-- `projects.config.json`：项目清单。关键字段：`id`、`name`、`repo`（gitcode URL，可解析出 AtomGit owner/repo）、`domain/domainAlias`、`sitemapUrl/sitemapAliasUrl`、`robotsUrl/robotsAliasUrl`（robots 维度：仅两者齐备的项目做主域/alias 一致性检查）、`llmsUrl`、`newVersions`（docs 站版本过滤）、`linkScan`（失效链接维度：`branch`/`urlPrefix`/`excludeFiles`/`excludeDomains`/`excludeUrls`，仅配置的 4 个 portal 项目扫描）。
+- `projects.config.json`：项目清单。关键字段：`id`、`name`、`repo`（gitcode URL，可解析出 AtomGit owner/repo）、`domain/domainAlias`、`sitemapUrl/sitemapAliasUrl`、`robotsUrl/robotsAliasUrl`（robots 维度：仅两者齐备的项目做主域/alias 一致性检查）、`llmsUrl`、`newVersions`（docs 站版本过滤）、`tdkWhitelist`（TDK 维度页面级跳过白名单：路径前缀（`/` 开头）或正则条目数组（正则测完整 URL 与 pathname 任一命中），与 CLI `--tdk-whitelist=` 取并集，命中页面不参与 TDK 判重/缺失，JSON-LD 不受影响；openEuler-portal 已配 `^/(?:zh|en)/(?:sig|blog|news)/[^/]+$`）、`linkScan`（失效链接维度：`branch`/`urlPrefix`/`excludeFiles`/`excludeDomains`/`excludeUrls`，仅配置的 4 个 portal 项目扫描）。
 - `scripts/lib/`：`config.mjs`（loadProjects/filterProjects）、`http.mjs`（fetchText）、`sitemap.mjs`（parseSitemap，含 index 子 sitemap）、`html.mjs`（extractTitle/extractMeta，引号感知）、`robots.mjs`（parseRobots 分组 + 禁整站/路径格式/Content-Signal 比对）、`report.mjs`（writeStats/now）、`atomgit.mjs`（API 客户端 + parseOwnerRepo）、`link-scan.mjs`（死链检测支撑：clone 源码仓 + URL 提取/清洗/变量过滤 + HEAD/GET 并发探测，check-links 专用）。
 - `scripts/config/check-rules.json`：可调规则（含 `robots.contentSignalExpected` 期望值、`links` 死链探测参数 `workers/timeoutSeconds/delaySeconds`；改规范口径只改这里，勿改脚本）。
 - `scripts/checks/check-<dim>-*.mjs` / `<dim>-spec-check.mjs`：维度脚本；根 `package.json` 加 `check:<x>` 短命令。
@@ -32,7 +32,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 ## 模板参考实现（TDK 重复维度）
 
-- `scripts/checks/check-tdk-jsonld.mjs` —— 完整流程模板（2026-10 由 check-tdk-duplicate.mjs 与 check-jsonld.mjs 合并：sitemap 全量逐页抓取，`--dims=tdk,jsonld` 两维度共用同一份 HTML；查重/写回仍按维度独立。单维度分析器在 `scripts/lib/jsonld.mjs`，共用抓取在 `scripts/lib/crawl.mjs`）
+- `scripts/checks/check-tdk-jsonld.mjs` —— 完整流程模板（2026-10 由 check-tdk-duplicate.mjs 与 check-jsonld.mjs 合并：sitemap 全量逐页抓取，`--dims=tdk,jsonld` 两维度共用同一份 HTML；查重/写回仍按维度独立。单维度分析器在 `scripts/lib/jsonld.mjs`，共用抓取在 `scripts/lib/crawl.mjs`；TDK 维度另有页面级跳过白名单：项目 `tdkWhitelist` 配置 ∪ CLI `--tdk-whitelist=`（逗号分隔，`/` 开头=URL 路径前缀匹配、否则=正则匹配（完整 URL 与 pathname 任一命中），传空整体关闭；命中页不参与 TDK 判重/缺失，JSON-LD 不受影响；现网已配：openEuler-portal `^/(?:zh|en)/(?:sig|blog|news)/[^/]+$`））
 - `scripts/lib/atomgit.mjs` —— AtomGit API 封装（全局 fetch，零依赖）+ 提单流程公共实现（`precheckExistingIssues` 查重 / `reconcileIssue` 新建·更新·/close 写回 / `closeIssueCommentBody`）
 - `.github/workflows/tdk-jsonld-check.yml` —— Action 编排模板
 - `measures/05-tdk/检测方式.md`、`工具与脚本.md` —— 文档写法参照

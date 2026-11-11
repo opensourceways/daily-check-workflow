@@ -12,6 +12,9 @@
       "sitemapUrl": "https://www.openeuler.org/sitemap.xml",
       "sitemapAliasUrl": "https://www.openeuler.openatom.cn/sitemap.xml",
       "llmsUrl": "https://www.openeuler.org/llms.txt",
+      "tdkWhitelist": [
+        "^/(?:zh|en)/(?:sig|blog|news)/[^/]+$"
+      ],
       "linkScan": {
         "branch": "master",
         "urlPrefix": "/zh",
