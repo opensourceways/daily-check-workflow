@@ -28,7 +28,7 @@ on:
         type: boolean
         default: false
       force_check:
-        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭。两维度各自判定）"
+        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截，并绕过默认跳过清单——3 个 docs 大站也会真扫描；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭。两维度各自判定）"
         required: false
         type: boolean
         default: false

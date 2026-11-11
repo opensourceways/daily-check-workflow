@@ -29,7 +29,7 @@ const ROOT = resolve(__dirname, '..', '..');
 
 const submitIssues = process.argv.includes('--submit-issues');
 const dryRun = process.argv.includes('--dry-run');
-// --force 仅在 --submit-issues 模式下生效：跳过"已有未关闭 issue 即跳过扫描"的查重拦截（两维度一致）
+// --force 强制执行：跳过"已有未关闭 issue 即跳过扫描"的查重拦截（两维度一致），并绕过默认跳过清单；写回 issue 仍需配 --submit-issues
 const force = process.argv.includes('--force');
 const siteArg = process.argv.find((a) => a.startsWith('--site='));
 const siteId = siteArg ? siteArg.split('=')[1] : null;
@@ -38,7 +38,10 @@ const MAX_PAGES = maxArg ? Number(maxArg.split('=')[1]) : Infinity;
 const concArg = process.argv.find((a) => a.startsWith('--conc='));
 const CONCURRENCY = concArg ? Number(concArg.split('=')[1]) : 10;
 const skipArg = process.argv.find((a) => a.startsWith('--skip='));
-const SKIPS = skipArg ? skipArg.split('=')[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : DEFAULT_SKIP;
+// --force 强制执行时绕过默认跳过清单（--skip 显式传入的仍生效）：勾选强制即要求逐项目真扫
+const SKIPS = skipArg
+  ? skipArg.split('=')[1].split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+  : force ? [] : DEFAULT_SKIP;
 const dimsArg = process.argv.find((a) => a.startsWith('--dims='));
 const DIMS = (dimsArg ? dimsArg.split('=')[1] : 'tdk,jsonld').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 const unknownDims = DIMS.filter((d) => d !== 'tdk' && d !== 'jsonld');

@@ -39,7 +39,7 @@ description: 为 daily-check-workflow 仓库的某个维度（tdk/sitemap/robots
 
 ## 检查脚本约定
 
-1. CLI 参数（`process.argv` 手工解析，无依赖）：`--site=ID`、`--conc=10`、`--max=N`（试跑截断）、`--skip=a,b`（默认跳过清单，传空覆盖）、`--submit-issues`、`--dry-run`、`--force`（仅配 `--submit-issues`，见"强制执行模式"）。轻量维度（如 robots，每项目仅 1~8 个 URL）可不实现 `--skip`/`--max`；未配置该维度关键字段（如 `robotsUrl`）的项目照常扫描记录但不查重、不提单。
+1. CLI 参数（`process.argv` 手工解析，无依赖）：`--site=ID`、`--conc=10`、`--max=N`（试跑截断）、`--skip=a,b`（默认跳过清单，传空覆盖）、`--submit-issues`、`--dry-run`、`--force`（配 `--submit-issues` 时写回 issue，见"强制执行模式"；同时使默认跳过清单失效，显式 `--skip` 传入的除外）。轻量维度（如 robots，每项目仅 1~8 个 URL）可不实现 `--skip`/`--max`；未配置该维度关键字段（如 `robotsUrl`）的项目照常扫描记录但不查重、不提单。
 2. 数据源 = 对项目 `sitemapUrl` 全量展开（index 递归；有 `newVersions` 的 docs 站只取匹配版本子 sitemap，约定见 sitemap-spec-check）后**逐页实时 fetch HTML**，不发仓库构建产物；robots/llms 类单文件维度直接 GET 目标文件；失效链接维度（check-links）特殊——**clone 源码仓扫描源码**（repo 的 AtomGit 同名镜像 + `linkScan.branch` 浅克隆，gitcode 匿名 git 传输 401 不可用；仅对配置了 `linkScan` 的项目扫描，clone 失败只记报告不提单）。
 3. 抓取：超时 20s + 2 次重试 + UA `geo-workflow-checker/1.0`；`mapLimit` 并发（默认 10）。失败页单列清单，不计入判重。
 4. **缺失与判重分开**：提取函数返回 null（元素不存在）/ ''（元素存在但空），两者都不进判重分组，而是逐页记入独立的"缺失检查"小节（区分 `noElement`/`empty`），孤立缺失（仅 1 页）也会报告；判重只对有非空取值的页面分组。
