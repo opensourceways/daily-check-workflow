@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-11T13:22:01.072Z
+> 生成时间：2026-11-12T14:26:42.623Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -10,14 +10,14 @@
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
 | openEuler 官网（openEuler-portal） | 5 | 1 | 4 |
-| openEuler 文档（openEuler-docs） | 2 | 2 | 0 |
-| openGauss 官网（openGauss-portal） | 4 | 0 | 4 |
+| openEuler 文档（openEuler-docs） | 2 | 1 | 1 |
+| openGauss 官网（openGauss-portal） | 4 | 1 | 3 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 6 | 0 | 6 |
+| MindSpore 官网（MindSpore-portal） | 6 | 2 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
 | openUBMC 官网（openUBMC-portal） | 15 | 0 | 15 |
 | openUBMC 文档（openUBMC-docs） | 4 | 0 | 4 |
-| UnifiedBus（UnifiedBus） | 3 | 1 | 2 |
+| UnifiedBus（UnifiedBus） | 3 | 0 | 3 |
 | HiFloat（HiFloat） | 5 | 0 | 5 |
 
 ## openEuler 官网（openEuler-portal）
@@ -35,7 +35,7 @@
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#82](https://atomgit.com/openeuler/docs-website/issues/82) openEuler 文档（openEuler-docs）：抽样页面 HTML 语义化检查发现 4 处规范问题 | open（未关闭） | [!201](https://atomgit.com/openeuler/docs-website/merge_requests/201)（进行中） | 2026-10-28 | 2026-11-11 |
-| Sitemap | [#76](https://atomgit.com/openeuler/docs-website/issues/76) openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | [!200](https://atomgit.com/openeuler/docs-website/merge_requests/200)（进行中） | 2026-10-23 | 2026-10-23 |
+| Sitemap | [#85](https://atomgit.com/openeuler/docs-website/issues/85) openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-11-12 | 2026-11-12 |
 
 ## openGauss 官网（openGauss-portal）
 
@@ -44,7 +44,7 @@
 | HTML Semantic | [#455](https://atomgit.com/opengauss/website/issues/455) openGauss 官网（openGauss-portal）：抽样页面 HTML 语义化检查发现 25 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#448](https://atomgit.com/opengauss/website/issues/448) openGauss 官网（openGauss-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
 | Link Check | [#464](https://atomgit.com/opengauss/website/issues/464) openGauss 官网（openGauss-portal）：发现 111 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
-| TDK Duplicate | [#462](https://atomgit.com/opengauss/website/issues/462) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
+| TDK Duplicate | [#462](https://atomgit.com/opengauss/website/issues/462) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!1873](https://atomgit.com/opengauss/website/merge_requests/1873)（进行中） | 2026-11-02 | 2026-11-02 |
 
 ## openGauss 文档（openGauss-docs）
 
@@ -59,11 +59,11 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#305](https://atomgit.com/mindspore/mindspore-portal/issues/305) MindSpore 官网（MindSpore-portal）：抽样页面 HTML 语义化检查发现 199 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
+| HTML Semantic | [#305](https://atomgit.com/mindspore/mindspore-portal/issues/305) MindSpore 官网（MindSpore-portal）：抽样页面 HTML 语义化检查发现 199 处规范问题 | open（未关闭） | [!1985](https://atomgit.com/mindspore/mindspore-portal/merge_requests/1985)（进行中） | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#298](https://atomgit.com/mindspore/mindspore-portal/issues/298) MindSpore 官网（MindSpore-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | Link Check | [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#314](https://atomgit.com/mindspore/mindspore-portal/issues/314) MindSpore 官网（MindSpore-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-30 | 2026-10-30 |
-| Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-23 |
+| Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | [!2024](https://atomgit.com/mindspore/mindspore-portal/merge_requests/2024)（进行中） | 2026-10-23 | 2026-10-23 |
 | TDK Duplicate | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## MindSpore 文档（MindSpore-docs）
@@ -107,7 +107,7 @@
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#118](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/118) UnifiedBus（UnifiedBus）：抽样页面 HTML 语义化检查发现 9 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
-| Sitemap | [#109](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/109) UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | [!663](https://atomgit.com/unifiedbus/UnifiedBus-portal/merge_requests/663)（进行中） | 2026-10-23 | 2026-10-23 |
+| Sitemap | [#128](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/128) UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-11-12 | 2026-11-12 |
 | TDK Duplicate | [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 
 ## HiFloat（HiFloat）
