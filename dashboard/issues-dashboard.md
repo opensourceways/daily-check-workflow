@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-12T14:26:42.623Z
+> 生成时间：2026-11-13T13:45:02.249Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -13,7 +13,7 @@
 | openEuler 文档（openEuler-docs） | 2 | 1 | 1 |
 | openGauss 官网（openGauss-portal） | 4 | 1 | 3 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 6 | 2 | 4 |
+| MindSpore 官网（MindSpore-portal） | 6 | 1 | 5 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
 | openUBMC 官网（openUBMC-portal） | 15 | 0 | 15 |
 | openUBMC 文档（openUBMC-docs） | 4 | 0 | 4 |
@@ -59,12 +59,12 @@
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
-| HTML Semantic | [#305](https://atomgit.com/mindspore/mindspore-portal/issues/305) MindSpore 官网（MindSpore-portal）：抽样页面 HTML 语义化检查发现 199 处规范问题 | open（未关闭） | [!1985](https://atomgit.com/mindspore/mindspore-portal/merge_requests/1985)（进行中） | 2026-10-28 | 2026-10-28 |
+| HTML Semantic | [#305](https://atomgit.com/mindspore/mindspore-portal/issues/305) MindSpore 官网（MindSpore-portal）：抽样页面 HTML 语义化检查发现 199 处规范问题 | open（未关闭） | [!1985](https://atomgit.com/mindspore/mindspore-portal/merge_requests/1985)（已合并） | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#298](https://atomgit.com/mindspore/mindspore-portal/issues/298) MindSpore 官网（MindSpore-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-10-26 | 2026-10-26 |
 | Link Check | [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#314](https://atomgit.com/mindspore/mindspore-portal/issues/314) MindSpore 官网（MindSpore-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-30 | 2026-10-30 |
-| Sitemap | [#294](https://atomgit.com/mindspore/mindspore-portal/issues/294) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | [!2024](https://atomgit.com/mindspore/mindspore-portal/merge_requests/2024)（进行中） | 2026-10-23 | 2026-10-23 |
-| TDK Duplicate | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
+| Sitemap | [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-11-13 | 2026-11-13 |
+| TDK Duplicate | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-13 |
 
 ## MindSpore 文档（MindSpore-docs）
 
@@ -87,9 +87,9 @@
 | Daily Check | [#158](https://atomgit.com/openUBMC/website/issues/158) openUBMC/website: [link-anchor-check / 轮播图] 2项检查未通过 | open（未关闭） | — | 2026-08-10 | 2026-10-22 |
 | Daily Check | [#185](https://atomgit.com/openUBMC/website/issues/185) openUBMC/website: [ssr-rendering] 1项检查未通过 | open（未关闭） | — | 2026-08-30 | 2026-10-22 |
 | HTML Semantic | [#318](https://atomgit.com/openUBMC/website/issues/318) openUBMC 官网（openUBMC-portal）：抽样页面 HTML 语义化检查发现 15 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
-| JSON-LD | [#312](https://atomgit.com/openUBMC/website/issues/312) openUBMC 官网（openUBMC-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
+| JSON-LD | [#312](https://atomgit.com/openUBMC/website/issues/312) openUBMC 官网（openUBMC-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-11-13 |
 | Link Check | [#330](https://atomgit.com/openUBMC/website/issues/330) openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
-| Sitemap | [#308](https://atomgit.com/openUBMC/website/issues/308) openUBMC 官网（openUBMC-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-10-24 |
+| Sitemap | [#308](https://atomgit.com/openUBMC/website/issues/308) openUBMC 官网（openUBMC-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-11-13 |
 | TDK Duplicate | [#329](https://atomgit.com/openUBMC/website/issues/329) openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-02 | 2026-11-02 |
 | 优化 | [#285](https://atomgit.com/openUBMC/website/issues/285) ：内链整改：入口薄弱页面补链 + 正文断链修复 | open（未关闭） | — | 2026-10-15 | 2026-10-15 |
 
