@@ -49,7 +49,7 @@ node scripts/checks/check-sitemap.mjs --site=openEuler-portal  # 检查单个项
     │   ├── jsonld.mjs   # JSON-LD 页面级分析器与硬性/告警分级（check-tdk-jsonld 的 jsonld 维度）
     │   ├── gitcode.mjs  # GitCode/AtomGit API
     │   ├── github.mjs   # GitHub REST API（issue 列表/评论，开发者 issue 闭环看板用）
-    │   ├── atomgit.mjs  # AtomGit API v5 + 提单流程公共实现（查重 precheckExistingIssues、新建/更新/评论 /close 写回 reconcileIssue，供 --submit-issues/--force 模式）
+    │   ├── atomgit.mjs  # AtomGit API v5 + 提单流程公共实现（查重 precheckExistingIssues——默认命中即整项跳过，可选 scanOnExisting 改为"仍扫描归档、仅拦写回"；新建/更新/评论 /close 写回 reconcileIssue，供 --submit-issues/--force 模式）
     │   ├── link-scan.mjs # 死链检测支撑库：clone 源码仓（AtomGit 镜像，浅克隆+重试）→ 源码 URL 提取/清洗/变量过滤 → HEAD/GET 并发探测（check-links 用）
     │   └── report.mjs   # 统计输出
     ├── checks/          # 检查脚本
@@ -83,7 +83,7 @@ manual-review/       # 人工核查记录与复盘（issues/ 下为接入自动�
 - **HTML 语义化**：`scripts/checks/semantic-spec-check.mjs` + `../.github/workflows/html-semantic-check.yml`（每周三 05:30 UTC），前缀 `[GEO HTML Semantic]`；按 measures/10「检查细节」抽样页面检查（门户=首页+sitemap 抽 4 栏目页，文档=/zh/、/en/ 首页，默认跳过 MindSpore-docs）；触发提单=存在 error 级问题（仅 warn 不提）；"多个同时可见的 header/footer/main"存在 class 控制显隐的已知误报场景，issue 正文已附复核说明
 - **llms.txt 规范**：`scripts/checks/check-llms-txt.mjs` + `../.github/workflows/llms-txt-check.yml`（每日 05:00 UTC），前缀 `[GEO llms.txt]`；触发提单=P0 级硬性错误（P1/P2 计告警不提单；robots LLM-Policy 联动缺失仅告警，提单归 robots.txt 维度，避免同根因跨维度重复提单）；llmsUrl 未配置的项目记 ❌ 但不查重、不提单
 - **JSON-LD 规范**：`scripts/checks/check-tdk-jsonld.mjs --dims=jsonld` + `../.github/workflows/tdk-jsonld-check.yml`（每周一 03:30 UTC，与 TDK 重复共用同一份抓取；原每日 06:00 采样制已废除），前缀 `[GEO JSON-LD]`；按 sitemap 全量页面检查（默认跳过 docs 大站，`--skip=` 传空或 `--force` 全查）；触发提单=硬性错误（语法/@context/整站无合法块/站点不可达；占位符检查 2026-10-26 起停用——正则误伤真实英文文案，待收窄恢复）；P0 三件套与 Google 必填属性自 2026-10 起降为告警（连同重复块、面包屑项、inLanguage、@id 覆盖率），不提单
-- **失效链接（死链）**：`scripts/checks/check-links.mjs` + `../.github/workflows/link-check.yml`（每周一 06:30 UTC，重成本维度错峰），前缀 `[GEO Link Check]`；数据源与其他维度不同——**clone 源码仓扫描源码**（repo 的 AtomGit 同名镜像 + `linkScan.branch` 浅克隆；gitcode 匿名 git 传输 401 不可用），提取 URL（markdown/href/src/裸链接，变量拼接、图片、API 目录跳过）后唯一去重探测；仅对 projects.config.json 中配置了 `linkScan` 的项目（4 个 portal）扫描，clone 失败只记报告不提单；**报告口径 = 全部失效状态（401/403/418、网络错误等），触发提单 = 存在提单口径内（`links.issueStatuses`，默认仅 404）的失效链接**；探测与提单参数（并发/超时/抖动/提单状态清单）在 config/check-rules.json 的 `links` 段
+- **失效链接（死链）**：`scripts/checks/check-links.mjs` + `../.github/workflows/link-check.yml`（每周一 06:30 UTC，重成本维度错峰），前缀 `[GEO Link Check]`；数据源与其他维度不同——**clone 源码仓扫描源码**（repo 的 AtomGit 同名镜像 + `linkScan.branch` 浅克隆；gitcode 匿名 git 传输 401 不可用），提取 URL（markdown/href/src/裸链接，变量拼接、图片、API 目录跳过）后唯一去重探测；仅对 projects.config.json 中配置了 `linkScan` 的项目（4 个 portal）扫描，clone 失败只记报告不提单；**报告口径 = 全部失效状态（401/403/418、网络错误等），触发提单 = 存在提单口径内（`links.issueStatuses`，默认仅 404）的失效链接**；探测与提单参数（并发/超时/抖动/提单状态清单）在 config/check-rules.json 的 `links` 段；**查重口径与其他维度不同（2026-11 起）——已有未关闭 issue 的项目照常扫描并归档报告，但零写回**（`precheckExistingIssues` 传 `scanOnExisting`：不 block 扫描，只拦提单/更新/评论 /close，写回留给 `--force`）
 
 其他维度接入时照此模式复制（直接复用 lib 的 `precheckExistingIssues`+`reconcileIssue`，即自带查重跳过与 `--force` 强制执行写回）；细则约定（前缀查重、双报告、汇总去重、链接分支、强制执行更新/关闭、验证 checklist）见 skill `daily-check-dim-flow`（~/.config/opencode/skills/）。注意：cron 定时只在默认分支（main）生效，archive 分支合入 main 前用 workflow_dispatch 验证。
 

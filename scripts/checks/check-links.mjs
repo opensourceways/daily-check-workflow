@@ -14,9 +14,10 @@ import { cloneRepo, removeDir, findCodeFiles, extractLinksFromFile, filterExclud
 // 提单口径 = 仅 links.issueStatuses 内的状态（默认仅 404）才提/更新 issue，其余状态只记报告。
 // brief/full 报告是检查产物，dry-run 也生成（dry-run 只跳过提单）——issue 正文（含 dry-run 打印的
 // 预览正文）链接的完全版报告必须真实存在，否则正文里的报告链接指向 404。
-// 提 issue 模式：扫描前先查重（标题前缀匹配），已有未关闭 issue 则跳过该项目整个"扫描+提单"；
+// 提 issue 模式：扫描前先查重（标题前缀匹配），已有未关闭 issue 的项目仍照常扫描并归档
+// brief/full 报告与 stats，但本轮不提单/不更新/不评论关闭（查重只拦"写回"，不拦"扫描"）；
 // issue 正文用简短版并附指向本仓库完全版报告的链接。前缀变更会使旧 issue 查重失效。
-// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中不再拦截扫描，
+// 强制执行模式（--force，手动 dispatch 勾选 force_check）：查重命中时恢复写回——
 // 复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 在原 issue 评论 /close。
 const ISSUE_TITLE_PREFIX = '[GEO Link Check]';
 const startedAt = now();
@@ -281,8 +282,8 @@ function issueBodyFor(r, fullFileName, issueList) {
   lines.push('### 处理说明');
   lines.push('');
   lines.push('- 按问题清单修复链接后合并 PR 并关闭本 issue');
-  lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间不会重复创建，也不会重复扫描');
-  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，跳过查重拦截）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
+  lines.push('- 修复 PR 合并且 issue 关闭后，下一轮定时检查会重新扫描该项目；issue 未关闭期间每轮检查仍会扫描并归档最新报告，但不会重复创建 issue、也不会更新本 issue');
+  lines.push('- 如需修复后立即复核：维护者可手动运行检查 workflow 并勾选 force_check（强制执行，恢复对已有 issue 的写回）——仍有问题会直接更新本 issue 内容，问题已全部消除会自动在本 issue 评论 /close 关闭');
   lines.push('- 若认为某条属预期（误报），请在 issue 评论说明，维护者会关闭本 issue');
   lines.push('');
   lines.push(`> 当日全量检查汇总报告：[${reportName}](${fullUrlOf(reportName)})`);
@@ -308,8 +309,10 @@ for (const project of targets) {
     results.push(await scanProject(project));
     continue;
   }
-  // 查重：--force 时已有未关闭 issue 不拦截扫描，existing 带回供写回环节更新/关闭
-  const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: `失效链接（${ISSUE_STATUS_LABEL}）`, force });
+  // 查重：非强制模式命中已有未关闭 issue 时不再跳过项目（scanOnly=true）——照常扫描并归档
+  // brief/full 报告与 stats，只拦 issue 写回；--force 时 existing 带回供写回环节更新/关闭。
+  // 仍会 block 的只剩"有 token 但查重查询失败"的异常场景（宁漏勿重）。
+  const pre = await precheckExistingIssues({ repoUrl: project.repo, prefix: ISSUE_TITLE_PREFIX, dimLabel: `失效链接（${ISSUE_STATUS_LABEL}）`, force, scanOnExisting: true });
   pre.notes.forEach((n) => console.log(`[links] ${project.id}: ${n}`));
   if (pre.block) {
     results.push({
@@ -334,7 +337,7 @@ for (const project of targets) {
   if (hasBrokenLinks(entry)) {
     // brief/full 报告是检查产物，dry-run 同样写（dry-run 只跳过提单）：
     // issue 正文（dry-run 时为控制台打印的预览正文）里链接的完全版报告必须真实存在，否则指向 404。
-    const modeNote = dryRun ? '\n- 运行模式：dry-run（未提 issue）' : '';
+    const modeNote = (dryRun ? '\n- 运行模式：dry-run（未提 issue）' : '') + (pre.scanOnly ? '\n- 已有未关闭 issue：本轮只扫描归档，未提单/未写回（写回需 force_check 强制执行）' : '');
     await writeFile(
       resolve(dir, fullFileName),
       `# 失效链接检查完全版报告 · ${entry.projectName}（${entry.projectId}）\n\n- 检查时间：${startedAt}${modeNote}\n\n` + detailLines(entry).join('\n') + '\n',
@@ -346,11 +349,17 @@ for (const project of targets) {
       'utf8'
     );
     entry.reports = { full: `scheduled-reports/links/${dateStr}/${fullFileName}`, brief: `scheduled-reports/links/${dateStr}/${entry.projectId}-brief.md` };
-    if (!issueList.length) {
+    if (!issueList.length && !pre.scanOnly) {
       console.log(`[links] ${project.id}: 失效链接均不在提单口径内（非 ${ISSUE_STATUS_LABEL}），只记报告不提 issue`);
     }
   }
-  if (issueList.length) {
+  if (pre.scanOnly) {
+    // 查重命中且非强制：扫描与归档已完成，本轮不做任何 issue 写回——
+    // 不新建（防重复提单）、不更新、不评论 /close（写回一律留给 --force 强制执行）
+    entry.issueAction = 'existing-open';
+    entry.existingIssueUrl = pre.existing[0]?.html_url || null;
+    console.log(`[links] ${project.id}: 已有未关闭 issue，本轮只扫描归档，未提单/未写回`);
+  } else if (issueList.length) {
     const title = issueTitleFor(entry, issueList);
     const body = issueBodyFor(entry, fullFileName, issueList);
     // 强制模式下查重命中 → 更新原 issue；否则新建（分支在 reconcileIssue 内）
@@ -386,7 +395,7 @@ const statsPath = await writeStats('link-stats', report);
 function overviewRow(r) {
   const name = `${r.projectName}（${r.projectId}）`;
   if (r.notConfigured) return `| ${name} | 未配置 linkScan | - | - | - | ➖ |`;
-  if (r.skipped) return `| ${name} | ${r.repo} | - | - | - | ⏭️ 查重跳过 |`;
+  if (r.skipped) return `| ${name} | ${r.repo} | - | - | - | ⏭️ 查重查询失败跳过 |`;
   const c = r.checks;
   if (r.scanError) return `| ${name} | \`${r.repo}\`（${r.branch}） | - | - | - | ❌ clone 失败：${r.scanError} |`;
   const tag = r.issueUrl
@@ -395,9 +404,11 @@ function overviewRow(r) {
       ? '（dry-run 未提交）'
       : r.issueAction === 'print-only'
         ? '（未提单：无 token 或查重降级）'
-        : submitIssues && (c.brokenUrls || 0) > 0 && !issueBroken(r).length
-          ? `（仅非 ${ISSUE_STATUS_LABEL} 状态，未提单）`
-          : '';
+        : r.issueAction === 'existing-open'
+          ? `（${r.existingIssueUrl ? `[已有未关闭 issue](${r.existingIssueUrl})，` : '已有未关闭 issue，'}本轮只扫描归档未提单）`
+          : submitIssues && (c.brokenUrls || 0) > 0 && !issueBroken(r).length
+            ? `（仅非 ${ISSUE_STATUS_LABEL} 状态，未提单）`
+            : '';
   return `| ${name} | \`${r.repo}\`（${r.branch}） | ${c.scannedFiles} | ${c.linkOccurrences} / ${c.checkedUrls} | ${c.brokenUrls} / ${c.brokenOccurrences} | ${r.verdict}${tag} |`;
 }
 
@@ -405,8 +416,8 @@ const lines = [];
 lines.push('# 失效链接检查报告');
 lines.push('');
 lines.push(`- 检查时间：${startedAt}`);
-lines.push(`- 检查范围：projects.config.json 中配置了 linkScan 的 ${results.filter((r) => !r.notConfigured).length} 个项目（共 ${results.length} 个，未配置的记 ➖ 不扫描）${results.some((r) => r.skipped) ? `（查重跳过：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}`);
-lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : ''}）` : '常规检查'}${maxLinks ? `，--max=${maxLinks} 试跑截断` : ''}`);
+lines.push(`- 检查范围：projects.config.json 中配置了 linkScan 的 ${results.filter((r) => !r.notConfigured).length} 个项目（共 ${results.length} 个，未配置的记 ➖ 不扫描）${results.some((r) => r.skipped) ? `（查重查询失败未扫描：${results.filter((r) => r.skipped).map((r) => r.projectId).join('、')}）` : ''}`);
+lines.push(`- 运行模式：${submitIssues ? `提 issue（--submit-issues${dryRun ? '，dry-run' : ''}${force ? '，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close' : '，已有未关闭 issue 的项目只扫描归档不写回'}）` : '常规检查'}${maxLinks ? `，--max=${maxLinks} 试跑截断` : ''}`);
 lines.push(`- 探测参数：并发 ${workers}、超时 ${LINK_RULES.timeoutSeconds}s、抖动 ${LINK_RULES.delaySeconds}s（scripts/config/check-rules.json 的 links 段）`);
 if (siteId) lines.push(`- 指定项目：--site=${siteId}`);
 lines.push('- 数据源与判定：clone 各项目源码仓（repo 的 AtomGit 同名镜像 + linkScan.branch 分支，浅克隆 depth=1）→ 扫描 .js/.ts/.jsx/.tsx/.vue/.html/.css/.md/.txt 文件提取 URL（变量拼接链接、图片、API 目录跳过）→ 唯一 URL 去重后 HEAD/GET 探测（<400 为有效，跟随重定向，网络错误计失效）');
@@ -432,9 +443,11 @@ if (submitIssues) {
         ? '，（dry-run 未提交）'
         : r.issueAction === 'print-only'
           ? '，（未提单：无 token 或查重降级）'
-          : !issueBroken(r).length
-            ? `，（仅非 ${ISSUE_STATUS_LABEL} 状态，未提单）`
-            : '';
+          : r.issueAction === 'existing-open'
+            ? `，（已有未关闭 issue${r.existingIssueUrl ? `：${r.existingIssueUrl}` : ''}，本轮只扫描归档未提单）`
+            : !issueBroken(r).length
+              ? `，（仅非 ${ISSUE_STATUS_LABEL} 状态，未提单）`
+              : '';
     lines.push(`- ${r.projectName}（${r.projectId}）：\`${r.reports.full}\`${extra}`);
   }
 } else {
@@ -458,21 +471,25 @@ lines.push('');
 lines.push('## 结论与建议');
 lines.push('');
 const bad = results.filter((r) => hasBrokenLinks(r));
-const reportOnly = results.filter((r) => hasBrokenLinks(r) && !issueBroken(r).length);
+const reportOnly = results.filter((r) => hasBrokenLinks(r) && !issueBroken(r).length && r.issueAction !== 'existing-open');
 const skipped = results.filter((r) => r.skipped);
 const failed = results.filter((r) => r.scanError);
 const clean = results.filter((r) => !r.skipped && !r.notConfigured && !r.scanError && !(r.checks?.brokenUrls || 0));
+const dupHeld = results.filter((r) => r.issueAction === 'existing-open');
+const dupHeldClean = dupHeld.filter((r) => !r.scanError && !(r.checks.brokenUrls || 0));
 if (bad.length) lines.push(`- 存在失效链接：${bad.map((r) => `${r.projectId}（${r.checks.brokenUrls} 个）`).join('、')}，需按完全版报告修复。`);
 if (reportOnly.length) lines.push(`- 其中失效链接均不在提单口径内（非 ${ISSUE_STATUS_LABEL}），只记报告未提 issue：${reportOnly.map((r) => `${r.projectId}（${r.checks.brokenUrls} 个）`).join('、')}。`);
 if (clean.length) lines.push(`- 未发现失效链接：${clean.map((r) => r.projectId).join('、')}。`);
 if (failed.length) lines.push(`- clone 失败（检查侧配置问题，不提单）：${failed.map((r) => `${r.projectId}（${r.scanError}）`).join('、')}，请核对 repo/branch 配置。`);
-if (skipped.length) lines.push(`- 查重跳过（已有未关闭 issue，未重复扫描）：${skipped.map((r) => r.projectId).join('、')}。`);
+if (skipped.length) lines.push(`- 查重查询失败，为避免重复提单本次未扫描：${skipped.map((r) => r.projectId).join('、')}。`);
+if (dupHeld.length) lines.push(`- 已有未关闭 issue，本轮照常扫描归档但未提单/未写回：${dupHeld.map((r) => `${r.projectId}（${r.scanError ? 'clone 失败' : `${r.checks.brokenUrls || 0} 个失效链接`}）`).join('、')}。需更新或关闭原 issue 请手动运行 workflow 并勾选 force_check。`);
+if (dupHeldClean.length) lines.push(`- 其中复检已未再发现失效链接（可 force_check 强制复核，通过后会在原 issue 评论 /close 关闭）：${dupHeldClean.map((r) => r.projectId).join('、')}。`);
 const reopened = results.filter((r) => r.issueAction === 'updated');
 if (reopened.length) lines.push(`- 强制复检仍有问题，已更新原 issue：${reopened.map((r) => r.projectId).join('、')}。`);
 const closedList = results.filter((r) => r.issueAction === 'close-commented' || r.issueAction === 'close-dry-run');
 if (closedList.length) lines.push(`- 强制复检问题已消除，${dryRun ? '将' : '已'}评论 /close 关闭原 issue：${closedList.map((r) => r.projectId).join('、')}。`);
 lines.push('');
-lines.push(`> 注：本报告由 scripts/checks/check-links.mjs 自动生成（同批次数据见 scripts/stats/link-stats.json）。网络错误可能来自临时故障或目标站点对探测的拦截，修复建议仍需人工复核，见 measures/11-broken-link/检测方式.md。${submitIssues && !dryRun ? `存在 ${ISSUE_STATUS_LABEL} 失效链接的项目已按 --submit-issues 流程提 issue（clone 失败与未配置项目不提单；非 ${ISSUE_STATUS_LABEL} 状态的失效链接只记报告不提单）。` : ''}`);
+lines.push(`> 注：本报告由 scripts/checks/check-links.mjs 自动生成（同批次数据见 scripts/stats/link-stats.json）。网络错误可能来自临时故障或目标站点对探测的拦截，修复建议仍需人工复核，见 measures/11-broken-link/检测方式.md。${submitIssues && !dryRun ? `存在 ${ISSUE_STATUS_LABEL} 失效链接的项目已按 --submit-issues 流程提 issue（clone 失败、未配置与已有未关闭 issue 的项目不提单；非 ${ISSUE_STATUS_LABEL} 状态的失效链接只记报告不提单）。` : ''}`);
 
 const reportPath = resolve(dir, reportName);
 await writeFile(reportPath, lines.join('\n') + '\n', 'utf8');
@@ -498,6 +515,7 @@ console.log(
         statusDist: c.statusDist,
         issueAction: r.issueAction,
         issueUrl: r.issueUrl,
+        existingIssueUrl: r.existingIssueUrl || null,
       };
     }),
     null,

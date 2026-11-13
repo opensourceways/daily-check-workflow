@@ -17,7 +17,7 @@ on:
         type: boolean
         default: false
       force_check:
-        description: "强制执行（提 issue 模式不再被「已有未关闭 issue 即跳过扫描」的查重拦截；复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭。提单口径默认仅 404，见 check-rules.json 的 links.issueStatuses；报告仍记录全部失效状态）"
+        description: "强制执行（默认已有未关闭 issue 的项目只扫描归档、不做任何 issue 写回；勾选后复检仍有问题→就地更新原 issue 内容，问题已消除→在原 issue 评论 /close 关闭。提单口径默认仅 404，见 check-rules.json 的 links.issueStatuses；报告仍记录全部失效状态）"
         required: false
         type: boolean
         default: false
@@ -43,6 +43,8 @@ jobs:
           node-version: 20
 
       - name: Run broken link check
+        # 查重语义：已有未关闭 issue 的项目仍照常扫描并归档 brief/full 报告与 stats，
+        # 仅跳过一切 issue 写回（不新建/不更新/不评论 /close，写回留给 force_check 强制执行）。
         env:
           # 死链维度提单/读仓用 HSJ 账号令牌（HSJ_ATOMGIT_TOKEN），
           # 脚本侧仍读 ATOMGIT_TOKEN 环境变量（atomgit.mjs 公共实现不改）。

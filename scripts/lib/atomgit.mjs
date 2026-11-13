@@ -126,13 +126,15 @@ export function closeIssueCommentBody(dimLabel, dateStr) {
 /**
  * 扫描前查重（各维度脚本共用）：查目标 AtomGit 仓库标题以 prefix 开头的未关闭 issue。
  * - 默认（force=false）：命中则 block=true，调用方跳过该项目整个"扫描+提单"（宁漏勿重）。
+ * - scanOnExisting=true（死链维度用）：非强制模式命中不 block，改回 scanOnly=true + canSubmit=false
+ *   ——调用方照常扫描并归档报告，但本轮不提单/不更新/不评论关闭（写回留给 --force）。
  * - 强制执行（force=true，手动 workflow_dispatch 勾选 force_check / CLI --force）：
  *   命中不拦截，照常扫描，并把已有 issue 通过 existing 带回——
  *   由后续 reconcileIssue 决定：复检仍有问题 → 更新原 issue 标题与正文；问题已消除 → 评论 /close。
  * 查询失败时：有 token（生产环境）无论是否强制都 block（无法定位更新目标，宁漏勿重）；
  * 无 token（本地试跑）→ 继续扫描但 canSubmit=false，不做任何写回。
  */
-export async function precheckExistingIssues({ repoUrl, prefix, dimLabel, force = false }) {
+export async function precheckExistingIssues({ repoUrl, prefix, dimLabel, force = false, scanOnExisting = false }) {
   const parsed = parseOwnerRepo(repoUrl);
   if (!parsed) {
     return { block: false, canSubmit: false, existing: [], notes: [`repo 无法解析 owner/repo，无法查重与提单：${repoUrl || '未配置'}`] };
@@ -154,6 +156,15 @@ export async function precheckExistingIssues({ repoUrl, prefix, dimLabel, force 
         canSubmit: hasToken(),
         existing,
         notes: [`已存在未关闭的 ${dimLabel} issue（#${existing[0].number}：${urls}），强制执行模式照常扫描${hasToken() ? '：仍有问题将更新该 issue，已无问题将评论 /close' : '（无 ATOMGIT_TOKEN，本次不写回 issue）'}`],
+      };
+    }
+    if (scanOnExisting) {
+      return {
+        block: false,
+        canSubmit: false,
+        existing,
+        scanOnly: true,
+        notes: [`已存在未关闭的 ${dimLabel} issue（#${existing[0].number}：${urls}），本轮照常扫描并归档报告，但不提单/不写回（写回需 --force 强制执行）`],
       };
     }
     return { block: true, canSubmit: false, existing, notes: [`已存在未关闭的 ${dimLabel} issue（#${existing[0].number}：${urls}），跳过本次扫描与提单`] };
