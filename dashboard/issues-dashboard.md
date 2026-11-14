@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-13T13:45:02.249Z
+> 生成时间：2026-11-14T12:48:49.058Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
