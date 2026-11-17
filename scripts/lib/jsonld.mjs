@@ -21,6 +21,10 @@ export const REQUIRED_PROPS = {
 };
 
 const ARTICLE_TYPES = new Set(['Article', 'TechArticle', 'BlogPosting']);
+// @id 覆盖率需排除的辅助节点：ListItem/ImageObject/ContactPoint 等约定不挂 @id 的列表项与属性值节点；
+// 2026-11-17：collectNodes 改递归收集嵌套实体后，面包屑 ListItem、logo ImageObject、contactPoint 大量进入统计，
+// 不排除会稀释覆盖率造成误报（该指标本意仅查 WebPage→WebSite→Organization 主干实体引用链）
+const ID_COVERAGE_SKIP_TYPES = new Set(['ListItem', 'ImageObject', 'ContactPoint']);
 const PAGE_LEVEL_TYPES = new Set(['WebPage', 'WebSite', 'Article', 'TechArticle', 'BlogPosting']);
 const PLACEHOLDER_RE = /(^|\b)(todo|fixme|tbd|placeholder|待填|占位)\b/i;
 const CANONICAL_CONTEXT = 'https://schema.org';
@@ -51,7 +55,13 @@ export function collectNodes(data, out) {
     return;
   }
   if (data['@type']) out.push(data);
-  if (Array.isArray(data['@graph'])) data['@graph'].forEach((d) => collectNodes(d, out));
+  // 递归属性值里的嵌套实体（2026-11-17 修：原来只收顶层与 @graph 子节点，
+  // WebPage.breadcrumb 内嵌的 BreadcrumbList 等被漏采，造成 P0 三件套误报缺失）；
+  // @context 是词汇表映射而非实体，跳过
+  for (const [k, v] of Object.entries(data)) {
+    if (k === '@context' || v === null || typeof v !== 'object') continue;
+    collectNodes(v, out);
+  }
 }
 
 export function validateNode(node, page, types, requiredMissing, nestedIssues) {
@@ -174,8 +184,11 @@ export function createJsonLdAnalyzer() {
           usesGraph = true;
         }
         for (const node of nodes) {
-          nodeTotal++;
-          if (node['@id']) nodesWithId++;
+          const nodeTypeList = Array.isArray(node['@type']) ? node['@type'] : [node['@type']];
+          if (!nodeTypeList.some((x) => ID_COVERAGE_SKIP_TYPES.has(x))) {
+            nodeTotal++;
+            if (node['@id']) nodesWithId++;
+          }
           validateNode(node, page, types, requiredMissing, nestedIssues);
           // 占位符检查停用（2026-10，误伤待重新设计）：placeholderHits 恒为空，恢复时取消注释即可
           // scanPlaceholders(node, node['@type'], placeholderHits, page);
