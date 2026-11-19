@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-18T14:54:49.150Z
+> 生成时间：2026-11-19T15:00:30.733Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -13,7 +13,7 @@
 | openEuler 文档（openEuler-docs） | 2 | 1 | 1 |
 | openGauss 官网（openGauss-portal） | 3 | 0 | 3 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
-| MindSpore 官网（MindSpore-portal） | 6 | 2 | 4 |
+| MindSpore 官网（MindSpore-portal） | 5 | 1 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
 | openUBMC 官网（openUBMC-portal） | 15 | 0 | 15 |
 | openUBMC 文档（openUBMC-docs） | 4 | 0 | 4 |
@@ -63,7 +63,6 @@
 | Link Check | [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#314](https://atomgit.com/mindspore/mindspore-portal/issues/314) MindSpore 官网（MindSpore-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-10-30 | 2026-10-30 |
 | Sitemap | [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-11-13 | 2026-11-13 |
-| TDK Duplicate | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!2027](https://atomgit.com/mindspore/mindspore-portal/merge_requests/2027)（进行中） | 2026-11-02 | 2026-11-13 |
 
 ## MindSpore 文档（MindSpore-docs）
 
