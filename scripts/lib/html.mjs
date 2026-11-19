@@ -3,9 +3,11 @@ export function extractTitle(html) {
   return m ? m[1].trim() : null;
 }
 
+// 标签切分的闭合 `>` 只认引号外（`[^>]*` 会在属性值内未转义的 `>` 处截断，
+// 如 description 含 "Lane<j,i>" 时误判 meta 缺失，浏览器宽容解析亦如此处理）
 export function extractMeta(html, name) {
   const key = String(name).toLowerCase();
-  const tagRe = /<meta\b[^>]*>/gi;
+  const tagRe = /<meta\b(?:"[^"]*"|'[^']*'|[^>])*>/gi;
   let m;
   while ((m = tagRe.exec(html)) !== null) {
     const tag = m[0];
@@ -23,7 +25,7 @@ export function extractMeta(html, name) {
 // - 相对路径基于页面 URL 解析为绝对地址；解析失败（非法 URL）视为无 canonical
 // - 去掉 hash 片段（canonical 指向同页带锚点与不带锚点应视为同一目标）
 export function extractCanonical(html, baseUrl) {
-  const re = /<link\b[^>]*>/gi;
+  const re = /<link\b(?:"[^"]*"|'[^']*'|[^>])*>/gi;
   let m;
   while ((m = re.exec(html)) !== null) {
     const tag = m[0];
