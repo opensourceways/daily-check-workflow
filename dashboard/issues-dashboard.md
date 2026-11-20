@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-19T15:00:30.733Z
+> 生成时间：2026-11-20T14:43:54.573Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -9,9 +9,9 @@
 
 | 项目 | 未关闭 GEO issue | 已关联 PR | 未关联 PR |
 |------|------------------|-----------|-----------|
-| openEuler 官网（openEuler-portal） | 5 | 1 | 4 |
-| openEuler 文档（openEuler-docs） | 2 | 1 | 1 |
-| openGauss 官网（openGauss-portal） | 3 | 0 | 3 |
+| openEuler 官网（openEuler-portal） | 4 | 1 | 3 |
+| openEuler 文档（openEuler-docs） | 1 | 1 | 0 |
+| openGauss 官网（openGauss-portal） | 4 | 0 | 4 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
 | MindSpore 官网（MindSpore-portal） | 5 | 1 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
@@ -25,17 +25,15 @@
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 | open（未关闭） | — | 2026-11-11 | 2026-11-11 |
-| JSON-LD | [#383](https://atomgit.com/openeuler/openEuler-portal/issues/383) openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） | open（未关闭） | — | 2026-11-09 | 2026-11-09 |
 | Link Check | [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) openEuler 官网（openEuler-portal）：发现 638 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | llms.txt | [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） | open（未关闭） | — | 2026-11-11 | 2026-11-11 |
-| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3378](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3378)（已合并）<br>[!3372](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3372)（已合并）<br>[!3371](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3371)（已合并） | 2026-11-02 | 2026-11-11 |
+| TDK Duplicate | [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!3378](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3378)（已合并）<br>[!3372](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3372)（已合并）<br>[!3371](https://atomgit.com/openeuler/openEuler-portal/merge_requests/3371)（已合并） | 2026-11-02 | 2026-11-20 |
 
 ## openEuler 文档（openEuler-docs）
 
 | 维度 | Issue | 状态 | 关联 PR | 创建时间 | 最后更新 |
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#82](https://atomgit.com/openeuler/docs-website/issues/82) openEuler 文档（openEuler-docs）：抽样页面 HTML 语义化检查发现 4 处规范问题 | open（未关闭） | [!201](https://atomgit.com/openeuler/docs-website/merge_requests/201)（进行中） | 2026-10-28 | 2026-11-11 |
-| Sitemap | [#85](https://atomgit.com/openeuler/docs-website/issues/85) openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-11-12 | 2026-11-12 |
 
 ## openGauss 官网（openGauss-portal）
 
@@ -44,6 +42,7 @@
 | HTML Semantic | [#455](https://atomgit.com/opengauss/website/issues/455) openGauss 官网（openGauss-portal）：抽样页面 HTML 语义化检查发现 25 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | JSON-LD | [#448](https://atomgit.com/opengauss/website/issues/448) openGauss 官网（openGauss-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-10-26 |
 | Link Check | [#464](https://atomgit.com/opengauss/website/issues/464) openGauss 官网（openGauss-portal）：发现 111 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
+| TDK Duplicate | [#477](https://atomgit.com/opengauss/website/issues/477) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-20 | 2026-11-20 |
 
 ## openGauss 文档（openGauss-docs）
 
