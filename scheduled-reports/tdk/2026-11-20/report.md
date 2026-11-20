@@ -1,6 +1,6 @@
 # TDK 重复性检查报告
 
-- 检查时间：2026-11-20T07:50:01.237Z
+- 检查时间：2026-11-20T07:57:30.332Z
 - 检查方式：按 sitemap 全量页面逐页请求 HTML 分组判重（title/description/keywords），数据与 JSON-LD 维度共用同一份抓取（脚本已合并为 check-tdk-jsonld.mjs）
 - 判重字段：title（`<title>` 文本）、description（`<meta name="description">`）、keywords（`<meta name="keywords">`），按去空格后的原文精确分组，同值对应 ≥2 个页面即记为重复组；空值/缺失不参与判重，单独计入"TDK 缺失检查"（区分元素缺失/内容为空）
 - 分级说明（2026-11 起）：keywords 重复降级为告警——重复组明细仍列于各项目报告及 stats JSON，供整改参考，但不计入提单触发条件；提单触发 = title/description 重复（canonical 豁免后）或三字段任一缺失
@@ -9,15 +9,16 @@
 - 运行模式：提 issue（--submit-issues，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close）；本次维度：tdk
 - 指定项目：--site=MindSpore-portal
 - 特殊约定：默认跳过 openEuler-docs、openGauss-docs、MindSpore-docs 三个 docs 项目（与 JSON-LD 维度共用同一跳过清单）；如需检查可用 --skip= 传空覆盖；配置 newVersions 的 docs 项目仅收集匹配版本的子 sitemap 页面
+- 本次白名单跳过：MindSpore-portal 跳过 2228 页（规则：`^/(?:activities|news|technology-blogs|version-updates)/(?:zh|en)/`）
 - 完整重复组与缺失数据见：scripts/stats/tdk-duplicate-stats.json
 
 ## 总览
 
 | 项目 | sitemap 页面数 | 成功抓取 | 抓取失败 | title 重复组/页 | description 重复组/页 | keywords 重复组/页 | 缺失页 t/d/k | 结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| MindSpore 官网（MindSpore-portal） | 2339 | 2337 | 2 | 38/79 | 74/259 | 5/2245 | 0/0/0 | ⚠️ 存在重复，[issue](https://atomgit.com/mindspore/mindspore-portal/issues/327) |
+| MindSpore 官网（MindSpore-portal） | 2339 | 109 | 2 | 3/6 | 3/7 | 4/17 | 0/0/0 | ⚠️ 存在重复，[issue](https://atomgit.com/mindspore/mindspore-portal/issues/327) |
 
 ## 各项目明细
 
 （提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 `<项目ID>-full.md`）
-- MindSpore 官网（MindSpore-portal）：`MindSpore-portal-full.md`，issue：https://atomgit.com/mindspore/mindspore-portal/issues/327（已提单）
+- MindSpore 官网（MindSpore-portal）：`MindSpore-portal-full.md`，issue：https://atomgit.com/mindspore/mindspore-portal/issues/327（强制复检仍有问题，已更新原 issue）
