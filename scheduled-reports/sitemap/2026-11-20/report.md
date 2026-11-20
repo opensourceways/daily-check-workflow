@@ -1,8 +1,8 @@
 # Sitemap 属性规范检查报告
 
-- 检查时间：2026-11-20T08:36:39.852Z
-- 检查范围：projects.config.json 中 1 个项目（跳过：无）
-- 运行模式：提 issue（--submit-issues，--force 强制执行：已有未关闭 issue 时更新原 issue 或评论 /close）
+- 检查时间：2026-11-20T13:23:57.902Z
+- 检查范围：projects.config.json 中 4 个项目（跳过：openGauss-docs, MindSpore-portal, MindSpore-docs, openUBMC-portal, UnifiedBus, HiFloat）
+- 运行模式：提 issue（--submit-issues）
 - 规范来源：archive/SEO标准及覆盖情况.md（sitemaps.org），measures/03-sitemap/规范.md
 - 检查项：loc（必选，绝对 URL、可访问）、lastmod（W3C 格式、非构建时间）、changefreq（有效枚举值、避免 never）、xhtml:link（多语言 alternate 完整性）
 - 特殊约定：配置了 newVersions 的项目仅检查 index 中匹配 newVersions 的子 sitemap；domainAlias/sitemapAliasUrl 中的域名视为合法 loc 域名（openEuler 的 openatom.cn 不再计为主机不一致问题）
@@ -13,12 +13,20 @@
 
 | 项目 | sitemap 地址 | 可访问 | 类型 | URL 数 | loc 问题 | lastmod 缺失 | changefreq 缺失 | xhtml:link 问题(核实后) | 结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| openEuler 文档（openEuler-docs） | https://docs.openeuler.org/sitemap_index.xml | ✅ (200) | index(26) | 6495 | 0 | 0 (0%) | 6263 (96%) | 0/6042 | ✅ 符合，[issue](https://atomgit.com/openeuler/docs-website/issues/85) |
+| openEuler 官网（openEuler-portal） | https://www.openeuler.org/sitemap.xml | ✅ (200) | urlset | 2043 | 0 | 0 (0%) | 0 (0%) | 0/834 | ✅ 符合 |
+| openEuler 文档（openEuler-docs） | https://docs.openeuler.org/sitemap_index.xml | ✅ (200) | index(26) | 6495 | 0 | 0 (0%) | 6263 (96%) | 0/6042 | ✅ 符合 |
+| openGauss 官网（openGauss-portal） | https://opengauss.org/sitemap.xml | ✅ (200) | urlset | 1343 | 0 | 0 (0%) | 0 (0%) | 0/272 | ✅ 符合 |
+| openGauss 文档（openGauss-docs） | https://docs.opengauss.org/sitemap_index.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
+| MindSpore 官网（MindSpore-portal） | https://www.mindspore.cn/sitemap.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
+| MindSpore 文档（MindSpore-docs） | https://www.mindspore.cn/docs/sitemap.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
+| openUBMC 官网（openUBMC-portal） | https://www.openubmc.cn/sitemap.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
+| openUBMC 文档（openUBMC-docs） | https://www.openubmc.cn/docs/sitemap.xml | ✅ (200) | urlset | 4296 | 0 | 0 (0%) | 0 (0%) | 0/0 | ✅ 符合 |
+| UnifiedBus（UnifiedBus） | https://www.unifiedbus.com/sitemap.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
+| HiFloat（HiFloat） | https://hifloat.gccorg.com/sitemap.xml | ⏭️ | - | - | - | - | - | - | ⏭️ 跳过 |
 
 ## 各项目明细
 
 （提 issue 模式下本汇总报告仅保留总览，各项目完整明细见本目录 `<项目ID>-full.md`）
-- openEuler 文档（openEuler-docs）：强制复检未再发现问题，已评论 /close 关闭原 issue：https://atomgit.com/openeuler/docs-website/issues/85
 
 ## 结论与建议
 
