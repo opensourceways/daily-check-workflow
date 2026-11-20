@@ -110,7 +110,9 @@
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
       "llmsUrl": "https://www.mindspore.cn/llms.txt",
       "tdkWhitelist": [
-        "^/(?:activities|news|technology-blogs|version-updates)/(?:zh|en)/"
+        "^/(?:activities|news|technology-blogs|version-updates)/(?:zh|en)/",
+        "^/courses/detail(/en)?/?",
+        "^/(?:docs|view)"
       ],
       "linkScan": {
         "branch": "master",
