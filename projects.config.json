@@ -65,6 +65,9 @@
       "robotsUrl": "https://opengauss.org/robots.txt",
       "sitemapUrl": "https://opengauss.org/sitemap.xml",
       "llmsUrl": "https://opengauss.org/llms.txt",
+      "tdkWhitelist": [
+        "^/(?:zh|en)/(?:news|blogs)/.+"
+      ],
       "linkScan": {
         "branch": "v2",
         "urlPrefix": "/zh",
@@ -106,6 +109,9 @@
       "robotsUrl": "https://www.mindspore.cn/robots.txt",
       "sitemapUrl": "https://www.mindspore.cn/sitemap.xml",
       "llmsUrl": "https://www.mindspore.cn/llms.txt",
+      "tdkWhitelist": [
+        "^/(?:activities|news|technology-blogs|version-updates)/(?:zh|en)/"
+      ],
       "linkScan": {
         "branch": "master",
         "urlPrefix": "",
