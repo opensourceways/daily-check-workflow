@@ -1,7 +1,7 @@
 # 开发者 Issue 闭环看板
 
 > 本文件由 `scripts/checks/collect-developer-issues.mjs` 自动生成（GitHub Action 定时执行，默认每 3 小时：北京时间 07 / 10 / 13 / 16 / 19 / 22 点），请勿手动编辑。
-> 生成时间：2026-11-23T15:31:08.712Z
+> 生成时间：2026-11-24T06:35:57.025Z
 > 统计窗口：**2026-11-01**（北京时间当日 00:00）起创建的 issue；窗口起点与 SLA 阈值在 `scripts/config/issue-sla.json` 配置。
 > 仓库范围：`scripts/config/services.json`（源自 项目信息.xlsx）；github.com 仓库走 GitHub API，gitcode / gitee / atomgit 仓库按 AtomGit 同名镜像采集。
 > 关键词划归：标题/正文命中 `scripts/config/issue-routing.json` 规则的 issue（如 [GEO *] / 【GEO】）计入规则指定的责任人，不再计入原仓库责任人。
@@ -11,12 +11,12 @@
 
 | 责任人 | 仓库 | 窗口内 issue | 未关闭 | 已闭环 | 闭环率（≥80%） | 响应≤24h² | 平均响应 | 超时未响应 | 闭环≤120h³ | 平均闭环 | 超时未闭环 | 综合 |
 |------|------|------|------|------|------|------|------|------|------|------|------|------|
-| 黄世俊<br>[@HuangSJ-TY](https://github.com/HuangSJ-TY) · [@persimmonzzz](https://atomgit.com/persimmonzzz) | 6 | 29 | 9 | 20 | 69%（20/29）❌ | 71%（5/7） | 11.9h | 6 | 85%（17/20） | 2.6d | 3 | ❌ |
+| 黄世俊<br>[@HuangSJ-TY](https://github.com/HuangSJ-TY) · [@persimmonzzz](https://atomgit.com/persimmonzzz) | 6 | 29 | 9 | 20 | 69%（20/29）❌ | 71%（5/7） | 11.9h | 7 | 85%（17/20） | 2.6d | 6 | ❌ |
 | 吴培聪<br>[@piecong](https://github.com/piecong) · [@piecong](https://atomgit.com/piecong) | 3 | 10 | 6 | 4 | 40%（4/10）❌ | 100%（8/8） | 0.0h | 2 | 100%（4/4） | 7.9h | 6 | ❌ |
-| 张峻玮<br>[@zjwmiao](https://github.com/zjwmiao) · [@jwzmiao](https://atomgit.com/jwzmiao) | 5（🔄7） | 42 | 21 | 21 | 50%（21/42）❌ | 71%（5/7） | 2.7d | 20 | 67%（14/21） | 4.3d | 18 | ❌ |
+| 张峻玮<br>[@zjwmiao](https://github.com/zjwmiao) · [@jwzmiao](https://atomgit.com/jwzmiao) | 5（🔄7） | 42 | 20 | 22 | 52%（22/42）❌ | 71%（5/7） | 2.7d | 19 | 64%（14/22） | 4.7d | 17 | ❌ |
 | 黄泽麟<br>[@cctvcat](https://github.com/cctvcat) · [@cctvcat](https://atomgit.com/cctvcat) | 6 | 18 | 2 | 16 | 89%（16/18）✅ | 100%（8/8） | 3.3h | 1 | 88%（14/16） | 36.4h | 1 | 🟡 |
-| 刘勇<br>[@liuy2000139](https://github.com/liuy2000139) · [@liuyong2000139](https://atomgit.com/liuyong2000139) | 7 | 38 | 5 | 33 | 87%（33/38）✅ | 91%（29/32） | 10.9h | 0 | 91%（30/33） | 36.9h | 2 | 🟡 |
-| 周琪<br>[@sky-winter](https://github.com/sky-winter) · [@sky-winter](https://atomgit.com/sky-winter) | 6 | 52 | 7 | 45 | 87%（45/52）✅ | 78%（7/9） | 12.9h | 3 | 93%（42/45） | 2.3d | 3 | 🟡 |
+| 刘勇<br>[@liuy2000139](https://github.com/liuy2000139) · [@liuyong2000139](https://atomgit.com/liuyong2000139) | 7 | 42 | 6 | 36 | 86%（36/42）✅ | 91%（30/33） | 11.0h | 0 | 92%（33/36） | 39.0h | 2 | 🟡 |
+| 周琪<br>[@sky-winter](https://github.com/sky-winter) · [@sky-winter](https://atomgit.com/sky-winter) | 6 | 52 | 7 | 45 | 87%（45/52）✅ | 78%（7/9） | 12.9h | 4 | 93%（42/45） | 2.3d | 3 | 🟡 |
 | 龚壮邦<br>[@gzbang](https://github.com/gzbang) · [@gzbang](https://atomgit.com/gzbang) | 0 | 0 | 0 | 0 | — | — | — | 0 | — | — | 0 | — |
 | 贾森森<br>[@wuming230](https://github.com/wuming230) · [@jiasensen](https://atomgit.com/jiasensen) | 0 | 0 | 0 | 0 | — | — | — | 0 | — | — | 0 | — |
 
@@ -35,16 +35,16 @@
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#380](https://atomgit.com/openeuler/openEuler-portal/issues/380) openEuler官网内容更新—成员单位（捐赠人）变更 | 未关闭 | 2026-11-03 | 2026-11-03 | @persimmonzzz | 2.1h | 开启 20.3d | 🔴 超120h未闭环 |
-| [#386](https://atomgit.com/openeuler/openEuler-portal/issues/386) AI chatbot | 未关闭 | 2026-11-10 | 2026-11-12 | @persimmonzzz | 45.2h | 开启 13.1d | 🔴 响应超24h；超120h未闭环 |
-| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#393](https://atomgit.com/openeuler/openEuler-portal/issues/393) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-18 | —（未响应） | — | — | 开启 5.3d | 🔴 超24h未响应；超120h未闭环 |
-| [#394](https://atomgit.com/openeuler/openEuler-portal/issues/394) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.2d | 🔴 超24h未响应 |
-| [#395](https://atomgit.com/openeuler/openEuler-portal/issues/395) 支持子服务直接从官网获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 3.5d | 🔴 超24h未响应 |
-| [#397](https://atomgit.com/openeuler/openEuler-portal/issues/397) 【需求】官网openEuler案例集刷新 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 13.7h | 🟢 |
+| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.6d | 🔴 超24h未响应；超120h未闭环 |
+| [#380](https://atomgit.com/openeuler/openEuler-portal/issues/380) openEuler官网内容更新—成员单位（捐赠人）变更 | 未关闭 | 2026-11-03 | 2026-11-03 | @persimmonzzz | 2.1h | 开启 20.9d | 🔴 超120h未闭环 |
+| [#386](https://atomgit.com/openeuler/openEuler-portal/issues/386) AI chatbot | 未关闭 | 2026-11-10 | 2026-11-12 | @persimmonzzz | 45.2h | 开启 13.7d | 🔴 响应超24h；超120h未闭环 |
+| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.7d | 🔴 超24h未响应；超120h未闭环 |
+| [#393](https://atomgit.com/openeuler/openEuler-portal/issues/393) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-18 | —（未响应） | — | — | 开启 5.9d | 🔴 超24h未响应；超120h未闭环 |
+| [#394](https://atomgit.com/openeuler/openEuler-portal/issues/394) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.8d | 🔴 超24h未响应 |
+| [#395](https://atomgit.com/openeuler/openEuler-portal/issues/395) 支持子服务直接从官网获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 4.1d | 🔴 超24h未响应 |
+| [#397](https://atomgit.com/openeuler/openEuler-portal/issues/397) 【需求】官网openEuler案例集刷新 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 28.7h | 🔴 超24h未响应 |
 | [#374](https://atomgit.com/openeuler/openEuler-portal/issues/374) CVE-2026-118764 | 已闭环 | 2026-11-01 | 2026-11-02 | @persimmonzzz | 35.8h | 18.3d | 🔴 响应超24h；闭环超120h |
 | [#375](https://atomgit.com/openeuler/openEuler-portal/issues/375) 十月json提交 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 1.1h | ✅ |
 | [#376](https://atomgit.com/openeuler/openEuler-portal/issues/376) @opendesign-plus/components和@opensig/opendesign升级 | 已闭环 | 2026-11-02 | 2026-11-02 | @sky-winter | 0.0h | 31.0h | ✅ |
@@ -66,9 +66,9 @@
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#149](https://atomgit.com/openeuler/easy-software/issues/149) 【Easysoftware-test】 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.5d | 🔴 超24h未响应 |
-| [#150](https://atomgit.com/openeuler/easy-software/issues/150) 【Easysoftware-test】测试 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.5d | 🔴 超24h未响应 |
-| [#151](https://atomgit.com/openeuler/easy-software/issues/151) 【EasysoftwareTest】【RPM】redis-7.2.14-1.oe2403sp4 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.4d | 🔴 超24h未响应 |
+| [#149](https://atomgit.com/openeuler/easy-software/issues/149) 【Easysoftware-test】 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 5.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#150](https://atomgit.com/openeuler/easy-software/issues/150) 【Easysoftware-test】测试 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 5.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#151](https://atomgit.com/openeuler/easy-software/issues/151) 【EasysoftwareTest】【RPM】redis-7.2.14-1.oe2403sp4 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 5.1d | 🔴 超24h未响应；超120h未闭环 |
 | [#146](https://atomgit.com/openeuler/easy-software/issues/146) 开源软件升级 | 已闭环 | 2026-11-05 | —（未响应） | — | — | 28.1h | ✅ |
 | [#147](https://atomgit.com/openeuler/easy-software/issues/147) OpenStack 对应的url修改 | 已闭环 | 2026-11-09 | —（未响应） | — | — | 7.7h | ✅ |
 | [#148](https://atomgit.com/openeuler/easy-software/issues/148) nss 评分模块修改 | 已闭环 | 2026-11-13 | —（未响应） | — | — | 0.4h | ✅ |
@@ -112,12 +112,12 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#55](https://atomgit.com/hifloat/hifloat-portal/issues/55) 【测试载体】页脚版权行补充组织名（zh/en 双语同步） | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.6d | 🔴 超24h未响应；超120h未闭环 |
-| [#56](https://atomgit.com/hifloat/hifloat-portal/issues/56) feat: [任务]:卡片样式修改 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.1h | 开启 21.5d | 🔴 超120h未闭环 |
-| [#57](https://atomgit.com/hifloat/hifloat-portal/issues/57) feat: [任务]:下拉列表样式修改 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.2h | 开启 21.5d | 🔴 超120h未闭环 |
-| [#58](https://atomgit.com/hifloat/hifloat-portal/issues/58) feat: [任务]:下拉弹框暗色模式颜色不正确 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.0h | 开启 21.3d | 🔴 超120h未闭环 |
-| [#59](https://atomgit.com/hifloat/hifloat-portal/issues/59) [GEO TDK Duplicate] HiFloat（HiFloat）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#61](https://atomgit.com/hifloat/hifloat-portal/issues/61) 页脚相关链接分组优化（标题国际化 + 新增开源仓库入口）——组织 fork 交接链路验证轮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#55](https://atomgit.com/hifloat/hifloat-portal/issues/55) 【测试载体】页脚版权行补充组织名（zh/en 双语同步） | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 22.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#56](https://atomgit.com/hifloat/hifloat-portal/issues/56) feat: [任务]:卡片样式修改 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.1h | 开启 22.2d | 🔴 超120h未闭环 |
+| [#57](https://atomgit.com/hifloat/hifloat-portal/issues/57) feat: [任务]:下拉列表样式修改 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.2h | 开启 22.1d | 🔴 超120h未闭环 |
+| [#58](https://atomgit.com/hifloat/hifloat-portal/issues/58) feat: [任务]:下拉弹框暗色模式颜色不正确 | 未关闭 | 2026-11-02 | 2026-11-02 | @piecong | 0.0h | 开启 22.0d | 🔴 超120h未闭环 |
+| [#59](https://atomgit.com/hifloat/hifloat-portal/issues/59) [GEO TDK Duplicate] HiFloat（HiFloat）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#61](https://atomgit.com/hifloat/hifloat-portal/issues/61) 页脚相关链接分组优化（标题国际化 + 新增开源仓库入口）——组织 fork 交接链路验证轮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.8d | 🔴 超24h未响应；超120h未闭环 |
 | [#60](https://atomgit.com/hifloat/hifloat-portal/issues/60) feat: [任务]:调整标题顺序 | 已闭环 | 2026-11-03 | 2026-11-03 | @piecong | 0.0h | 2.2h | ✅ |
 
 ### HiFloat 资源（hifloat/resources · atomgit）
@@ -126,7 +126,7 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#9](https://atomgit.com/hifloat/resources/issues/9) 删除和回退这个提交的修改 | 未关闭 | 2026-11-03 | 2026-11-03 | @piecong | 0.0h | 开启 20.1d | 🔴 超120h未闭环 |
+| [#9](https://atomgit.com/hifloat/resources/issues/9) 删除和回退这个提交的修改 | 未关闭 | 2026-11-03 | 2026-11-03 | @piecong | 0.0h | 开启 20.7d | 🔴 超120h未闭环 |
 | [#10](https://atomgit.com/hifloat/resources/issues/10) 解决合并冲突 | 已闭环 | 2026-11-04 | 2026-11-04 | @piecong | 0.0h | 2.2h | ✅ |
 | [#11](https://atomgit.com/hifloat/resources/issues/11) 文档格式显示异常修改 | 已闭环 | 2026-11-04 | 2026-11-04 | @piecong | 0.0h | 14.5h | ✅ |
 
@@ -148,8 +148,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#150](https://github.com/opensourceways/message-manager-website/issues/150) [安全整改] message-manager-website（黄世俊）— 已确认漏洞 1 条（致命0/高危0/中危1） | 未关闭 | 2026-11-12 | —（未响应） | — | — | 开启 11.3d | 🔴 超24h未响应；超120h未闭环 |
-| [#151](https://github.com/opensourceways/message-manager-website/issues/151) [任务]: 修复axios cve | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.1d | 🔴 超24h未响应 |
+| [#151](https://github.com/opensourceways/message-manager-website/issues/151) [任务]: 修复axios cve | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.8d | 🔴 超24h未响应 |
+| [#150](https://github.com/opensourceways/message-manager-website/issues/150) [安全整改] message-manager-website（黄世俊）— 已确认漏洞 1 条（致命0/高危0/中危1） | 已闭环 | 2026-11-12 | —（未响应） | — | — | 11.7d | 🔴 闭环超120h |
 
 ### openEuler 贡献看板（openeuler/opendesign-datastat · atomgit）
 
@@ -165,9 +165,9 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#464](https://atomgit.com/opengauss/website/issues/464) [GEO Link Check] openGauss 官网（openGauss-portal）：发现 111 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#477](https://atomgit.com/opengauss/website/issues/477) [GEO TDK Duplicate] openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 3.3d | 🔴 超24h未响应 |
-| [#478](https://atomgit.com/opengauss/website/issues/478) [任务]: 删除重复的用户案例文章 | 未关闭 | 2026-11-23 | 2026-11-23 | @jwzmiao | 0.0h | 开启 7.8h | 🟢 |
+| [#464](https://atomgit.com/opengauss/website/issues/464) [GEO Link Check] openGauss 官网（openGauss-portal）：发现 111 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.6d | 🔴 超24h未响应；超120h未闭环 |
+| [#477](https://atomgit.com/opengauss/website/issues/477) [GEO TDK Duplicate] openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 3.9d | 🔴 超24h未响应 |
+| [#478](https://atomgit.com/opengauss/website/issues/478) [任务]: 删除重复的用户案例文章 | 未关闭 | 2026-11-23 | 2026-11-23 | @jwzmiao | 0.0h | 开启 22.8h | 🟢 |
 | [#461](https://atomgit.com/opengauss/website/issues/461) [任务]: 更新发行版认证列表 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 1.0h | ✅ |
 | [#462](https://atomgit.com/opengauss/website/issues/462) [GEO TDK Duplicate] openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 15.7d | 🔴 闭环超120h |
 | [#463](https://atomgit.com/opengauss/website/issues/463) [任务]: 替换栅格系统变量 | 已闭环 | 2026-11-02 | 2026-11-02 | @jwzmiao | 0.0h | 3.0d | ✅ |
@@ -196,10 +196,10 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#738](https://github.com/opensourceways/datastat-manage-website/issues/738) CI执行时间说明 P90 与实际取数口径（平均）不符 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#740](https://github.com/opensourceways/datastat-manage-website/issues/740) 蓝区自助诊断页支持 CodeHub（codehub.devcloud.*）链接 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.5d | 🔴 超24h未响应；超120h未闭环 |
-| [#741](https://github.com/opensourceways/datastat-manage-website/issues/741) 脱敏蓝区诊断页 CodeHub 示例与测试用例（内网地址不入公开仓） | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.5d | 🔴 超24h未响应；超120h未闭环 |
-| [#745](https://github.com/opensourceways/datastat-manage-website/issues/745) 问数历史记录：无法查看完整答案 + 记录可能因 U+0000 报错 | 未关闭 | 2026-11-06 | —（未响应） | — | — | 开启 17.5d | 🔴 超24h未响应；超120h未闭环 |
+| [#738](https://github.com/opensourceways/datastat-manage-website/issues/738) CI执行时间说明 P90 与实际取数口径（平均）不符 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.7d | 🔴 超24h未响应；超120h未闭环 |
+| [#740](https://github.com/opensourceways/datastat-manage-website/issues/740) 蓝区自助诊断页支持 CodeHub（codehub.devcloud.*）链接 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#741](https://github.com/opensourceways/datastat-manage-website/issues/741) 脱敏蓝区诊断页 CodeHub 示例与测试用例（内网地址不入公开仓） | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#745](https://github.com/opensourceways/datastat-manage-website/issues/745) 问数历史记录：无法查看完整答案 + 记录可能因 U+0000 报错 | 未关闭 | 2026-11-06 | —（未响应） | — | — | 开启 18.1d | 🔴 超24h未响应；超120h未闭环 |
 | [#754](https://github.com/opensourceways/datastat-manage-website/issues/754) [安全整改] datastat-manage-website — 已确认漏洞 2 条（致命0/高危1/中危1） | 已闭环 | 2026-11-12 | —（未响应） | — | — | 7.9d | 🔴 闭环超120h |
 
 ### openEuler 官网（openeuler/openEuler-portal · atomgit）
@@ -208,10 +208,10 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.6d | 🔴 超24h未响应；超120h未闭环 |
+| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.7d | 🔴 超24h未响应；超120h未闭环 |
 | [#383](https://atomgit.com/openeuler/openEuler-portal/issues/383) [GEO JSON-LD] openEuler 官网（openEuler-portal）：JSON-LD 规范问题（2 类） 🔄→张峻玮 | 已闭环 | 2026-11-09 | 2026-11-20 | @jwzmiao | 10.9d | 10.9d | 🔴 响应超24h；闭环超120h |
 
 ### openEuler 文档（openeuler/docs-website · atomgit）
@@ -228,8 +228,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) [GEO Link Check] MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) [GEO Sitemap] MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-13 | —（未响应） | — | — | 开启 10.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) [GEO Link Check] MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.5d | 🔴 超24h未响应；超120h未闭环 |
+| [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) [GEO Sitemap] MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-13 | —（未响应） | — | — | 开启 10.8d | 🔴 超24h未响应；超120h未闭环 |
 | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) [GEO TDK Duplicate] MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 16.9d | 🔴 闭环超120h |
 | [#327](https://atomgit.com/mindspore/mindspore-portal/issues/327) [GEO TDK Duplicate] MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 已闭环 | 2026-11-20 | 2026-11-20 | @jwzmiao | 0.3h | 0.3h | ✅ |
 
@@ -239,8 +239,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#329](https://atomgit.com/openUBMC/website/issues/329) [GEO TDK Duplicate] openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#330](https://atomgit.com/openUBMC/website/issues/330) [GEO Link Check] openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
+| [#329](https://atomgit.com/openUBMC/website/issues/329) [GEO TDK Duplicate] openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#330](https://atomgit.com/openUBMC/website/issues/330) [GEO Link Check] openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.5d | 🔴 超24h未响应；超120h未闭环 |
 
 ### openUBMC 文档（openUBMC/docs-website · atomgit）
 
@@ -248,7 +248,7 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#28](https://atomgit.com/openUBMC/docs-website/issues/28) [GEO TDK Duplicate] openUBMC 文档（openUBMC-docs）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#28](https://atomgit.com/openUBMC/docs-website/issues/28) [GEO TDK Duplicate] openUBMC 文档（openUBMC-docs）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
 
 ### UnifiedBus 官网（unifiedbus/UnifiedBus-portal · atomgit）
 
@@ -256,8 +256,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) [GEO TDK Duplicate] UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#128](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/128) [GEO Sitemap] UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-12 | —（未响应） | — | — | 开启 11.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) [GEO TDK Duplicate] UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#128](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/128) [GEO Sitemap] UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-12 | —（未响应） | — | — | 开启 11.7d | 🔴 超24h未响应；超120h未闭环 |
 
 ### HiFloat 官网（hifloat/hifloat-portal · atomgit）
 
@@ -265,7 +265,7 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#59](https://atomgit.com/hifloat/hifloat-portal/issues/59) [GEO TDK Duplicate] HiFloat（HiFloat）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#59](https://atomgit.com/hifloat/hifloat-portal/issues/59) [GEO TDK Duplicate] HiFloat（HiFloat）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
 
 ## 黄泽麟
 
@@ -277,8 +277,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#86](https://atomgit.com/openeuler/docs-website/issues/86) 更新停维版本 | 未关闭 | 2026-11-13 | 2026-11-13 | @cctvcat | 0.7h | 开启 10.3d | 🔴 超120h未闭环 |
-| [#87](https://atomgit.com/openeuler/docs-website/issues/87) 从官网的构建产物获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 3.5d | 🔴 超24h未响应 |
+| [#86](https://atomgit.com/openeuler/docs-website/issues/86) 更新停维版本 | 未关闭 | 2026-11-13 | 2026-11-13 | @cctvcat | 0.7h | 开启 10.9d | 🔴 超120h未闭环 |
+| [#87](https://atomgit.com/openeuler/docs-website/issues/87) 从官网的构建产物获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 4.1d | 🔴 超24h未响应 |
 | [#83](https://atomgit.com/openeuler/docs-website/issues/83) docs-ci增加对跨目录资源引用的检查 | 已闭环 | 2026-11-10 | 2026-11-10 | @cctvcat | 2.6h | 5.6h | ✅ |
 | [#84](https://atomgit.com/openeuler/docs-website/issues/84) 构建内存不够 | 已闭环 | 2026-11-10 | 2026-11-10 | @cctvcat | 0.0h | 0.6h | ✅ |
 | [#85](https://atomgit.com/openeuler/docs-website/issues/85) [GEO Sitemap] openEuler 文档（openEuler-docs）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 已闭环 | 2026-11-12 | 2026-11-20 | @jwzmiao | 7.8d | 7.8d | 🔴 响应超24h；闭环超120h |
@@ -307,8 +307,8 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) [GEO Link Check] MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) [GEO Sitemap] MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-13 | —（未响应） | — | — | 开启 10.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#317](https://atomgit.com/mindspore/mindspore-portal/issues/317) [GEO Link Check] MindSpore 官网（MindSpore-portal）：发现 962 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.5d | 🔴 超24h未响应；超120h未闭环 |
+| [#322](https://atomgit.com/mindspore/mindspore-portal/issues/322) [GEO Sitemap] MindSpore 官网（MindSpore-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-13 | —（未响应） | — | — | 开启 10.8d | 🔴 超24h未响应；超120h未闭环 |
 | [#315](https://atomgit.com/mindspore/mindspore-portal/issues/315) [GEO TDK Duplicate] MindSpore 官网（MindSpore-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 16.9d | 🔴 闭环超120h |
 | [#316](https://atomgit.com/mindspore/mindspore-portal/issues/316) [任务]: 优化新闻博客相关代码 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 0.4h | ✅ |
 | [#318](https://atomgit.com/mindspore/mindspore-portal/issues/318) [任务]: 优化首页zone英文版本的的内容 | 已闭环 | 2026-11-04 | 2026-11-04 | @cctvcat | 0.2h | 5.9h | ✅ |
@@ -356,13 +356,13 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#329](https://atomgit.com/openUBMC/website/issues/329) [GEO TDK Duplicate] openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#330](https://atomgit.com/openUBMC/website/issues/330) [GEO Link Check] openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#339](https://atomgit.com/openUBMC/website/issues/339) [任务]: 搜索结果页落地 | 未关闭 | 2026-11-16 | 2026-11-16 | @liuyong2000139 | 0.1h | 开启 7.5d | 🔴 超120h未闭环 |
-| [#340](https://atomgit.com/openUBMC/website/issues/340) [LinkChecker][openUBMC] 1 broken link(s) with HTTP 404 (2026-11-16) | 未关闭 | 2026-11-16 | 2026-11-17 | @liuyong2000139 | 15.1h | 开启 7.2d | 🔴 超120h未闭环 |
-| [#348](https://atomgit.com/openUBMC/website/issues/348) [任务]: 发布博客《openUBMC Studio 白牌定制：24 个定制项，一屏填完，一键出包》 | 未关闭 | 2026-11-20 | 2026-11-23 | @liuyong2000139 | 2.9d | 开启 3.5d | 🔴 响应超24h |
-| [#350](https://atomgit.com/openUBMC/website/issues/350) [任务]: 为新闻内容页新增和更换卡片封面 | 未关闭 | 2026-11-20 | 2026-11-23 | @liuyong2000139 | 2.8d | 开启 3.4d | 🔴 响应超24h |
-| [#352](https://atomgit.com/openUBMC/website/issues/352) [LinkChecker][openUBMC] 1 broken link(s) with HTTP 404 (2026-11-23) | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 4.0h | 🟢 |
+| [#329](https://atomgit.com/openUBMC/website/issues/329) [GEO TDK Duplicate] openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#330](https://atomgit.com/openUBMC/website/issues/330) [GEO Link Check] openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.5d | 🔴 超24h未响应；超120h未闭环 |
+| [#339](https://atomgit.com/openUBMC/website/issues/339) [任务]: 搜索结果页落地 | 未关闭 | 2026-11-16 | 2026-11-16 | @liuyong2000139 | 0.1h | 开启 8.2d | 🔴 超120h未闭环 |
+| [#340](https://atomgit.com/openUBMC/website/issues/340) [LinkChecker][openUBMC] 1 broken link(s) with HTTP 404 (2026-11-16) | 未关闭 | 2026-11-16 | 2026-11-17 | @liuyong2000139 | 15.1h | 开启 7.8d | 🔴 超120h未闭环 |
+| [#352](https://atomgit.com/openUBMC/website/issues/352) [LinkChecker][openUBMC] 1 broken link(s) with HTTP 404 (2026-11-23) | 未关闭 | 2026-11-23 | 2026-11-24 | @liuyong2000139 | 13.5h | 开启 19.1h | 🟢 |
+| [#353](https://atomgit.com/openUBMC/website/issues/353) [任务]: openUBMC守护 | 未关闭 | 2026-11-24 | —（未响应） | — | — | 开启 0.2h | 🟢 |
+| [#354](https://atomgit.com/openUBMC/website/issues/354) [任务]: 发布博客《从固件留存到版本对齐：openUBMC 备件更换升级方案》 | 未关闭 | 2026-11-24 | —（未响应） | — | — | 开启 0.1h | 🟢 |
 | [#331](https://atomgit.com/openUBMC/website/issues/331) [任务]: 新增2026年度openUBMC社区贡献之星评选公告 | 已闭环 | 2026-11-03 | 2026-11-03 | @liuyong2000139 | 0.7h | 6.1h | ✅ |
 | [#332](https://atomgit.com/openUBMC/website/issues/332) [任务]:贡献之星banner上线 | 已闭环 | 2026-11-03 | 2026-11-03 | @liuyong2000139 | 2.8h | 6.6h | ✅ |
 | [#333](https://atomgit.com/openUBMC/website/issues/333) [任务]: 限制对社区规则制度相关的文件修改 | 已闭环 | 2026-11-03 | —（未响应） | — | — | 0.0h | ✅ |
@@ -378,7 +378,9 @@ _统计窗口内无 issue。_
 | [#345](https://atomgit.com/openUBMC/website/issues/345) CVE-2026-128075 | 已闭环 | 2026-11-18 | 2026-11-18 | @liuyong2000139 | 6.5h | 35.8h | ✅ |
 | [#346](https://atomgit.com/openUBMC/website/issues/346) [任务]: 还原修复隐私声明类似页面的markdown css | 已闭环 | 2026-11-18 | 2026-11-19 | @liuyong2000139 | 23.3h | 25.7h | ✅ |
 | [#347](https://atomgit.com/openUBMC/website/issues/347) [任务]: 发布新闻《openUBMC Meetup 深圳站圆满举办：聚焦技术落地实践，赋能全产业链开发者》 | 已闭环 | 2026-11-18 | 2026-11-19 | @liuyong2000139 | 18.3h | 25.5h | ✅ |
+| [#348](https://atomgit.com/openUBMC/website/issues/348) [任务]: 发布博客《openUBMC Studio 白牌定制：24 个定制项，一屏填完，一键出包》 | 已闭环 | 2026-11-20 | 2026-11-23 | @liuyong2000139 | 2.9d | 3.9d | 🔴 响应超24h |
 | [#349](https://atomgit.com/openUBMC/website/issues/349) [任务]: 发布新闻《从带外管理到开源共建：openUBMC 走进华南高校》 | 已闭环 | 2026-11-20 | 2026-11-23 | @liuyong2000139 | 2.9d | 3.2d | 🔴 响应超24h |
+| [#350](https://atomgit.com/openUBMC/website/issues/350) [任务]: 为新闻内容页新增和更换卡片封面 | 已闭环 | 2026-11-20 | 2026-11-23 | @liuyong2000139 | 2.8d | 3.8d | 🔴 响应超24h |
 | [#351](https://atomgit.com/openUBMC/website/issues/351) [任务]: 将OpenUBMC替换为openUBMC | 已闭环 | 2026-11-23 | 2026-11-23 | @liuyong2000139 | 0.0h | 1.5h | ✅ |
 
 ### openUBMC 文档（openUBMC/docs-website · atomgit）
@@ -387,7 +389,7 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#28](https://atomgit.com/openUBMC/docs-website/issues/28) [GEO TDK Duplicate] openUBMC 文档（openUBMC-docs）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
+| [#28](https://atomgit.com/openUBMC/docs-website/issues/28) [GEO TDK Duplicate] openUBMC 文档（openUBMC-docs）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
 | [#29](https://atomgit.com/openUBMC/docs-website/issues/29) [任务]: openUBMC文档缺少jsonld配置，需补充 | 已闭环 | 2026-11-14 | —（未响应） | — | — | 4.7d | ✅ |
 
 ### UnifiedBus 官网（unifiedbus/UnifiedBus-portal · atomgit）
@@ -396,8 +398,9 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) [GEO TDK Duplicate] UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#128](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/128) [GEO Sitemap] UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-12 | —（未响应） | — | — | 开启 11.1d | 🔴 超24h未响应；超120h未闭环 |
+| [#122](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/122) [GEO TDK Duplicate] UnifiedBus（UnifiedBus）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#128](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/128) [GEO Sitemap] UnifiedBus（UnifiedBus）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） 🔄→张峻玮 | 未关闭 | 2026-11-12 | —（未响应） | — | — | 开启 11.7d | 🔴 超24h未响应；超120h未闭环 |
+| [#135](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/135) [任务]: 移除主题配置 | 未关闭 | 2026-11-24 | —（未响应） | — | — | 开启 5.3h | 🟢 |
 | [#123](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/123) [需求]: 限制对社区规则制度相关的文件修改 | 已闭环 | 2026-11-03 | 2026-11-03 | @liuyong2000139 | 0.1h | 0.6h | ✅ |
 | [#124](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/124) CVE-2026-119200 | 已闭环 | 2026-11-05 | 2026-11-05 | @liuyong2000139 | 6.1h | 2.0d | ✅ |
 | [#125](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/125) [任务]: openeuler summit 2026 banner | 已闭环 | 2026-11-05 | 2026-11-05 | @liuyong2000139 | 0.6h | 7.2d | 🔴 闭环超120h |
@@ -409,6 +412,7 @@ _统计窗口内无 issue。_
 | [#133](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/133) CVE-2026-128074 | 已闭环 | 2026-11-18 | 2026-11-18 | @liuyong2000139 | 4.5h | 5.1h | ✅ |
 | [#132](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/132) CVE-2026-128071 | 已闭环 | 2026-11-18 | 2026-11-18 | @liuyong2000139 | 4.5h | 5.1h | ✅ |
 | [#134](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/134) [任务]: 修改文档站llms.txt的链接路径 | 已闭环 | 2026-11-19 | 2026-11-19 | @liuyong2000139 | 1.9h | 2.5h | ✅ |
+| [#136](https://atomgit.com/unifiedbus/UnifiedBus-portal/issues/136) [任务]: 预渲染 llms.txt 引用的 /raw markdown 并容错空 description | 已闭环 | 2026-11-24 | —（未响应） | — | — | 4.2h | ✅ |
 
 ### UnifiedBus 资源（unifiedbus/resources · atomgit）
 
@@ -438,16 +442,16 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.2d | 🔴 超24h未响应；超120h未闭环 |
-| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 20.9d | 🔴 超24h未响应；超120h未闭环 |
-| [#380](https://atomgit.com/openeuler/openEuler-portal/issues/380) openEuler官网内容更新—成员单位（捐赠人）变更 | 未关闭 | 2026-11-03 | 2026-11-03 | @persimmonzzz | 2.1h | 开启 20.3d | 🔴 超120h未闭环 |
-| [#386](https://atomgit.com/openeuler/openEuler-portal/issues/386) AI chatbot | 未关闭 | 2026-11-10 | 2026-11-12 | @persimmonzzz | 45.2h | 开启 13.1d | 🔴 响应超24h；超120h未闭环 |
-| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.1d | 🔴 超24h未响应；超120h未闭环 |
-| [#393](https://atomgit.com/openeuler/openEuler-portal/issues/393) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-18 | —（未响应） | — | — | 开启 5.3d | 🔴 超24h未响应；超120h未闭环 |
-| [#394](https://atomgit.com/openeuler/openEuler-portal/issues/394) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.2d | 🔴 超24h未响应 |
-| [#395](https://atomgit.com/openeuler/openEuler-portal/issues/395) 支持子服务直接从官网获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 3.5d | 🔴 超24h未响应 |
-| [#397](https://atomgit.com/openeuler/openEuler-portal/issues/397) 【需求】官网openEuler案例集刷新 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 13.7h | 🟢 |
+| [#378](https://atomgit.com/openeuler/openEuler-portal/issues/378) [GEO TDK Duplicate] openEuler 官网（openEuler-portal）：TDK title/description/keywords 存在重复或缺失 🔄→张峻玮 | 未关闭 | 2026-11-02 | —（未响应） | — | — | 开启 21.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#379](https://atomgit.com/openeuler/openEuler-portal/issues/379) [GEO Link Check] openEuler 官网（openEuler-portal）：发现 638 个失效链接 🔄→张峻玮 | 未关闭 | 2026-11-03 | —（未响应） | — | — | 开启 21.6d | 🔴 超24h未响应；超120h未闭环 |
+| [#380](https://atomgit.com/openeuler/openEuler-portal/issues/380) openEuler官网内容更新—成员单位（捐赠人）变更 | 未关闭 | 2026-11-03 | 2026-11-03 | @persimmonzzz | 2.1h | 开启 20.9d | 🔴 超120h未闭环 |
+| [#386](https://atomgit.com/openeuler/openEuler-portal/issues/386) AI chatbot | 未关闭 | 2026-11-10 | 2026-11-12 | @persimmonzzz | 45.2h | 开启 13.7d | 🔴 响应超24h；超120h未闭环 |
+| [#389](https://atomgit.com/openeuler/openEuler-portal/issues/389) [GEO llms.txt] openEuler 官网（openEuler-portal）：llms.txt 规范问题（1 项） 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.8d | 🔴 超24h未响应；超120h未闭环 |
+| [#390](https://atomgit.com/openeuler/openEuler-portal/issues/390) [GEO HTML Semantic] openEuler 官网（openEuler-portal）：抽样页面 HTML 语义化检查发现 20 处规范问题 🔄→张峻玮 | 未关闭 | 2026-11-11 | —（未响应） | — | — | 开启 12.7d | 🔴 超24h未响应；超120h未闭环 |
+| [#393](https://atomgit.com/openeuler/openEuler-portal/issues/393) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-18 | —（未响应） | — | — | 开启 5.9d | 🔴 超24h未响应；超120h未闭环 |
+| [#394](https://atomgit.com/openeuler/openEuler-portal/issues/394) 【需求】官网新增算力卡与模型适配信息页面 | 未关闭 | 2026-11-19 | —（未响应） | — | — | 开启 4.8d | 🔴 超24h未响应 |
+| [#395](https://atomgit.com/openeuler/openEuler-portal/issues/395) 支持子服务直接从官网获取导航数据 | 未关闭 | 2026-11-20 | —（未响应） | — | — | 开启 4.1d | 🔴 超24h未响应 |
+| [#397](https://atomgit.com/openeuler/openEuler-portal/issues/397) 【需求】官网openEuler案例集刷新 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 28.7h | 🔴 超24h未响应 |
 | [#374](https://atomgit.com/openeuler/openEuler-portal/issues/374) CVE-2026-118764 | 已闭环 | 2026-11-01 | 2026-11-02 | @persimmonzzz | 35.8h | 18.3d | 🔴 响应超24h；闭环超120h |
 | [#375](https://atomgit.com/openeuler/openEuler-portal/issues/375) 十月json提交 | 已闭环 | 2026-11-02 | —（未响应） | — | — | 1.1h | ✅ |
 | [#376](https://atomgit.com/openeuler/openEuler-portal/issues/376) @opendesign-plus/components和@opensig/opendesign升级 | 已闭环 | 2026-11-02 | 2026-11-02 | @sky-winter | 0.0h | 31.0h | ✅ |
@@ -528,7 +532,7 @@ _统计窗口内无 issue。_
 
 | Issue | 状态 | 创建时间 | 首次响应 | 响应人 | 响应时长 | 闭环时长 / 龄期 | SLA |
 |------|------|----------|----------|--------|----------|----------------|-----|
-| [#59](https://github.com/opensourceways/discourse-fully/issues/59) [任务]: 页头对齐样式修改 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 7.6h | 🟢 |
+| [#59](https://github.com/opensourceways/discourse-fully/issues/59) [任务]: 页头对齐样式修改 | 未关闭 | 2026-11-23 | —（未响应） | — | — | 开启 22.6h | 🟢 |
 
 ## 龚壮邦
 
