@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 /**
- * 用途：传入网页url，将正文内容转md格式输出
+ * 用途：将网页正文内容转md格式输出；HTML 来源为 url（--url）或 stdin
  * 
  * 参数：
  * 
- *  -url: string                      网页url
- *  -f, --filename: string            输出文件路径（可选，不传则直接输出到 stdout）
- *  -c, --content: string             选取正文内容的选择器
- *  -r, --remove: string | string[]   转md时要剥离的元素的选择器
+ *  --url: string                   网页url（可选；传了则从 url 抓取 HTML，优先级高于 stdin）
+ *  stdin                           HTML 数据（未传 --url 时从 stdin 读取）
+ *  -f, --filename: string          输出文件路径（可选，不传则直接输出到 stdout）
+ *  -c, --content: string           选取正文内容的选择器
+ *  -r, --remove: string | string[] 转md时要剥离的元素的选择器
+ * 
+ * 示例：
+ *  node to-md-snapshot.js --url https://example.com
+ *  curl -s https://example.com | node to-md-snapshot.js -c article
  */
 
 import path from 'node:path';
@@ -29,7 +34,7 @@ const DEFAULT_CONTENT_SELECTORS = [
 ];
 
 program
-  .requiredOption('--url <url>', '网页url')
+  .option('--url <url>', '网页url，不传则从 stdin 读取 HTML')
   .option('-f, --filename <filename>', '输出文件路径，不传则输出到 stdout')
   .option('-c, --content <selector>', '选取正文内容的选择器')
   .option('-r, --remove <selectors...>', '转md时要剥离的元素的选择器')
@@ -100,6 +105,26 @@ async function fetchHtml(url) {
   return response.text();
 }
 
+/** 从 stdin 读取全部输入（异步消费流，避免管道上的 EAGAIN） */
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+/** 读取 HTML 来源：显式传了 --url 时优先用 url，否则从 stdin 读取 */
+async function readHtml() {
+  if (options.url) {
+    return fetchHtml(new URL(options.url));
+  }
+  if (process.stdin.isTTY) {
+    throw new Error('未传 --url，且 stdin 无输入');
+  }
+  return readStdin();
+}
+
 function extractContent(html, contentSelector, removeSelectors) {
   const $ = cheerio.load(html);
 
@@ -133,8 +158,7 @@ function extractContent(html, contentSelector, removeSelectors) {
 }
 
 async function main() {
-  const url = new URL(options.url);
-  const html = await fetchHtml(url);
+  const html = await readHtml();
   const removeSelectors = options.remove ?? [];
   const contentHtml = extractContent(html, options.content, removeSelectors);
 

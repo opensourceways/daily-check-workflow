@@ -60,15 +60,24 @@ function segmentDescription(text, locale) {
   return words;
 }
 
+/** 从 stdin 读取全部输入（异步消费流，避免管道上的 EAGAIN） */
+async function readStdin() {
+  const chunks = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 /** 读取文章内容：显式文件路径 > stdin */
-function readArticle() {
+async function readArticle() {
   if (fileArg && fileArg !== '-') {
     return fs.readFileSync(fileArg, 'utf8');
   }
   if (process.stdin.isTTY) {
     throw new Error('未提供文章文件路径，且 stdin 无输入');
   }
-  return fs.readFileSync(0, 'utf8');
+  return readStdin();
 }
 
 async function main() {
@@ -84,7 +93,7 @@ async function main() {
     throw new Error('待匹配的词列表为空');
   }
 
-  const article = readArticle();
+  const article = await readArticle();
   const text = article.toLowerCase();
 
   // AC 自动机：一次扫描得到每个词在文章中的出现次数
