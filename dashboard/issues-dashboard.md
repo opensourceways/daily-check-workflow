@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-25T16:37:21.199Z
+> 生成时间：2026-11-26T16:09:15.278Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -15,7 +15,7 @@
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
 | MindSpore 官网（MindSpore-portal） | 5 | 1 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
-| openUBMC 官网（openUBMC-portal） | 15 | 1 | 14 |
+| openUBMC 官网（openUBMC-portal） | 14 | 0 | 14 |
 | openUBMC 文档（openUBMC-docs） | 4 | 0 | 4 |
 | UnifiedBus（UnifiedBus） | 3 | 0 | 3 |
 | HiFloat（HiFloat） | 5 | 0 | 5 |
@@ -87,7 +87,6 @@
 | JSON-LD | [#312](https://atomgit.com/openUBMC/website/issues/312) openUBMC 官网（openUBMC-portal）：JSON-LD 规范问题（1 类） | open（未关闭） | — | 2026-10-24 | 2026-11-13 |
 | Link Check | [#330](https://atomgit.com/openUBMC/website/issues/330) openUBMC 官网（openUBMC-portal）：发现 116 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
 | Sitemap | [#308](https://atomgit.com/openUBMC/website/issues/308) openUBMC 官网（openUBMC-portal）：sitemap 属性规范问题（错误 0 类 / 告警 1 类） | open（未关闭） | — | 2026-10-23 | 2026-11-13 |
-| TDK Duplicate | [#329](https://atomgit.com/openUBMC/website/issues/329) openUBMC 官网（openUBMC-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!449](https://atomgit.com/openUBMC/website/merge_requests/449)（进行中） | 2026-11-02 | 2026-11-02 |
 | 优化 | [#285](https://atomgit.com/openUBMC/website/issues/285) ：内链整改：入口薄弱页面补链 + 正文断链修复 | open（未关闭） | — | 2026-10-15 | 2026-10-15 |
 
 ## openUBMC 文档（openUBMC-docs）
