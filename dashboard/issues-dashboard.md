@@ -1,7 +1,7 @@
 # GEO Issue 看板
 
 > 本文件由 `scripts/checks/collect-issues-dashboard.mjs` 自动生成（GitHub Action 每日定时执行），请勿手动编辑。
-> 生成时间：2026-11-27T15:56:45.434Z
+> 生成时间：2026-11-28T14:52:41.837Z
 > 口径：各项目 AtomGit 仓库中标题以 `[GEO ` 开头的**未关闭** issue，每次全量重生成——已关闭/删除的 issue 不再出现在本表中。
 > 关联 PR：以本仓库 open/merged PR 标题或正文引用 issue 编号（`#N` / `/issues/N`）判定。
 
@@ -11,7 +11,7 @@
 |------|------------------|-----------|-----------|
 | openEuler 官网（openEuler-portal） | 4 | 1 | 3 |
 | openEuler 文档（openEuler-docs） | 1 | 1 | 0 |
-| openGauss 官网（openGauss-portal） | 3 | 1 | 2 |
+| openGauss 官网（openGauss-portal） | 3 | 0 | 3 |
 | openGauss 文档（openGauss-docs） | 4 | 0 | 4 |
 | MindSpore 官网（MindSpore-portal） | 5 | 1 | 4 |
 | MindSpore 文档（MindSpore-docs） | 2 | 0 | 2 |
@@ -41,7 +41,7 @@
 |------|-------|------|---------|----------|----------|
 | HTML Semantic | [#455](https://atomgit.com/opengauss/website/issues/455) openGauss 官网（openGauss-portal）：抽样页面 HTML 语义化检查发现 25 处规范问题 | open（未关闭） | — | 2026-10-28 | 2026-10-28 |
 | Link Check | [#464](https://atomgit.com/opengauss/website/issues/464) openGauss 官网（openGauss-portal）：发现 111 个失效链接 | open（未关闭） | — | 2026-11-03 | 2026-11-03 |
-| TDK Duplicate | [#477](https://atomgit.com/opengauss/website/issues/477) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | [!1876](https://atomgit.com/opengauss/website/merge_requests/1876)（进行中） | 2026-11-20 | 2026-11-20 |
+| TDK Duplicate | [#477](https://atomgit.com/opengauss/website/issues/477) openGauss 官网（openGauss-portal）：TDK title/description/keywords 存在重复或缺失 | open（未关闭） | — | 2026-11-20 | 2026-11-20 |
 
 ## openGauss 文档（openGauss-docs）
 
